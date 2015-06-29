@@ -221,9 +221,9 @@ module foo {
 
 func TestStack(t *testing.T) {
 	stack := newDefStack(10)
-	expected := &YangModule{YangDefBase:YangDefBase{Ident:"x"}}
+	expected := &Module{DefinitionBase:DefinitionBase{Ident:"x"}}
 	stack.Push(expected)
-	actual, ok := stack.Pop().(* YangModule)
+	actual, ok := stack.Pop().(*Module)
 	if ! ok {
 		t.Fail()
 	}

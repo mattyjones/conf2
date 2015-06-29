@@ -9,14 +9,14 @@ import (
 	"io/ioutil"
 )
 
-func LoadModule(yangfile string) (*YangModule, error) {
+func LoadModule(yangfile string) (*Module, error) {
 	data, err := ioutil.ReadFile(yangfile)
 	if err == nil {
 		l := lex(string(data))
 		err_code := yyParse(l)
 		if err_code == 0 {
 			d := l.stack.Peek()
-			return d.(*YangModule), nil
+			return d.(*Module), nil
 		}
 		return nil, yangError{fmt.Sprintf("Error %d loading yang file", err_code)}
 	}
@@ -40,10 +40,10 @@ func (l *lexer) Error(e string) {
 
 func popAndAddChild(yylval *yySymType) bool {
 	child := yylval.stack.Pop()
-	childable, ok := child.(YangContainerable)
+	childable, ok := child.(Containable)
 	if ok {
 		parent := yylval.stack.Peek()
-		parentable, ok := parent.(YangParentable)
+		parentable, ok := parent.(Parentable)
 		if ok {
 			err := parentable.AddChild(childable)
 			if err == nil {
@@ -56,7 +56,7 @@ func popAndAddChild(yylval *yySymType) bool {
 			__yyfmt__.Printf("Internal Error: %s doesn't implement Parentable.", parent.GetIdent())
 		}
 	} else {
-		__yyfmt__.Printf("Internal Error: Child %s does not implement YangContainable", child.GetIdent())
+		__yyfmt__.Printf("Internal Error: Child %s does not implement Containable", child.GetIdent())
 	}
 
 	return false
@@ -65,19 +65,19 @@ func popAndAddChild(yylval *yySymType) bool {
 //line src/yang/parser.y:64
 type yySymType struct {
 	yys          int
-	def          *YangDef
+	def          *Definition
 	ident        string
 	token        string
-	module       *YangModule
-	container    *YangContainer
-	revision     *YangRevision
-	list         *YangList
-	leaf         *YangLeaf
-	leafList     *YangLeafList
-	grouping     *YangGrouping
-	rpc          *YangRpc
-	notification *YangNotification
-	typedef      *YangTypedef
+	module       *Module
+	container    *Container
+	revision     *Revision
+	list         *List
+	leaf         *Leaf
+	leafList     *LeafList
+	grouping     *Grouping
+	rpc          *Rpc
+	notification *Notification
+	typedef      *Typedef
 	stack        *yangDefStack
 }
 
@@ -680,7 +680,7 @@ yydefault:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		//line src/yang/parser.y:137
 		{
-			yyVAL.module = &YangModule{YangDefBase: YangDefBase{Ident: yyDollar[2].token}}
+			yyVAL.module = &Module{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
 			yylval.stack.Push(yyVAL.module)
 		}
 	case 3:
@@ -688,8 +688,8 @@ yydefault:
 		//line src/yang/parser.y:143
 		{
 			d := yylval.stack.Peek()
-			yyVAL.revision = &YangRevision{YangDefBase: YangDefBase{Ident: yyDollar[2].token}}
-			d.(*YangModule).Revision = yyVAL.revision
+			yyVAL.revision = &Revision{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
+			d.(*Module).Revision = yyVAL.revision
 			yylval.stack.Push(yyVAL.revision)
 		}
 	case 4:
@@ -715,13 +715,13 @@ yydefault:
 		//line src/yang/parser.y:168
 		{
 			d := yylval.stack.Peek()
-			d.(*YangModule).Namespace = yyDollar[2].token
+			d.(*Module).Namespace = yyDollar[2].token
 		}
 	case 11:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:173
 		{
-			m := yylval.stack.Peek().(*YangModule)
+			m := yylval.stack.Peek().(*Module)
 			m.Prefix = yyDollar[2].token
 		}
 	case 18:
@@ -760,14 +760,14 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:227
 		{
-			yyVAL.typedef = &YangTypedef{YangDefBase: YangDefBase{Ident: yyDollar[2].token}}
+			yyVAL.typedef = &Typedef{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
 			yylval.stack.Push(yyVAL.typedef)
 		}
 	case 41:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:262
 		{
-			yyVAL.container = &YangContainer{YangDefBase: YangDefBase{Ident: yyDollar[2].token}}
+			yyVAL.container = &Container{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
 			yylval.stack.Push(yyVAL.container)
 		}
 	case 47:
@@ -782,70 +782,70 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:288
 		{
-			yyVAL.rpc = &YangRpc{YangDefBase: YangDefBase{Ident: yyDollar[2].token}}
+			yyVAL.rpc = &Rpc{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
 			yylval.stack.Push(yyVAL.rpc)
 		}
 	case 54:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		//line src/yang/parser.y:300
 		{
-			input := yylval.stack.Pop().(*YangRpcInput)
-			rpc := yylval.stack.Peek().(*YangRpc)
+			input := yylval.stack.Pop().(*RpcInput)
+			rpc := yylval.stack.Peek().(*Rpc)
 			rpc.Input = input
 		}
 	case 55:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		//line src/yang/parser.y:305
 		{
-			output := yylval.stack.Pop().(*YangRpcOutput)
-			rpc := yylval.stack.Peek().(*YangRpc)
+			output := yylval.stack.Pop().(*RpcOutput)
+			rpc := yylval.stack.Peek().(*Rpc)
 			rpc.Output = output
 		}
 	case 56:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:312
 		{
-			yylval.stack.Push(&YangRpcInput{})
+			yylval.stack.Push(&RpcInput{})
 		}
 	case 57:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:317
 		{
-			yylval.stack.Push(&YangRpcOutput{})
+			yylval.stack.Push(&RpcOutput{})
 		}
 	case 59:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:328
 		{
-			yyVAL.notification = &YangNotification{YangDefBase: YangDefBase{Ident: yyDollar[2].token}}
+			yyVAL.notification = &Notification{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
 			yylval.stack.Push(yyVAL.notification)
 		}
 	case 68:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:354
 		{
-			yyVAL.grouping = &YangGrouping{YangDefBase: YangDefBase{Ident: yyDollar[2].token}}
+			yyVAL.grouping = &Grouping{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
 			yylval.stack.Push(yyVAL.grouping)
 		}
 	case 75:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:374
 		{
-			yyVAL.list = &YangList{YangDefBase: YangDefBase{Ident: yyDollar[2].token}}
+			yyVAL.list = &List{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
 			yylval.stack.Push(yyVAL.list)
 		}
 	case 86:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:399
 		{
-			yyVAL.leaf = &YangLeaf{YangDefBase: YangDefBase{Ident: yyDollar[2].token}}
+			yyVAL.leaf = &Leaf{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
 			yylval.stack.Push(yyVAL.leaf)
 		}
 	case 96:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line src/yang/parser.y:425
 		{
-			yyVAL.leafList = &YangLeafList{YangDefBase: YangDefBase{Ident: yyDollar[2].token}}
+			yyVAL.leafList = &LeafList{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
 			yylval.stack.Push(yyVAL.leafList)
 		}
 	}

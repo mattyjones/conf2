@@ -6,14 +6,14 @@ import (
     "io/ioutil"
 )
 
-func LoadModule(yangfile string) (*YangModule, error) {
+func LoadModule(yangfile string) (*Module, error) {
 	data, err := ioutil.ReadFile(yangfile)
 	if err == nil {
 		l := lex(string(data))
 		err_code := yyParse(l)
 		if err_code == 0 {
 			d := l.stack.Peek()
-			return d.(*YangModule), nil
+			return d.(*Module), nil
 		}
 		return nil, yangError{fmt.Sprintf("Error %d loading yang file", err_code)}
 	}
@@ -37,10 +37,10 @@ func (l *lexer) Error(e string) {
 
 func popAndAddChild(yylval *yySymType) bool {
     child := yylval.stack.Pop()
-    childable, ok := child.(YangContainerable)
+    childable, ok := child.(Containable)
     if ok {
         parent := yylval.stack.Peek()
-        parentable, ok := parent.(YangParentable)
+        parentable, ok := parent.(Parentable)
         if ok {
             err := parentable.AddChild(childable)
             if err == nil {
@@ -53,7 +53,7 @@ func popAndAddChild(yylval *yySymType) bool {
             __yyfmt__.Printf("Internal Error: %s doesn't implement Parentable.", parent.GetIdent())
         }
     } else {
-        __yyfmt__.Printf("Internal Error: Child %s does not implement YangContainable", child.GetIdent())
+        __yyfmt__.Printf("Internal Error: Child %s does not implement Containable", child.GetIdent())
     }
 
     return false
@@ -62,19 +62,19 @@ func popAndAddChild(yylval *yySymType) bool {
 %}
 
 %union {
-    def *YangDef
+    def *Definition
     ident string
     token string
-    module *YangModule
-    container *YangContainer
-    revision *YangRevision
-    list *YangList
-    leaf *YangLeaf
-    leafList *YangLeafList
-    grouping *YangGrouping
-    rpc *YangRpc
-    notification *YangNotification
-    typedef *YangTypedef
+    module *Module
+    container *Container
+    revision *Revision
+    list *List
+    leaf *Leaf
+    leafList *LeafList
+    grouping *Grouping
+    rpc *Rpc
+    notification *Notification
+    typedef *Typedef
     stack *yangDefStack
 }
 
@@ -135,15 +135,15 @@ module :
 
 module_def :
     kywd_module token_ident token_curly_open {
-      $$ = &YangModule{YangDefBase:YangDefBase{Ident:$2}}
+      $$ = &Module{DefinitionBase:DefinitionBase{Ident:$2}}
       yylval.stack.Push($$)
     }
 
 revision_def :
     kywd_revision token_rev_ident {
         d := yylval.stack.Peek()
-        $$ = &YangRevision{YangDefBase:YangDefBase{Ident:$2}}
-        d.(*YangModule).Revision = $$
+        $$ = &Revision{DefinitionBase:DefinitionBase{Ident:$2}}
+        d.(*Module).Revision = $$
         yylval.stack.Push($$)
     }
 
@@ -167,11 +167,11 @@ module_stmts :
 module_stmt :
     kywd_namespace token_string {
          d := yylval.stack.Peek()
-         d.(*YangModule).Namespace = $2
+         d.(*Module).Namespace = $2
     }
     | description
     | kywd_prefix token_string {
-         m := yylval.stack.Peek().(* YangModule)
+         m := yylval.stack.Peek().(*Module)
          m.Prefix = $2
     }
 
@@ -225,7 +225,7 @@ typedef_stmt :
 
 typedef_def :
     kywd_typedef token_ident {
-        $$ = &YangTypedef{YangDefBase:YangDefBase{Ident:$2}}
+        $$ = &Typedef{DefinitionBase:DefinitionBase{Ident:$2}}
         yylval.stack.Push($$)
     };
 
@@ -260,7 +260,7 @@ container_stmt :
 
 container_def :
     kywd_container token_ident {
-        $$ = &YangContainer{YangDefBase:YangDefBase{Ident:$2}}
+        $$ = &Container{DefinitionBase:DefinitionBase{Ident:$2}}
         yylval.stack.Push($$)
     };
 
@@ -286,7 +286,7 @@ rpc_stmt :
 
 rpc_def :
     kywd_rpc token_ident {
-        $$ = &YangRpc{YangDefBase:YangDefBase{Ident:$2}}
+        $$ = &Rpc{DefinitionBase:DefinitionBase{Ident:$2}}
         yylval.stack.Push($$)
     };
 
@@ -298,24 +298,24 @@ rpc_body_stmt:
     description token_semi
     | reference_stmt
     | rpc_input optional_body_stmts token_curly_close {
-         input := yylval.stack.Pop().(*YangRpcInput)
-         rpc := yylval.stack.Peek().(*YangRpc)
+         input := yylval.stack.Pop().(*RpcInput)
+         rpc := yylval.stack.Peek().(*Rpc)
          rpc.Input = input
     }
     | rpc_output optional_body_stmts token_curly_close {
-         output := yylval.stack.Pop().(*YangRpcOutput)
-         rpc := yylval.stack.Peek().(*YangRpc)
+         output := yylval.stack.Pop().(*RpcOutput)
+         rpc := yylval.stack.Peek().(*Rpc)
          rpc.Output = output
     };
 
 rpc_input :
     kywd_input token_curly_open {
-        yylval.stack.Push(&YangRpcInput{})
+        yylval.stack.Push(&RpcInput{})
     };
 
 rpc_output :
     kywd_output token_curly_open {
-        yylval.stack.Push(&YangRpcOutput{})
+        yylval.stack.Push(&RpcOutput{})
     };
 
 notification_stmt :
@@ -326,7 +326,7 @@ notification_stmt :
 
 notification_def :
     kywd_notification token_ident {
-        $$ = &YangNotification{YangDefBase:YangDefBase{Ident:$2}}
+        $$ = &Notification{DefinitionBase:DefinitionBase{Ident:$2}}
         yylval.stack.Push($$)
     };
 
@@ -352,7 +352,7 @@ grouping_body_defined:
 
 grouping_def :
     kywd_grouping token_ident {
-        $$ = &YangGrouping{YangDefBase:YangDefBase{Ident:$2}}
+        $$ = &Grouping{DefinitionBase:DefinitionBase{Ident:$2}}
         yylval.stack.Push($$)
     };
 
@@ -372,7 +372,7 @@ list_stmt :
 
 list_def :
     kywd_list token_ident {
-        $$ = &YangList{YangDefBase:YangDefBase{Ident:$2}}
+        $$ = &List{DefinitionBase:DefinitionBase{Ident:$2}}
         yylval.stack.Push($$)
     };
 
@@ -397,7 +397,7 @@ leaf_stmt:
 
 leaf_def :
     kywd_leaf token_ident {
-        $$ = &YangLeaf{YangDefBase:YangDefBase{Ident:$2}}
+        $$ = &Leaf{DefinitionBase:DefinitionBase{Ident:$2}}
         yylval.stack.Push($$)
     };
 
@@ -423,7 +423,7 @@ leaf_list_stmt :
 
 leaf_list_def :
     kywd_leaf_list token_ident {
-        $$ = &YangLeafList{YangDefBase:YangDefBase{Ident:$2}}
+        $$ = &LeafList{DefinitionBase:DefinitionBase{Ident:$2}}
         yylval.stack.Push($$)
     };
 

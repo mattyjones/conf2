@@ -1,32 +1,32 @@
 package yang
 
-type YangDef interface {
+type Definition interface {
 	GetIdent() string
 	SetDescription(string)
 	GetDescription() string
 }
 
-type YangParentable interface {
-	AddChild(YangContainerable) error
-	GetFirstChild() YangContainerable
-	GetLastChild() YangContainerable
+type Parentable interface {
+	AddChild(Containable) error
+	GetFirstChild() Containable
+	GetLastChild() Containable
 }
 
-type YangContainerable interface {
-	SetParent(parent YangParentable)
+type Containable interface {
+	SetParent(parent Parentable)
 }
 
-type YangDefBase struct {
+type DefinitionBase struct {
 	Ident string
 	Description string
 }
 
-func (b *YangDefBase) String() string {
+func (b *DefinitionBase) String() string {
 	return b.Ident
 }
 
-func (b *ParentableBase) AddChild(child YangContainerable) error {
-	//parentable := b.(YangParentable)
+func (b *ParentableBase) AddChild(child Containable) error {
+	//parentable := b.(Parentable)
 	child.SetParent(b)
 	b.FirstChild = child
 	if b.LastChild == nil {
@@ -35,47 +35,47 @@ func (b *ParentableBase) AddChild(child YangContainerable) error {
 	return nil
 }
 
-func (b *ParentableBase) GetFirstChild() YangContainerable {
+func (b *ParentableBase) GetFirstChild() Containable {
 	return b.FirstChild
 }
-func (b *ParentableBase) GetLastChild() YangContainerable {
+func (b *ParentableBase) GetLastChild() Containable {
 	return b.LastChild
 }
 
-func (b *ContainableBase) SetParent(parent YangParentable) {
+func (b *ContainableBase) SetParent(parent Parentable) {
 	b.Parent = parent
 	b.Sibling = parent.GetFirstChild()
 }
 
-type YangRevision struct {
-	YangDefBase
+type Revision struct {
+	DefinitionBase
 }
 
-func (y *YangRevision) GetIdent() (string) {
+func (y *Revision) GetIdent() (string) {
 	return y.Ident
 }
-func (y *YangRevision) GetDescription() (string) {
+func (y *Revision) GetDescription() (string) {
 	return y.Description
 }
-func (y *YangRevision) SetDescription(d string) {
+func (y *Revision) SetDescription(d string) {
 	y.Description = d
 }
 
 type ParentableBase struct {
-	FirstChild YangContainerable
-	LastChild YangContainerable
+	FirstChild Containable
+	LastChild Containable
 }
 
 type ContainableBase struct {
-	Parent YangParentable
-	Sibling YangContainerable
+	Parent Parentable
+	Sibling Containable
 }
 
-type YangModule struct {
-	YangDefBase
+type Module struct {
+	DefinitionBase
 	ParentableBase
 	Namespace string
-	Revision *YangRevision
+	Revision *Revision
 	Prefix string
 	Rpc ParentableBase
 	Notification ParentableBase
@@ -83,13 +83,13 @@ type YangModule struct {
 	Typedef ParentableBase
 }
 
-func (y *YangModule) GetIdent() (string) {
+func (y *Module) GetIdent() (string) {
 	return y.Ident
 }
-func (y *YangModule) GetDescription() (string) {
+func (y *Module) GetDescription() (string) {
 	return y.Description
 }
-func (y *YangModule) SetDescription(d string) {
+func (y *Module) SetDescription(d string) {
 	y.Description = d
 }
 
@@ -101,246 +101,246 @@ func (e yangError) Error() string {
 	return e.s
 }
 
-func (y *YangModule) AddChild(child YangContainerable) error {
+func (y *Module) AddChild(child Containable) error {
 	switch x := child.(type) {
-		case *YangRpc:
+		case *Rpc:
 			return y.Rpc.AddChild(x)
-		case *YangNotification:
+		case *Notification:
 			return y.Notification.AddChild(x)
-		case *YangGrouping:
+		case *Grouping:
 			return y.Grouping.AddChild(x)
-		case *YangTypedef:
+		case *Typedef:
 			return y.Typedef.AddChild(x)
 		default:
 			return y.ParentableBase.AddChild(x)
 	}
 }
 
-type YangContainer struct {
-	YangDefBase
+type Container struct {
+	DefinitionBase
 	ParentableBase
 	ContainableBase
 	IsConfig bool
 	IsMandatory bool
 }
-func (y *YangContainer) GetIdent() (string) {
+func (y *Container) GetIdent() (string) {
 	return y.Ident
 }
-func (y *YangContainer) GetDescription() (string) {
+func (y *Container) GetDescription() (string) {
 	return y.Description
 }
-func (y *YangContainer) SetDescription(d string) {
+func (y *Container) SetDescription(d string) {
 	y.Description = d
 }
 
-func (y *YangContainer) AddChild(child YangContainerable) error {
+func (y *Container) AddChild(child Containable) error {
 	return y.ParentableBase.AddChild(child)
 }
-func (y *YangContainer) SetParent(parent YangParentable) {
+func (y *Container) SetParent(parent Parentable) {
 	y.ContainableBase.SetParent(parent)
 }
 
-type YangList struct {
-	YangDefBase
+type List struct {
+	DefinitionBase
 	ContainableBase
 	ParentableBase
 	IsConfig bool
 	IsMandatory bool
 }
-func (y *YangList) GetIdent() (string) {
+func (y *List) GetIdent() (string) {
 	return y.Ident
 }
-func (y *YangList) GetDescription() (string) {
+func (y *List) GetDescription() (string) {
 	return y.Description
 }
-func (y *YangList) SetDescription(d string) {
+func (y *List) SetDescription(d string) {
 	y.Description = d
 }
-func (y *YangList) AddChild(child YangContainerable) error {
+func (y *List) AddChild(child Containable) error {
 	return y.ParentableBase.AddChild(child)
 }
-func (y *YangList) SetParent(parent YangParentable) {
+func (y *List) SetParent(parent Parentable) {
 	y.ContainableBase.SetParent(parent)
 }
 
-type YangLeaf struct {
-	YangDefBase
+type Leaf struct {
+	DefinitionBase
 	ContainableBase
 	ParentableBase
 	IsConfig bool
 	IsMandatory bool
-	Sibling *YangDef
+	Sibling *Definition
 }
-func (y *YangLeaf) GetIdent() (string) {
+func (y *Leaf) GetIdent() (string) {
 	return y.Ident
 }
-func (y *YangLeaf) GetDescription() (string) {
+func (y *Leaf) GetDescription() (string) {
 	return y.Description
 }
-func (y *YangLeaf) SetDescription(d string) {
+func (y *Leaf) SetDescription(d string) {
 	y.Description = d
 }
-func (y *YangLeaf) AddChild(child YangContainerable) error {
+func (y *Leaf) AddChild(child Containable) error {
 	return y.ParentableBase.AddChild(child)
 }
-func (y *YangLeaf) SetParent(parent YangParentable) {
+func (y *Leaf) SetParent(parent Parentable) {
 	y.ContainableBase.SetParent(parent)
 }
 
-type YangLeafList struct {
-	YangDefBase
+type LeafList struct {
+	DefinitionBase
 	ContainableBase
 	ParentableBase
 	IsConfig bool
 	IsMandatory bool
-	Sibling *YangDef
+	Sibling *Definition
 }
-func (y *YangLeafList) GetIdent() (string) {
+func (y *LeafList) GetIdent() (string) {
 	return y.Ident
 }
-func (y *YangLeafList) GetDescription() (string) {
+func (y *LeafList) GetDescription() (string) {
 	return y.Description
 }
-func (y *YangLeafList) SetDescription(d string) {
+func (y *LeafList) SetDescription(d string) {
 	y.Description = d
 }
-func (y *YangLeafList) AddChild(child YangContainerable) error {
+func (y *LeafList) AddChild(child Containable) error {
 	return y.ParentableBase.AddChild(child)
 }
-func (y *YangLeafList) SetParent(parent YangParentable) {
+func (y *LeafList) SetParent(parent Parentable) {
 	y.ContainableBase.SetParent(parent)
 }
 
-type YangGrouping struct {
-	YangDefBase
+type Grouping struct {
+	DefinitionBase
 	ContainableBase
 	ParentableBase
 	IsConfig bool
 	IsMandatory bool
 }
-func (y *YangGrouping) GetIdent() (string) {
+func (y *Grouping) GetIdent() (string) {
 	return y.Ident
 }
-func (y *YangGrouping) GetDescription() (string) {
+func (y *Grouping) GetDescription() (string) {
 	return y.Description
 }
-func (y *YangGrouping) SetDescription(d string) {
+func (y *Grouping) SetDescription(d string) {
 	y.Description = d
 }
-func (y *YangGrouping) AddChild(child YangContainerable) error {
+func (y *Grouping) AddChild(child Containable) error {
 	return y.ParentableBase.AddChild(child)
 }
-func (y *YangGrouping) SetParent(parent YangParentable) {
+func (y *Grouping) SetParent(parent Parentable) {
 	y.ContainableBase.SetParent(parent)
 }
 
-type YangRpcInput struct {
+type RpcInput struct {
 	ContainableBase
 	ParentableBase
 }
-func (y *YangRpcInput) GetIdent() (string) {
+func (y *RpcInput) GetIdent() (string) {
 	return "input"
 }
-func (y *YangRpcInput) GetDescription() (string) {
+func (y *RpcInput) GetDescription() (string) {
 	return ""
 }
-func (y *YangRpcInput) SetDescription(d string) {
+func (y *RpcInput) SetDescription(d string) {
 }
-func (y *YangRpcInput) AddChild(child YangContainerable) error {
+func (y *RpcInput) AddChild(child Containable) error {
 	return y.ParentableBase.AddChild(child)
 }
-func (y *YangRpcInput) SetParent(parent YangParentable) {
+func (y *RpcInput) SetParent(parent Parentable) {
 	y.ContainableBase.SetParent(parent)
 }
 
-type YangRpcOutput struct {
+type RpcOutput struct {
 	ContainableBase
 	ParentableBase
 }
-func (y *YangRpcOutput) GetIdent() (string) {
+func (y *RpcOutput) GetIdent() (string) {
 	return "output"
 }
-func (y *YangRpcOutput) GetDescription() (string) {
+func (y *RpcOutput) GetDescription() (string) {
 	return ""
 }
-func (y *YangRpcOutput) SetDescription(d string) {
+func (y *RpcOutput) SetDescription(d string) {
 }
-func (y *YangRpcOutput) AddChild(child YangContainerable) error {
+func (y *RpcOutput) AddChild(child Containable) error {
 	return y.ParentableBase.AddChild(child)
 }
-func (y *YangRpcOutput) SetParent(parent YangParentable) {
+func (y *RpcOutput) SetParent(parent Parentable) {
 	y.ContainableBase.SetParent(parent)
 }
 
-type YangRpc struct {
-	YangDefBase
+type Rpc struct {
+	DefinitionBase
 	ContainableBase
-	Input *YangRpcInput
-	Output *YangRpcOutput
+	Input *RpcInput
+	Output *RpcOutput
 }
-func (y *YangRpc) GetIdent() (string) {
+func (y *Rpc) GetIdent() (string) {
 	return y.Ident
 }
-func (y *YangRpc) GetDescription() (string) {
+func (y *Rpc) GetDescription() (string) {
 	return y.Description
 }
-func (y *YangRpc) SetDescription(d string) {
+func (y *Rpc) SetDescription(d string) {
 	y.Description = d
 }
-func (y *YangRpc) AddChild(child YangContainerable) error {
+func (y *Rpc) AddChild(child Containable) error {
 	switch x := child.(type) {
-		case *YangRpcInput:
+		case *RpcInput:
 			y.Input = x
-		case *YangRpcOutput:
+		case *RpcOutput:
 			y.Output = x
 		default:
 			return yangError{"Error trying to add child of wrong type to rpc"}
 	}
 	return nil
 }
-func (y *YangRpc) SetParent(parent YangParentable) {
+func (y *Rpc) SetParent(parent Parentable) {
 	y.ContainableBase.SetParent(parent)
 }
 
-type YangNotification struct {
-	YangDefBase
+type Notification struct {
+	DefinitionBase
 	ContainableBase
 	ParentableBase
 }
-func (y *YangNotification) GetIdent() (string) {
+func (y *Notification) GetIdent() (string) {
 	return y.Ident
 }
-func (y *YangNotification) GetDescription() (string) {
+func (y *Notification) GetDescription() (string) {
 	return y.Description
 }
-func (y *YangNotification) SetDescription(d string) {
+func (y *Notification) SetDescription(d string) {
 	y.Description = d
 }
-func (y *YangNotification) AddChild(child YangContainerable) error {
+func (y *Notification) AddChild(child Containable) error {
 	return y.ParentableBase.AddChild(child)
 }
-func (y *YangNotification) SetParent(parent YangParentable) {
+func (y *Notification) SetParent(parent Parentable) {
 	y.ContainableBase.SetParent(parent)
 }
 
 
-type YangTypedef struct {
-	YangDefBase
+type Typedef struct {
+	DefinitionBase
 	ContainableBase
 	ParentableBase
 }
-func (y *YangTypedef) GetIdent() (string) {
+func (y *Typedef) GetIdent() (string) {
 	return y.Ident
 }
-func (y *YangTypedef) GetDescription() (string) {
+func (y *Typedef) GetDescription() (string) {
 	return y.Description
 }
-func (y *YangTypedef) SetDescription(d string) {
+func (y *Typedef) SetDescription(d string) {
 	y.Description = d
 }
-func (y *YangTypedef) AddChild(child YangContainerable) error {
+func (y *Typedef) AddChild(child Containable) error {
 	return y.ParentableBase.AddChild(child)
 }
-func (y *YangTypedef) SetParent(parent YangParentable) {
+func (y *Typedef) SetParent(parent Parentable) {
 	y.ContainableBase.SetParent(parent)
 }

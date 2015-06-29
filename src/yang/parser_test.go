@@ -29,7 +29,7 @@ module ff {
 		t.Errorf("Error parsing %d", err)
 	}
 	d := l.stack.Peek()
-	m := d.(*YangModule)
+	m := d.(*Module)
 	if m.Ident != "ff" {
 		t.Errorf("module name expected ff, got %s", m.Ident)
 	}
@@ -39,7 +39,7 @@ module ff {
 	if m.GetFirstChild() == nil {
 		t.Errorf("Container x is missing")
 	}
-	if m.GetFirstChild().(YangDef).GetIdent() != "x" {
+	if m.GetFirstChild().(Definition).GetIdent() != "x" {
 		t.Errorf("Container x not identified")
 	}
 }

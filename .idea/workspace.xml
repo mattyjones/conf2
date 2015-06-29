@@ -2,8 +2,13 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="fd3f19d4-5b7a-46a4-af5e-baa0503c7fcb" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$" />
       <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../.gitmodules" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/yang/lexer.go" afterPath="$PROJECT_DIR$/src/yang/lexer.go" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/yang/lexer_test.go" afterPath="$PROJECT_DIR$/src/yang/lexer_test.go" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/yang/parser.go" afterPath="$PROJECT_DIR$/src/yang/parser.go" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/yang/parser.y" afterPath="$PROJECT_DIR$/src/yang/parser.y" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/yang/parser_test.go" afterPath="$PROJECT_DIR$/src/yang/parser_test.go" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/yang/yang.go" afterPath="$PROJECT_DIR$/src/yang/yang.go" />
     </list>
     <ignored path="conf2-yang-parser.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -30,7 +35,7 @@
             <entry file="file://$PROJECT_DIR$/src/yang/parser_test.go">
               <provider selected="true" editor-type-id="text-editor">
                 <state vertical-scroll-proportion="0.0">
-                  <caret line="31" column="20" selection-start-line="31" selection-start-column="20" selection-end-line="31" selection-end-column="20" />
+                  <caret line="36" column="44" selection-start-line="36" selection-start-column="44" selection-end-line="36" selection-end-column="44" />
                   <folding />
                 </state>
               </provider>
@@ -39,17 +44,17 @@
           <file leaf-file-name="yang.go" pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/src/yang/yang.go">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="-11.357142">
-                  <caret line="246" column="21" selection-start-line="246" selection-start-column="9" selection-end-line="246" selection-end-column="21" />
+                <state vertical-scroll-proportion="-0.9122807">
+                  <caret line="78" column="6" selection-start-line="78" selection-start-column="6" selection-end-line="78" selection-end-column="6" />
                   <folding />
                 </state>
               </provider>
             </entry>
           </file>
-          <file leaf-file-name="parser_more_test.go" pinned="false" current-in-tab="true">
+          <file leaf-file-name="parser_more_test.go" pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/src/yang/parser_more_test.go">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.080213904">
+                <state vertical-scroll-proportion="0.0">
                   <caret line="8" column="6" selection-start-line="8" selection-start-column="6" selection-end-line="8" selection-end-column="6" />
                   <folding />
                 </state>
@@ -80,7 +85,17 @@
             <entry file="file://$PROJECT_DIR$/src/yang/lexer_test.go">
               <provider selected="true" editor-type-id="text-editor">
                 <state vertical-scroll-proportion="0.0">
-                  <caret line="104" column="5" selection-start-line="104" selection-start-column="5" selection-end-line="104" selection-end-column="5" />
+                  <caret line="225" column="32" selection-start-line="225" selection-start-column="32" selection-end-line="225" selection-end-column="32" />
+                  <folding />
+                </state>
+              </provider>
+            </entry>
+          </file>
+          <file leaf-file-name="lexer_more_test.go" pinned="false" current-in-tab="true">
+            <entry file="file://$PROJECT_DIR$/src/yang/lexer_more_test.go">
+              <provider selected="true" editor-type-id="text-editor">
+                <state vertical-scroll-proportion="0.06417112">
+                  <caret line="9" column="44" selection-start-line="9" selection-start-column="44" selection-end-line="9" selection-end-column="44" />
                   <folding />
                 </state>
               </provider>
@@ -114,7 +129,7 @@
             <entry file="file://$PROJECT_DIR$/src/yang/lexer.go">
               <provider selected="true" editor-type-id="text-editor">
                 <state vertical-scroll-proportion="0.0">
-                  <caret line="52" column="13" selection-start-line="52" selection-start-column="13" selection-end-line="52" selection-end-column="13" />
+                  <caret line="117" column="32" selection-start-line="117" selection-start-column="32" selection-end-line="117" selection-end-column="32" />
                   <folding />
                 </state>
               </provider>
@@ -123,8 +138,8 @@
           <file leaf-file-name="parser.y" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/src/yang/parser.y">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.56780595">
-                  <caret line="305" column="44" selection-start-line="305" selection-start-column="44" selection-end-line="305" selection-end-column="44" />
+                <state vertical-scroll-proportion="0.33958104">
+                  <caret line="145" column="12" selection-start-line="145" selection-start-column="12" selection-end-line="145" selection-end-column="12" />
                   <folding />
                 </state>
               </provider>
@@ -158,16 +173,16 @@
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/src/yang/lexer_more_test.go" />
-        <option value="$PROJECT_DIR$/src/yang/parser_test.go" />
         <option value="$PROJECT_DIR$/Makefile" />
         <option value="$PROJECT_DIR$/src/yang/test_data/simple.test.yang" />
+        <option value="$PROJECT_DIR$/src/yang/test_data/romancing-the-stone.yang" />
+        <option value="$PROJECT_DIR$/src/yang/parser.go" />
+        <option value="$PROJECT_DIR$/src/yang/parser_more_test.go" />
+        <option value="$PROJECT_DIR$/src/yang/yang.go" />
+        <option value="$PROJECT_DIR$/src/yang/parser_test.go" />
         <option value="$PROJECT_DIR$/src/yang/lexer_test.go" />
         <option value="$PROJECT_DIR$/src/yang/lexer.go" />
-        <option value="$PROJECT_DIR$/src/yang/test_data/romancing-the-stone.yang" />
-        <option value="$PROJECT_DIR$/src/yang/yang.go" />
-        <option value="$PROJECT_DIR$/src/yang/parser.go" />
         <option value="$PROJECT_DIR$/src/yang/parser.y" />
-        <option value="$PROJECT_DIR$/src/yang/parser_more_test.go" />
       </list>
     </option>
   </component>
@@ -239,28 +254,6 @@
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="yang" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="conf2-yang-parser" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="conf2-yang-parser" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="yang" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="test_data" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -611,44 +604,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/yang/lexer_more_test.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.2184466">
-          <caret line="9" column="44" selection-start-line="9" selection-start-column="44" selection-end-line="9" selection-end-column="44" />
-          <folding>
-            <element signature="e#13#72#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/yang/parser_test.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="31" column="20" selection-start-line="31" selection-start-column="20" selection-end-line="31" selection-end-column="20" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/yang/lexer_test.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="104" column="5" selection-start-line="104" selection-start-column="5" selection-end-line="104" selection-end-column="5" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/Makefile">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="19" column="0" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/yang/lexer.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="52" column="13" selection-start-line="52" selection-start-column="13" selection-end-line="52" selection-end-column="13" />
           <folding />
         </state>
       </provider>
@@ -664,7 +623,31 @@
     <entry file="file://$PROJECT_DIR$/src/yang/test_data/romancing-the-stone.yang">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="42" column="0" selection-start-line="42" selection-start-column="0" selection-end-line="42" selection-end-column="0" />
+          <caret line="93" column="5" selection-start-line="93" selection-start-column="5" selection-end-line="93" selection-end-column="5" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/yang/yang.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="-0.9122807">
+          <caret line="78" column="6" selection-start-line="78" selection-start-column="6" selection-end-line="78" selection-end-column="6" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/yang/parser_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="36" column="44" selection-start-line="36" selection-start-column="44" selection-end-line="36" selection-end-column="44" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/yang/parser_more_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="8" column="6" selection-start-line="8" selection-start-column="6" selection-end-line="8" selection-end-column="6" />
           <folding />
         </state>
       </provider>
@@ -677,26 +660,34 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/yang/yang.go">
+    <entry file="file://$PROJECT_DIR$/src/yang/lexer_test.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-11.357142">
-          <caret line="246" column="21" selection-start-line="246" selection-start-column="9" selection-end-line="246" selection-end-column="21" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="225" column="32" selection-start-line="225" selection-start-column="32" selection-end-line="225" selection-end-column="32" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/yang/lexer_more_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.06417112">
+          <caret line="9" column="44" selection-start-line="9" selection-start-column="44" selection-end-line="9" selection-end-column="44" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/yang/lexer.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="117" column="32" selection-start-line="117" selection-start-column="32" selection-end-line="117" selection-end-column="32" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/yang/parser.y">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.56780595">
-          <caret line="305" column="44" selection-start-line="305" selection-start-column="44" selection-end-line="305" selection-end-column="44" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/yang/parser_more_test.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.080213904">
-          <caret line="8" column="6" selection-start-line="8" selection-start-column="6" selection-end-line="8" selection-end-column="6" />
+        <state vertical-scroll-proportion="0.33958104">
+          <caret line="145" column="12" selection-start-line="145" selection-start-column="12" selection-end-line="145" selection-end-column="12" />
           <folding />
         </state>
       </provider>
