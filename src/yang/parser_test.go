@@ -1,0 +1,46 @@
+package yang
+
+import (
+	"testing"
+)
+
+func TestParseModuleStatement(t *testing.T) {
+	yang := `
+module ff {
+	namespace "ns";
+
+	description "mod";
+
+	revision 99-99-9999 {
+	  description "bingo";
+	}
+
+	container x {
+	  description "z";
+	  leaf y {
+	    type int32;
+	  }
+	}
+}
+`
+	l := lex(yang)
+	err := yyParse(l)
+	if err != 0 {
+		t.Errorf("Error parsing %d", err)
+	}
+	d := l.stack.Peek()
+	m := d.(*YangModule)
+	if m.Ident != "ff" {
+		t.Errorf("module name expected ff, got %s", m.Ident)
+	}
+	if m.Revision.Ident != "99-99-9999" {
+		t.Errorf("revision is %s", m.Revision.Ident)
+	}
+	if m.GetFirstChild() == nil {
+		t.Errorf("Container x is missing")
+	}
+	if m.GetFirstChild().(YangDef).GetIdent() != "x" {
+		t.Errorf("Container x not identified")
+	}
+}
+
