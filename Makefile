@@ -1,10 +1,19 @@
-all : src/yang/parser.go build test
+export GOPATH=$(abspath .)
 
-build : $(wildcard yang/*.go)
+DESTDIR =
+PREFIX = /usr/local/conf2
+LIBDIR = $(PREFIX)/lib
+INCLUDEDIR = $(PREFIX)/include
+INSTALL = install
+
+all : generate build test
+
+.PHONY: build
+generate :
+	go generate yang
+
+build:
 	go build yang
-
-lib : $(wildcard yang/*.go)
-	go build -buildmode=c-archive yang
 
 TEST='Test*'
 Test% :
@@ -13,7 +22,3 @@ Test% :
 test : src/yang/parser.go
 	go test -v yang -run $(TEST)
 
-
-src/yang/parser.go : src/yang/parser.y
-	go tool yacc -o $@.tmp $^ && \
-		mv $@.tmp $@

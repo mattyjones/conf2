@@ -1,5 +1,9 @@
 package yang
 
+// This uses the go feature call go tools in the build process. To ensure this gets
+//  called before compilation, call go generate before bo build
+//go:generate go tool yacc -o parser.go parser.y
+
 import (
 	"fmt"
 	"strings"

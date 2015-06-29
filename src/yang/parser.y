@@ -3,22 +3,7 @@ package yang
 
 import (
     "fmt"
-    "io/ioutil"
 )
-
-func LoadModule(yangfile string) (*Module, error) {
-	data, err := ioutil.ReadFile(yangfile)
-	if err == nil {
-		l := lex(string(data))
-		err_code := yyParse(l)
-		if err_code == 0 {
-			d := l.stack.Peek()
-			return d.(*Module), nil
-		}
-		return nil, yangError{fmt.Sprintf("Error %d loading yang file", err_code)}
-	}
-	return nil, err
-}
 
 func (l *lexer) Lex(lval *yySymType) int {
     t, _ := l.nextToken()
