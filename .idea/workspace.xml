@@ -4,12 +4,7 @@
     <list default="true" id="fd3f19d4-5b7a-46a4-af5e-baa0503c7fcb" name="Default" comment="">
       <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../conf2-restconf" />
       <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/../.gitmodules" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/yang/loader.go" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/src/yang/parser.go" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Makefile" afterPath="$PROJECT_DIR$/Makefile" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/conf2-yang-parser.iml" afterPath="$PROJECT_DIR$/.idea/conf2-yang-parser.iml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/yang/lexer.go" afterPath="$PROJECT_DIR$/src/yang/lexer.go" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/yang/parser.y" afterPath="$PROJECT_DIR$/src/yang/parser.y" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="conf2-yang-parser.iws" />
@@ -106,7 +101,7 @@
           <file leaf-file-name="loader.go" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/src/yang/loader.go">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.112443775">
+                <state vertical-scroll-proportion="0.11111111">
                   <caret line="5" column="0" selection-start-line="5" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
                   <folding>
                     <element signature="e#13#43#0" expanded="true" />
@@ -144,8 +139,8 @@
           <file leaf-file-name="parser.y" pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/src/yang/parser.y">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="-5.357143">
-                  <caret line="10" column="16" selection-start-line="10" selection-start-column="16" selection-end-line="10" selection-end-column="16" />
+                <state vertical-scroll-proportion="-4.285714">
+                  <caret line="8" column="25" selection-start-line="8" selection-start-column="25" selection-end-line="8" selection-end-column="25" />
                   <folding />
                 </state>
               </provider>
@@ -154,8 +149,8 @@
           <file leaf-file-name="Makefile" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/Makefile">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.37441498">
-                  <caret line="16" column="0" selection-start-line="16" selection-start-column="0" selection-end-line="16" selection-end-column="0" />
+                <state vertical-scroll-proportion="0.39291218">
+                  <caret line="17" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="17" selection-end-column="0" />
                   <folding />
                 </state>
               </provider>
@@ -203,10 +198,10 @@
     <order />
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="389" />
-    <option name="y" value="69" />
-    <option name="width" value="1503" />
-    <option name="height" value="959" />
+    <option name="x" value="429" />
+    <option name="y" value="57" />
+    <option name="width" value="1211" />
+    <option name="height" value="967" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
     <OptionsSetting value="true" id="Add" />
@@ -401,15 +396,15 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="389" y="69" width="1503" height="959" extended-state="0" />
+    <frame x="429" y="57" width="1211" height="967" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.21185876" sideWeight="0.5" order="1" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.26302728" sideWeight="0.5" order="1" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="true" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.19861431" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.19679634" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="true" content_ui="tabs" />
@@ -627,17 +622,9 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/yang/parser.y">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-5.357143">
-          <caret line="10" column="16" selection-start-line="10" selection-start-column="16" selection-end-line="10" selection-end-column="16" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/yang/loader.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.112443775">
+        <state vertical-scroll-proportion="0.11111111">
           <caret line="5" column="0" selection-start-line="5" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
           <folding>
             <element signature="e#13#43#0" expanded="true" />
@@ -663,10 +650,18 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/yang/parser.y">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="-4.285714">
+          <caret line="8" column="25" selection-start-line="8" selection-start-column="25" selection-end-line="8" selection-end-column="25" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/Makefile">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.37441498">
-          <caret line="16" column="0" selection-start-line="16" selection-start-column="0" selection-end-line="16" selection-end-column="0" />
+        <state vertical-scroll-proportion="0.39291218">
+          <caret line="17" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="17" selection-end-column="0" />
           <folding />
         </state>
       </provider>

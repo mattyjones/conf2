@@ -1,18 +1,12 @@
 export GOPATH=$(abspath .)
 
-DESTDIR =
-PREFIX = /usr/local/conf2
-LIBDIR = $(PREFIX)/lib
-INCLUDEDIR = $(PREFIX)/include
-INSTALL = install
-
 all : generate build test
 
-.PHONY: build
+.PHONY: generate build test
 generate :
 	go generate yang
 
-build:
+build :
 	go build yang
 
 TEST='Test*'
@@ -21,4 +15,3 @@ Test% :
 
 test : src/yang/parser.go
 	go test -v yang -run $(TEST)
-
