@@ -324,7 +324,11 @@ notification_body_stmt :
     description token_semi
     | kywd_uses token_ident token_semi
     | kywd_config token_string token_semi
-    | body_stmt;
+    | body_stmt {
+        if ! popAndAddChild(&yylval) {
+            goto ret1
+        }
+    };
 
 grouping_stmt :
     grouping_def
@@ -348,7 +352,11 @@ grouping_body_stmts :
 grouping_body_stmt :
     description token_semi
     | reference_stmt
-    | body_stmt
+    | body_stmt {
+       if ! popAndAddChild(&yylval) {
+           goto ret1
+       }
+    };
 
 list_stmt :
     list_def token_curly_open
@@ -372,7 +380,11 @@ list_body_stmt :
     | kywd_config token_string token_semi
     | kywd_key token_string token_semi
     | kywd_unique token_string token_semi
-    | body_stmt
+    | body_stmt  {
+        if ! popAndAddChild(&yylval) {
+            goto ret1
+        }
+    }
 
 leaf_stmt:
     leaf_def

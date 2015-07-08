@@ -1,7 +1,10 @@
 <component name="libraryTable">
   <library name="GOPATH &lt;conf2-yang-parser&gt;">
     <CLASSES>
+      <root url="file://$PROJECT_DIR$/../conf2-restconf/src/librestconf" />
       <root url="file://$PROJECT_DIR$/../conf2-restconf/src/restconf" />
+      <root url="file://$PROJECT_DIR$/../conf2-restconf/src/librestconfj" />
+      <root url="file://$PROJECT_DIR$/../conf2-restconf/src/conf2-restconf" />
     </CLASSES>
     <SOURCES />
     <excluded>
