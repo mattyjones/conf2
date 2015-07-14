@@ -221,7 +221,7 @@ module foo {
 
 func TestStack(t *testing.T) {
 	stack := newDefStack(10)
-	expected := &Module{DefinitionBase:DefinitionBase{Ident:"x"}}
+	expected := &Module{Ident:"x"}
 	stack.Push(expected)
 	actual, ok := stack.Pop().(*Module)
 	if ! ok {

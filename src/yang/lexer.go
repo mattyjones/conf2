@@ -99,27 +99,27 @@ func (l *lexer) error(msg string)  stateFunc {
 
 
 type yangDefStack struct {
-	defs []Definition
+	defs []Identifiable
 	count int
 }
 
-func (s *yangDefStack) Push(def Definition) {
+func (s *yangDefStack) Push(def Identifiable) {
 	s.defs[s.count] = def
 	s.count++
 }
 
-func (s *yangDefStack) Pop() Definition {
+func (s *yangDefStack) Pop() Identifiable {
 	s.count--
 	return s.defs[s.count]
 }
 
-func (s *yangDefStack) Peek() Definition {
+func (s *yangDefStack) Peek() Identifiable {
 	return s.defs[s.count - 1]
 }
 
 func newDefStack(size int) *yangDefStack {
 	return &yangDefStack{
-		defs : make([]Definition, size),
+		defs : make([]Identifiable, size),
 		count : 0,
 	}
 }

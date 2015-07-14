@@ -23,14 +23,14 @@ func (l *lexer) Error(e string) {
 	fmt.Println(fmt.Sprintf("%s at line %d, col %d", e, line, col))
 }
 
-func popAndAddChild(yylval *yySymType) bool {
-	child := yylval.stack.Pop()
-	childable, ok := child.(Containable)
+func popAndAddDef(yylval *yySymType) bool {
+	i := yylval.stack.Pop()
+	def, ok := i.(Def)
 	if ok {
 		parent := yylval.stack.Peek()
-		parentable, ok := parent.(Parentable)
+		parentList, ok := parent.(DefList)
 		if ok {
-			err := parentable.AddChild(childable)
+			err := parentList.AddDef(def)
 			if err == nil {
 				return true
 			}
@@ -38,10 +38,10 @@ func popAndAddChild(yylval *yySymType) bool {
 				__yyfmt__.Printf(err.Error())
 			}
 		} else if yyDebug > 1 {
-			__yyfmt__.Printf("Internal Error: %s doesn't implement Parentable.", parent.GetIdent())
+			__yyfmt__.Printf("Internal Error: %s doesn't implement DefList.", parent.GetIdent())
 		}
 	} else {
-		__yyfmt__.Printf("Internal Error: Child %s does not implement Containable", child.GetIdent())
+		__yyfmt__.Printf("Internal Error: %s doesn't implement Def.", i.GetIdent())
 	}
 
 	return false
@@ -49,21 +49,10 @@ func popAndAddChild(yylval *yySymType) bool {
 
 //line parser.y:49
 type yySymType struct {
-	yys          int
-	def          *Definition
-	ident        string
-	token        string
-	module       *Module
-	container    *Container
-	revision     *Revision
-	list         *List
-	leaf         *Leaf
-	leafList     *LeafList
-	grouping     *Grouping
-	rpc          *Rpc
-	notification *Notification
-	typedef      *Typedef
-	stack        *yangDefStack
+	yys   int
+	ident string
+	token string
+	stack *yangDefStack
 }
 
 const token_ident = 57346
@@ -99,6 +88,8 @@ const kywd_mandatory = 57375
 const kywd_reference = 57376
 const kywd_leaf_list = 57377
 const kywd_max_elements = 57378
+const kywd_choice = 57379
+const kywd_case = 57380
 
 var yyToknames = [...]string{
 	"$end",
@@ -137,6 +128,8 @@ var yyToknames = [...]string{
 	"kywd_reference",
 	"kywd_leaf_list",
 	"kywd_max_elements",
+	"kywd_choice",
+	"kywd_case",
 }
 var yyStatenames = [...]string{}
 
@@ -144,7 +137,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line parser.y:436
+//line parser.y:408
 
 func parse(yang string) int {
 	l := lex(yang)
@@ -171,9 +164,9 @@ var yyAct = [...]int{
 
 	180, 157, 70, 156, 104, 96, 139, 90, 81, 67,
 	61, 158, 9, 3, 159, 181, 69, 7, 123, 7,
-	178, 181, 9, 101, 102, 9, 43, 199, 72, 86,
+	178, 181, 9, 101, 102, 9, 43, 199, 73, 86,
 	85, 84, 87, 21, 71, 189, 37, 36, 198, 9,
-	24, 65, 78, 162, 197, 79, 83, 161, 160, 24,
+	25, 65, 78, 162, 197, 79, 83, 161, 160, 25,
 	37, 36, 88, 94, 45, 108, 78, 59, 62, 79,
 	163, 63, 196, 68, 82, 91, 97, 105, 98, 195,
 	9, 111, 62, 194, 184, 63, 116, 86, 85, 84,
@@ -185,9 +178,9 @@ var yyAct = [...]int{
 	9, 101, 102, 78, 167, 166, 79, 115, 93, 92,
 	165, 9, 71, 173, 37, 36, 155, 6, 9, 14,
 	78, 8, 42, 79, 41, 37, 36, 151, 183, 9,
-	73, 78, 147, 71, 79, 138, 183, 107, 106, 9,
-	133, 9, 25, 37, 36, 125, 117, 93, 92, 78,
-	192, 25, 79, 37, 36, 37, 36, 112, 109, 78,
+	72, 78, 147, 71, 79, 138, 183, 107, 106, 9,
+	133, 9, 24, 37, 36, 125, 117, 93, 92, 78,
+	192, 24, 79, 37, 36, 37, 36, 112, 109, 78,
 	40, 78, 79, 71, 79, 182, 9, 15, 65, 9,
 	162, 65, 190, 162, 161, 160, 44, 161, 160, 37,
 	36, 38, 39, 34, 35, 174, 172, 163, 150, 144,
@@ -195,10 +188,10 @@ var yyAct = [...]int{
 	52, 51, 50, 49, 48, 46, 19, 126, 191, 188,
 	187, 186, 149, 135, 130, 129, 128, 127, 118, 113,
 	18, 17, 16, 5, 193, 185, 148, 134, 12, 122,
-	121, 114, 58, 57, 56, 55, 54, 53, 10, 80,
-	66, 47, 103, 100, 99, 95, 89, 179, 177, 152,
-	60, 140, 20, 4, 23, 29, 27, 33, 26, 32,
-	22, 28, 30, 75, 77, 74, 76, 31, 11, 13,
+	121, 114, 58, 57, 56, 55, 54, 53, 10, 77,
+	76, 80, 30, 66, 47, 29, 103, 33, 100, 99,
+	95, 32, 89, 31, 179, 177, 152, 60, 28, 75,
+	74, 140, 27, 26, 23, 22, 13, 20, 11, 4,
 	2, 1,
 }
 var yyPact = [...]int{
@@ -226,26 +219,26 @@ var yyPact = [...]int{
 }
 var yyPgo = [...]int{
 
-	0, 301, 300, 299, 298, 297, 160, 296, 295, 294,
-	293, 292, 28, 291, 290, 289, 288, 287, 286, 285,
-	284, 283, 282, 14, 253, 33, 6, 281, 2, 280,
-	10, 11, 279, 278, 277, 276, 7, 275, 5, 16,
-	274, 273, 272, 4, 271, 270, 9, 269, 8, 3,
-	1, 0,
+	0, 301, 300, 299, 298, 297, 296, 14, 253, 33,
+	295, 294, 160, 28, 293, 292, 6, 291, 2, 290,
+	289, 288, 287, 10, 11, 286, 285, 284, 283, 282,
+	7, 281, 280, 5, 16, 279, 278, 277, 276, 4,
+	275, 274, 273, 9, 272, 271, 8, 270, 3, 1,
+	269, 0,
 }
 var yyR1 = [...]int{
 
-	0, 1, 2, 3, 4, 4, 23, 21, 21, 24,
-	24, 24, 25, 25, 25, 25, 25, 25, 22, 22,
-	26, 26, 28, 28, 28, 28, 27, 27, 14, 13,
-	29, 29, 30, 30, 30, 31, 32, 32, 33, 33,
-	6, 5, 35, 35, 36, 36, 36, 36, 16, 15,
-	37, 37, 38, 38, 38, 38, 40, 41, 18, 17,
-	42, 42, 43, 43, 43, 43, 20, 44, 19, 45,
-	45, 46, 46, 46, 12, 11, 47, 47, 48, 48,
-	48, 48, 48, 48, 48, 8, 7, 49, 49, 50,
-	50, 50, 50, 50, 50, 10, 9, 34, 34, 51,
-	39,
+	0, 1, 2, 6, 4, 4, 7, 3, 3, 8,
+	8, 8, 9, 9, 9, 9, 9, 9, 5, 5,
+	16, 16, 18, 18, 18, 18, 17, 17, 10, 21,
+	22, 22, 23, 23, 23, 24, 25, 25, 26, 26,
+	13, 28, 29, 29, 30, 30, 30, 30, 14, 31,
+	32, 32, 33, 33, 33, 33, 35, 36, 15, 37,
+	38, 38, 39, 39, 39, 39, 11, 41, 40, 42,
+	42, 43, 43, 43, 12, 44, 45, 45, 46, 46,
+	46, 46, 46, 46, 46, 19, 47, 48, 48, 49,
+	49, 49, 49, 49, 49, 20, 50, 27, 27, 51,
+	34,
 }
 var yyR2 = [...]int{
 
@@ -263,25 +256,25 @@ var yyR2 = [...]int{
 }
 var yyChk = [...]int{
 
-	-1000, -1, -2, 25, -21, -24, 11, -23, 15, 12,
-	4, -4, -24, -3, 13, 9, 5, 5, 5, 7,
-	-22, -25, -14, -20, -12, -6, -16, -18, -13, -19,
-	-11, -5, -15, -17, 30, 31, 27, 26, 28, 29,
-	9, 9, 7, 10, 8, -25, 7, -44, 7, 7,
-	7, 7, 7, 4, 4, 4, 4, 4, 4, -23,
-	-29, -30, -31, -23, 16, 14, -45, -46, -23, -39,
-	-28, 34, -12, -6, -8, -10, -7, -9, 32, 35,
-	-47, -48, -23, 36, 21, 20, 19, 22, -28, -35,
-	-36, -23, 21, 20, -28, -37, -38, -23, -39, -40,
-	-41, 23, 24, -42, -43, -23, 21, 20, -28, 9,
-	8, -30, 9, 5, 4, 8, -46, 9, 5, 7,
-	7, 4, 4, 8, -48, 9, 6, 5, 5, 5,
-	5, 8, -36, 9, 4, 5, 8, -38, 9, -26,
-	-27, -28, -26, 7, 7, 8, -43, 9, 4, 5,
-	8, 9, -32, 7, 9, 9, -49, -50, -31, -23,
-	21, 20, 16, 33, -49, 9, 9, 9, 9, 9,
-	9, 9, 8, -28, 8, 9, 9, -33, 17, -34,
-	-51, 18, 8, -50, 9, 4, 5, 5, 5, 8,
+	-1000, -1, -2, 25, -3, -8, 11, -7, 15, 12,
+	4, -4, -8, -6, 13, 9, 5, 5, 5, 7,
+	-5, -9, -10, -11, -12, -13, -14, -15, -21, -40,
+	-44, -28, -31, -37, 30, 31, 27, 26, 28, 29,
+	9, 9, 7, 10, 8, -9, 7, -41, 7, 7,
+	7, 7, 7, 4, 4, 4, 4, 4, 4, -7,
+	-22, -23, -24, -7, 16, 14, -42, -43, -7, -34,
+	-18, 34, -12, -13, -19, -20, -47, -50, 32, 35,
+	-45, -46, -7, 36, 21, 20, 19, 22, -18, -29,
+	-30, -7, 21, 20, -18, -32, -33, -7, -34, -35,
+	-36, 23, 24, -38, -39, -7, 21, 20, -18, 9,
+	8, -23, 9, 5, 4, 8, -43, 9, 5, 7,
+	7, 4, 4, 8, -46, 9, 6, 5, 5, 5,
+	5, 8, -30, 9, 4, 5, 8, -33, 9, -16,
+	-17, -18, -16, 7, 7, 8, -39, 9, 4, 5,
+	8, 9, -25, 7, 9, 9, -48, -49, -24, -7,
+	21, 20, 16, 33, -48, 9, 9, 9, 9, 9,
+	9, 9, 8, -18, 8, 9, 9, -26, 17, -27,
+	-51, 18, 8, -49, 9, 4, 5, 5, 5, 8,
 	8, 5, -51, 4, 9, 9, 9, 9, 9, 9,
 }
 var yyDef = [...]int{
@@ -316,7 +309,7 @@ var yyTok2 = [...]int{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
 	22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-	32, 33, 34, 35, 36,
+	32, 33, 34, 35, 36, 37, 38,
 }
 var yyTok3 = [...]int{
 	0,
@@ -663,116 +656,113 @@ yydefault:
 
 	case 2:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:122
+		//line parser.y:102
 		{
-			yyVAL.module = &Module{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
-			yylval.stack.Push(yyVAL.module)
+			m := &Module{Ident: yyDollar[2].token}
+			yylval.stack.Push(m)
 		}
 	case 3:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:128
+		//line parser.y:108
 		{
 			d := yylval.stack.Peek()
-			yyVAL.revision = &Revision{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
-			d.(*Module).Revision = yyVAL.revision
-			yylval.stack.Push(yyVAL.revision)
+			r := &Revision{Ident: yyDollar[2].token}
+			d.(*Module).Revision = r
+			yylval.stack.Push(r)
 		}
 	case 4:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:136
+		//line parser.y:116
 		{
 			yylval.stack.Pop()
 		}
 	case 5:
 		yyDollar = yyS[yypt-5 : yypt+1]
-		//line parser.y:139
+		//line parser.y:119
 		{
 			yylval.stack.Pop()
 		}
 	case 6:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:143
+		//line parser.y:123
 		{
-			yylval.stack.Peek().SetDescription(yyDollar[2].token)
+			yylval.stack.Peek().(Describable).SetDescription(yyDollar[2].token)
 		}
 	case 9:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:153
+		//line parser.y:133
 		{
 			d := yylval.stack.Peek()
 			d.(*Module).Namespace = yyDollar[2].token
 		}
 	case 11:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:158
+		//line parser.y:138
 		{
 			m := yylval.stack.Peek().(*Module)
 			m.Prefix = yyDollar[2].token
 		}
 	case 18:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:172
+		//line parser.y:152
 		{
-			if !popAndAddChild(&yylval) {
+			if !popAndAddDef(&yylval) {
 				goto ret1
 			}
 		}
 	case 19:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:177
+		//line parser.y:157
 		{
-			if !popAndAddChild(&yylval) {
+			if !popAndAddDef(&yylval) {
 				goto ret1
 			}
 		}
 	case 26:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:194
+		//line parser.y:174
 		{
-			if !popAndAddChild(&yylval) {
+			if !popAndAddDef(&yylval) {
 				goto ret1
 			}
 		}
 	case 27:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:199
+		//line parser.y:179
 		{
-			if !popAndAddChild(&yylval) {
+			if !popAndAddDef(&yylval) {
 				goto ret1
 			}
 		}
 	case 29:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:212
+		//line parser.y:192
 		{
-			yyVAL.typedef = &Typedef{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
-			yylval.stack.Push(yyVAL.typedef)
+			yylval.stack.Push(&Typedef{Ident: yyDollar[2].token})
 		}
 	case 41:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:247
+		//line parser.y:226
 		{
-			yyVAL.container = &Container{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
-			yylval.stack.Push(yyVAL.container)
+			yylval.stack.Push(&Container{Ident: yyDollar[2].token})
 		}
 	case 47:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:260
+		//line parser.y:238
 		{
-			if !popAndAddChild(&yylval) {
+			if !popAndAddDef(&yylval) {
 				goto ret1
 			}
 		}
 	case 49:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:273
+		//line parser.y:251
 		{
-			yyVAL.rpc = &Rpc{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
-			yylval.stack.Push(yyVAL.rpc)
+			yylval.stack.Push(&Rpc{Ident: yyDollar[2].token})
 		}
 	case 54:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:285
+		//line parser.y:262
 		{
 			input := yylval.stack.Pop().(*RpcInput)
 			rpc := yylval.stack.Peek().(*Rpc)
@@ -780,7 +770,7 @@ yydefault:
 		}
 	case 55:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:290
+		//line parser.y:267
 		{
 			output := yylval.stack.Pop().(*RpcOutput)
 			rpc := yylval.stack.Peek().(*Rpc)
@@ -788,74 +778,69 @@ yydefault:
 		}
 	case 56:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:297
+		//line parser.y:274
 		{
 			yylval.stack.Push(&RpcInput{})
 		}
 	case 57:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:302
+		//line parser.y:279
 		{
 			yylval.stack.Push(&RpcOutput{})
 		}
 	case 59:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:313
+		//line parser.y:290
 		{
-			yyVAL.notification = &Notification{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
-			yylval.stack.Push(yyVAL.notification)
+			yylval.stack.Push(&Notification{Ident: yyDollar[2].token})
 		}
 	case 65:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:327
+		//line parser.y:303
 		{
-			if !popAndAddChild(&yylval) {
+			if !popAndAddDef(&yylval) {
 				goto ret1
 			}
 		}
 	case 68:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:343
+		//line parser.y:319
 		{
-			yyVAL.grouping = &Grouping{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
-			yylval.stack.Push(yyVAL.grouping)
+			yylval.stack.Push(&Grouping{Ident: yyDollar[2].token})
 		}
 	case 73:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:355
+		//line parser.y:330
 		{
-			if !popAndAddChild(&yylval) {
+			if !popAndAddDef(&yylval) {
 				goto ret1
 			}
 		}
 	case 75:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:367
+		//line parser.y:342
 		{
-			yyVAL.list = &List{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
-			yylval.stack.Push(yyVAL.list)
+			yylval.stack.Push(&List{Ident: yyDollar[2].token})
 		}
 	case 84:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:383
+		//line parser.y:357
 		{
-			if !popAndAddChild(&yylval) {
+			if !popAndAddDef(&yylval) {
 				goto ret1
 			}
 		}
 	case 86:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:396
+		//line parser.y:370
 		{
-			yyVAL.leaf = &Leaf{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
-			yylval.stack.Push(yyVAL.leaf)
+			yylval.stack.Push(&Leaf{Ident: yyDollar[2].token})
 		}
 	case 96:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:422
+		//line parser.y:395
 		{
-			yyVAL.leafList = &LeafList{DefinitionBase: DefinitionBase{Ident: yyDollar[2].token}}
-			yylval.stack.Push(yyVAL.leafList)
+			yylval.stack.Push(&LeafList{Ident: yyDollar[2].token})
 		}
 	}
 	goto yystack /* stack new state and value */

@@ -20,14 +20,14 @@ func (l *lexer) Error(e string) {
     fmt.Println(fmt.Sprintf("%s at line %d, col %d", e, line, col))
 }
 
-func popAndAddChild(yylval *yySymType) bool {
-    child := yylval.stack.Pop()
-    childable, ok := child.(Containable)
+func popAndAddDef(yylval *yySymType) bool {
+    i := yylval.stack.Pop()
+    def, ok := i.(Def)
     if ok {
         parent := yylval.stack.Peek()
-        parentable, ok := parent.(Parentable)
+        parentList, ok := parent.(DefList)
         if ok {
-            err := parentable.AddChild(childable)
+            err := parentList.AddDef(def)
             if err == nil {
                 return true
             }
@@ -35,10 +35,10 @@ func popAndAddChild(yylval *yySymType) bool {
                 __yyfmt__.Printf(err.Error())
             }
         } else if yyDebug > 1 {
-            __yyfmt__.Printf("Internal Error: %s doesn't implement Parentable.", parent.GetIdent())
+            __yyfmt__.Printf("Internal Error: %s doesn't implement DefList.", parent.GetIdent())
         }
     } else {
-        __yyfmt__.Printf("Internal Error: Child %s does not implement Containable", child.GetIdent())
+        __yyfmt__.Printf("Internal Error: %s doesn't implement Def.", i.GetIdent())
     }
 
     return false
@@ -47,19 +47,8 @@ func popAndAddChild(yylval *yySymType) bool {
 %}
 
 %union {
-    def *Definition
     ident string
     token string
-    module *Module
-    container *Container
-    revision *Revision
-    list *List
-    leaf *Leaf
-    leafList *LeafList
-    grouping *Grouping
-    rpc *Rpc
-    notification *Notification
-    typedef *Typedef
     stack *yangDefStack
 }
 
@@ -97,17 +86,8 @@ func popAndAddChild(yylval *yySymType) bool {
 %token kywd_reference
 %token kywd_leaf_list
 %token kywd_max_elements
-
-%type <module> module module_def
-%type <revision> revision_def revision_stmt
-%type <container> container_def container_stmt
-%type <leaf> leaf_def leaf_stmt
-%type <leafList> leaf_list_def leaf_list_stmt
-%type <list> list_def list_stmt
-%type <typedef> typedef_def typedef_stmt
-%type <rpc> rpc_def rpc_stmt
-%type <notification> notification_def notification_stmt
-%type <grouping> grouping_def grouping_stmt
+%token kywd_choice
+%token kywd_case
 
 %%
 
@@ -120,16 +100,16 @@ module :
 
 module_def :
     kywd_module token_ident token_curly_open {
-      $$ = &Module{DefinitionBase:DefinitionBase{Ident:$2}}
-      yylval.stack.Push($$)
+      m:= &Module{Ident:$2}
+      yylval.stack.Push(m)
     }
 
 revision_def :
     kywd_revision token_rev_ident {
         d := yylval.stack.Peek()
-        $$ = &Revision{DefinitionBase:DefinitionBase{Ident:$2}}
-        d.(*Module).Revision = $$
-        yylval.stack.Push($$)
+        r := &Revision{Ident:$2}
+        d.(*Module).Revision = r
+        yylval.stack.Push(r)
     }
 
 revision_stmt :
@@ -141,7 +121,7 @@ revision_stmt :
     };
 
 description : kywd_description token_string {
-        yylval.stack.Peek().SetDescription($2)
+        yylval.stack.Peek().(Describable).SetDescription($2)
     }
 
 module_stmts :
@@ -170,12 +150,12 @@ module_body_stmt :
 
 module_body_stmts :
     module_body_stmt {
-      if ! popAndAddChild(&yylval) {
+      if ! popAndAddDef(&yylval) {
         goto ret1
       }
     }
     | module_body_stmts module_body_stmt {
-      if ! popAndAddChild(&yylval) {
+      if ! popAndAddDef(&yylval) {
         goto ret1
       }
     };
@@ -192,12 +172,12 @@ body_stmt :
 
 body_stmts :
     body_stmt  {
-        if ! popAndAddChild(&yylval) {
+        if ! popAndAddDef(&yylval) {
           goto ret1
         }
       }
     | body_stmts body_stmt  {
-       if ! popAndAddChild(&yylval) {
+       if ! popAndAddDef(&yylval) {
          goto ret1
        }
      };
@@ -210,8 +190,7 @@ typedef_stmt :
 
 typedef_def :
     kywd_typedef token_ident {
-        $$ = &Typedef{DefinitionBase:DefinitionBase{Ident:$2}}
-        yylval.stack.Push($$)
+        yylval.stack.Push(&Typedef{Ident:$2})
     };
 
 typedef_stmt_body :
@@ -245,8 +224,7 @@ container_stmt :
 
 container_def :
     kywd_container token_ident {
-        $$ = &Container{DefinitionBase:DefinitionBase{Ident:$2}}
-        yylval.stack.Push($$)
+        yylval.stack.Push(&Container{Ident:$2})
     };
 
 container_body_stmts :
@@ -258,7 +236,7 @@ container_body_stmt :
     | kywd_uses token_ident token_semi
     | kywd_config token_string token_semi
     | body_stmt {
-         if ! popAndAddChild(&yylval) {
+         if ! popAndAddDef(&yylval) {
            goto ret1
          }
        }
@@ -271,8 +249,7 @@ rpc_stmt :
 
 rpc_def :
     kywd_rpc token_ident {
-        $$ = &Rpc{DefinitionBase:DefinitionBase{Ident:$2}}
-        yylval.stack.Push($$)
+        yylval.stack.Push(&Rpc{Ident:$2})
     };
 
 rpc_body_stmts :
@@ -311,8 +288,7 @@ notification_stmt :
 
 notification_def :
     kywd_notification token_ident {
-        $$ = &Notification{DefinitionBase:DefinitionBase{Ident:$2}}
-        yylval.stack.Push($$)
+        yylval.stack.Push(&Notification{Ident:$2})
     };
 
 notification_body_stmts :
@@ -325,7 +301,7 @@ notification_body_stmt :
     | kywd_uses token_ident token_semi
     | kywd_config token_string token_semi
     | body_stmt {
-        if ! popAndAddChild(&yylval) {
+        if ! popAndAddDef(&yylval) {
             goto ret1
         }
     };
@@ -341,8 +317,7 @@ grouping_body_defined:
 
 grouping_def :
     kywd_grouping token_ident {
-        $$ = &Grouping{DefinitionBase:DefinitionBase{Ident:$2}}
-        yylval.stack.Push($$)
+        yylval.stack.Push(&Grouping{Ident:$2})
     };
 
 grouping_body_stmts :
@@ -353,7 +328,7 @@ grouping_body_stmt :
     description token_semi
     | reference_stmt
     | body_stmt {
-       if ! popAndAddChild(&yylval) {
+       if ! popAndAddDef(&yylval) {
            goto ret1
        }
     };
@@ -365,8 +340,7 @@ list_stmt :
 
 list_def :
     kywd_list token_ident {
-        $$ = &List{DefinitionBase:DefinitionBase{Ident:$2}}
-        yylval.stack.Push($$)
+        yylval.stack.Push(&List{Ident:$2})
     };
 
 list_body_stmts :
@@ -381,7 +355,7 @@ list_body_stmt :
     | kywd_key token_string token_semi
     | kywd_unique token_string token_semi
     | body_stmt  {
-        if ! popAndAddChild(&yylval) {
+        if ! popAndAddDef(&yylval) {
             goto ret1
         }
     }
@@ -394,8 +368,7 @@ leaf_stmt:
 
 leaf_def :
     kywd_leaf token_ident {
-        $$ = &Leaf{DefinitionBase:DefinitionBase{Ident:$2}}
-        yylval.stack.Push($$)
+        yylval.stack.Push(&Leaf{Ident:$2})
     };
 
 leaf_body_stmts :
@@ -420,8 +393,7 @@ leaf_list_stmt :
 
 leaf_list_def :
     kywd_leaf_list token_ident {
-        $$ = &LeafList{DefinitionBase:DefinitionBase{Ident:$2}}
-        yylval.stack.Push($$)
+        yylval.stack.Push(&LeafList{Ident:$2})
     };
 
 enum_stmts :
