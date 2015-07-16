@@ -20,12 +20,12 @@ func TestLoadLoader(t *testing.T) {
 
 func TestFindByPath(t *testing.T) {
 	m := LoadSampleModule(t)
-	groupings := m.GetGroupings().(* DefContainer)
+	groupings := m.GetGroupings().(* MetaContainer)
 	found := FindByPath(groupings, "team")
 	log.Println("found", found)
 	AssertIterator(t, m.DataDefs())
 	if teams := FindByPathWithoutResolvingProxies(m, "game/teams"); teams != nil {
-		if def := FindByPathWithoutResolvingProxies(teams.(DefList), "team"); def != nil {
+		if def := FindByPathWithoutResolvingProxies(teams.(MetaList), "team"); def != nil {
 			if team, isContainer := def.(*Container); isContainer {
 				AssertFindGrouping(t, team)
 			} else {
@@ -34,15 +34,15 @@ func TestFindByPath(t *testing.T) {
 		} else {
 			t.Error("FindByPathWithoutResolvingProxies Could not find ../teams/team")
 		}
-		AssertProxies(t, teams.(DefList))
+		AssertProxies(t, teams.(MetaList))
 	} else {
 		t.Error("Could not find game/teams")
 	}
 }
 
-func AssertIterator(t *testing.T, defs DefList) {
-	i := NewDefListIterator(defs, false)
-	game := i.NextDef()
+func AssertIterator(t *testing.T, defs MetaList) {
+	i := NewMetaListIterator(defs, false)
+	game := i.NextMeta()
 	if game == nil {
 		t.Error("first and only child:game not found in module defs")
 	} else if game.GetIdent() != "game" {
@@ -53,7 +53,7 @@ func AssertIterator(t *testing.T, defs DefList) {
 }
 
 func AssertFindGrouping(t *testing.T, team *Container) {
-	if uses := team.GetFirstDef(); uses != nil {
+	if uses := team.GetFirstMeta(); uses != nil {
 		if grouping := uses.(*Uses).FindGrouping("team"); grouping != nil {
 			t.Log("Found team grouping")
 		} else {
@@ -64,15 +64,15 @@ func AssertFindGrouping(t *testing.T, team *Container) {
 	}
 }
 
-func AssertProxies(t *testing.T, teams DefList) {
+func AssertProxies(t *testing.T, teams MetaList) {
 	if def := FindByPath(teams, "team"); def != nil {
-		i := NewDefListIterator(def.(DefList), true)
-		t.Log("first team child", i.NextDef().GetIdent())
-		i = NewDefListIterator(def.(DefList), true)
+		i := NewMetaListIterator(def.(MetaList), true)
+		t.Log("first team child", i.NextMeta().GetIdent())
+		i = NewMetaListIterator(def.(MetaList), true)
 		c := FindByIdent(i, "color")
 		t.Log("color", c)
 
-		if color := FindByPath(def.(DefList), "color"); color != nil {
+		if color := FindByPath(def.(MetaList), "color"); color != nil {
 			t.Log("Found color from grouping")
 		} else {
 			t.Error("team grouping didn't resolve")

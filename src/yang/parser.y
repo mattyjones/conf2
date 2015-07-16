@@ -29,12 +29,12 @@ func HasError(l yyLexer, e error) bool {
     return true
 }
 
-func popAndAddDef(yylval *yySymType) error {
+func popAndAddMeta(yylval *yySymType) error {
     i := yylval.stack.Pop()
-    if def, ok := i.(Def); ok {
+    if def, ok := i.(Meta); ok {
         parent := yylval.stack.Peek()
-        if parentList, ok := parent.(DefList); ok {
-            return parentList.AddDef(def)
+        if parentList, ok := parent.(MetaList); ok {
+            return parentList.AddMeta(def)
         } else {
             return &yangError{fmt.Sprintf("Cannot add \"%s\" to \"%s\"; not collection type.", i.GetIdent(), parent.GetIdent())}
         }
@@ -48,7 +48,7 @@ func popAndAddDef(yylval *yySymType) error {
 %union {
     ident string
     token string
-    stack *yangDefStack
+    stack *yangMetaStack
 }
 
 %token <token> token_ident
@@ -149,12 +149,12 @@ module_body_stmt :
 
 module_body_stmts :
     module_body_stmt {
-      if HasError(yylex, popAndAddDef(&yylval)) {
+      if HasError(yylex, popAndAddMeta(&yylval)) {
         goto ret1
       }
     }
     | module_body_stmts module_body_stmt {
-      if HasError(yylex, popAndAddDef(&yylval)) {
+      if HasError(yylex, popAndAddMeta(&yylval)) {
         goto ret1
       }
     };
@@ -171,12 +171,12 @@ body_stmt :
 
 body_stmts :
     body_stmt  {
-        if HasError(yylex, popAndAddDef(&yylval)) {
+        if HasError(yylex, popAndAddMeta(&yylval)) {
           goto ret1
         }
       }
     | body_stmts body_stmt  {
-       if HasError(yylex, popAndAddDef(&yylval)) {
+       if HasError(yylex, popAndAddMeta(&yylval)) {
          goto ret1
        }
      };
@@ -235,7 +235,7 @@ container_body_stmt :
     | uses_stmt
     | kywd_config token_string token_semi
     | body_stmt {
-         if HasError(yylex, popAndAddDef(&yylval)) {
+         if HasError(yylex, popAndAddMeta(&yylval)) {
            goto ret1
          }
        }
@@ -243,7 +243,7 @@ container_body_stmt :
 uses_stmt :
      kywd_uses token_ident token_semi {
          yylval.stack.Push(&Uses{Ident:$2})
-         if HasError(yylex, popAndAddDef(&yylval)) {
+         if HasError(yylex, popAndAddMeta(&yylval)) {
            goto ret1
          }
      }
@@ -309,7 +309,7 @@ notification_body_stmt :
     | uses_stmt
     | kywd_config token_string token_semi
     | body_stmt {
-        if HasError(yylex, popAndAddDef(&yylval)) {
+        if HasError(yylex, popAndAddMeta(&yylval)) {
             goto ret1
         }
     };
@@ -336,7 +336,7 @@ grouping_body_stmt :
     description token_semi
     | reference_stmt
     | body_stmt {
-       if HasError(yylex, popAndAddDef(&yylval)) {
+       if HasError(yylex, popAndAddMeta(&yylval)) {
            goto ret1
        }
     };
@@ -363,7 +363,7 @@ list_body_stmt :
     | kywd_key token_string token_semi
     | kywd_unique token_string token_semi
     | body_stmt  {
-        if HasError(yylex, popAndAddDef(&yylval)) {
+        if HasError(yylex, popAndAddMeta(&yylval)) {
             goto ret1
         }
     }

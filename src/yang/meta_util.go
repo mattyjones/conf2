@@ -3,40 +3,40 @@ import (
 	"strings"
 )
 
-func FindByIdent(i DefIterator, ident string) Def {
-	child := i.NextDef()
+func FindByIdent(i MetaIterator, ident string) Meta {
+	child := i.NextMeta()
 	for child != nil {
 		if child.GetIdent() == ident {
 			return child
 		}
-		child = i.NextDef()
+		child = i.NextMeta()
 	}
 	return nil
 }
 
-func FindByPathWithoutResolvingProxies(root DefList, path string) Def {
+func FindByPathWithoutResolvingProxies(root MetaList, path string) Meta {
 	c := find(root, path, false)
 	return c
 }
 
-func FindByPath(root DefList, path string) Def {
+func FindByPath(root MetaList, path string) Meta {
 	return find(root, path, true)
 }
 
-func find(root DefList, path string, resolveProxies bool) (def Def) {
+func find(root MetaList, path string, resolveProxies bool) (def Meta) {
 	elems := strings.SplitN(path, "/", -1)
 	lastLevel := len(elems) - 1
 	var ok bool
 	list := root
-	i := NewDefListIterator(list, resolveProxies)
+	i := NewMetaListIterator(list, resolveProxies)
 	for level, elem := range elems {
 		def = FindByIdent(i, elem)
 		if def == nil {
 			return nil
 		}
 		if level < lastLevel {
-			if list, ok = def.(DefList); ok {
-				i = NewDefListIterator(list, resolveProxies)
+			if list, ok = def.(MetaList); ok {
+				i = NewMetaListIterator(list, resolveProxies)
 			} else {
 				return nil
 			}
@@ -44,7 +44,6 @@ func find(root DefList, path string, resolveProxies bool) (def Def) {
 	}
 	return
 }
-
 
 type yangError struct {
 	s string

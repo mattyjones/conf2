@@ -19,36 +19,36 @@ type Describable interface {
 }
 
 // Examples: Things that have more than one.
-type Def interface {
+type Meta interface {
 	// Identifiable
 	GetIdent() string
-	// Def
-	GetParent() DefList
-	SetParent(DefList)
-	GetSibling() Def
-	SetSibling(Def)
+	// Meta
+	GetParent() MetaList
+	SetParent(MetaList)
+	GetSibling() Meta
+	SetSibling(Meta)
 }
 
 // Examples: Module, Container but not Leaf or LeafList
-type DefList interface {
-	// Def
-	GetParent() DefList
-	SetParent(DefList)
-	GetSibling() Def
-	SetSibling(Def)
-	// DefList
-	AddDef(Def) error
-	GetFirstDef() Def
+type MetaList interface {
+	// Meta
+	GetParent() MetaList
+	SetParent(MetaList)
+	GetSibling() Meta
+	SetSibling(Meta)
+	// MetaList
+	AddMeta(Meta) error
+	GetFirstMeta() Meta
 }
 
 type DataDef interface {
 	// Identifiable
 	GetIdent() string
-	// Def
-	GetParent() DefList
-	SetParent(DefList)
-	GetSibling() Def
-	SetSibling(Def)
+	// Meta
+	GetParent() MetaList
+	SetParent(MetaList)
+	GetSibling() Meta
+	SetSibling(Meta)
 	// DataDef
 	NextDataDef() DataDef
 }
@@ -57,14 +57,14 @@ type DataDef interface {
 type HasChoices interface {
 	// Identifiable
 	GetIdent() string
-	// Def
-	GetParent() DefList
-	SetParent(DefList)
-	GetSibling() Def
-	SetSibling(Def)
-	// DefList
-	AddDef(Def) error
-	GetFirstDef() Def
+	// Meta
+	GetParent() MetaList
+	SetParent(MetaList)
+	GetSibling() Meta
+	SetSibling(Meta)
+	// MetaList
+	AddMeta(Meta) error
+	GetFirstMeta() Meta
 	// HasChoices
 	GetFirstChoice() *Choice
 }
@@ -72,77 +72,77 @@ type HasChoices interface {
 type HasGroupings interface {
 	// Identifiable
 	GetIdent() string
-	// Def
-	GetParent() DefList
-	SetParent(DefList)
-	GetSibling() Def
-	SetSibling(Def)
-	// DefList
-	AddDef(Def) error
-	GetFirstDef() Def
+	// Meta
+	GetParent() MetaList
+	SetParent(MetaList)
+	GetSibling() Meta
+	SetSibling(Meta)
+	// MetaList
+	AddMeta(Meta) error
+	GetFirstMeta() Meta
 	// HasGroupings
-	GetGroupings() DefList
+	GetGroupings() MetaList
 }
 
 ///////////////////////
 // Base structs
 ///////////////////////
 
-// DefList implementation helper(s)
+// MetaList implementation helper(s)
 type ListBase struct {
-	// Parent? - it's normally in DefBase
-	FirstDef Def
-	LastDef Def
+	// Parent? - it's normally in MetaBase
+	FirstMeta Meta
+	LastMeta Meta
 }
-func (y *ListBase) LinkDef(impl DefList, def Def) error {
-	def.SetParent(impl)
-	if y.LastDef != nil {
-		y.LastDef.SetSibling(def)
+func (y *ListBase) LinkMeta(impl MetaList, meta Meta) error {
+	meta.SetParent(impl)
+	if y.LastMeta != nil {
+		y.LastMeta.SetSibling(meta)
 	}
-	y.LastDef = def
-	if y.FirstDef == nil {
-		y.FirstDef = def
+	y.LastMeta = meta
+	if y.FirstMeta == nil {
+		y.FirstMeta = meta
 	}
 	return nil
 }
 
-// Def implementation helpers
-type DefBase struct {
-	Parent DefList
-	Sibling Def
+// Meta implementation helpers
+type MetaBase struct {
+	Parent MetaList
+	Sibling Meta
 }
-//func (y *DefBase) SetParent(parent DefList) {
+//func (y *MetaBase) SetParent(parent MetaList) {
 //	y.Parent = parent
-	//y.Sibling = parent.GetFirstDef()
+	//y.Sibling = parent.GetFirstMeta()
 //}
 
-// Def and DefList combination helpers
-type DefContainer struct {
-	DefBase
+// Meta and MetaList combination helpers
+type MetaContainer struct {
+	MetaBase
 	ListBase
 }
-//func (y *DefContainer) LinkDef(impl DefList, def Def) error {
-//	return y.ListBase.LinkDef(impl, def)
+//func (y *MetaContainer) LinkMeta(impl MetaList, meta Meta) error {
+//	return y.ListBase.LinkMeta(impl, meta)
 //}
 
-// Store DefList
-func (y *DefContainer) SetParent(parent DefList) {
+// Store MetaList
+func (y *MetaContainer) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *DefContainer) GetParent() DefList {
-	return y.DefBase.Parent
+func (y *MetaContainer) GetParent() MetaList {
+	return y.MetaBase.Parent
 }
-func (y *DefContainer) AddDef(def Def) error {
-	return y.LinkDef(y, def)
+func (y *MetaContainer) AddMeta(meta Meta) error {
+	return y.LinkMeta(y, meta)
 }
-func (y *DefContainer) GetFirstDef() Def {
-	return y.FirstDef
+func (y *MetaContainer) GetFirstMeta() Meta {
+	return y.FirstMeta
 }
-func (y *DefContainer) GetSibling() Def {
-	return y.FirstDef
+func (y *MetaContainer) GetSibling() Meta {
+	return y.FirstMeta
 }
-func (y *DefContainer) SetSibling(sibling Def) {
-	y.DefBase.Sibling = sibling
+func (y *MetaContainer) SetSibling(sibling Meta) {
+	y.MetaBase.Sibling = sibling
 }
 
 ////////////////////////
@@ -155,13 +155,13 @@ type Module struct {
 	Namespace string
 	Revision *Revision
 	Prefix string
-	DefBase
-	Defs DefContainer
-	Rpcs DefContainer
-	Notifications DefContainer
-	Groupings DefContainer
-	Choices DefContainer
-	Typedefs DefContainer
+	MetaBase
+	Defs MetaContainer
+	Rpcs MetaContainer
+	Notifications MetaContainer
+	Groupings MetaContainer
+	Choices MetaContainer
+	Typedefs MetaContainer
 }
 // Identifiable
 func (y *Module) GetIdent() (string) {
@@ -174,64 +174,64 @@ func (y *Module) GetDescription() (string) {
 func (y *Module) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *Module) SetParent(parent DefList) {
+// Meta
+func (y *Module) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *Module) GetParent() DefList {
+func (y *Module) GetParent() MetaList {
 	return y.Parent
 }
-func (y *Module) GetSibling() Def {
+func (y *Module) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *Module) SetSibling(sibling Def) {
+func (y *Module) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *Module) AddDef(def Def) error {
-	switch x := def.(type) {
+// MetaList
+func (y *Module) AddMeta(meta Meta) error {
+	switch x := meta.(type) {
 	case *Rpc:
 		y.Rpcs.SetParent(y)
-		return y.Rpcs.LinkDef(y, x)
+		return y.Rpcs.LinkMeta(y, x)
 	case *Notification:
 		y.Notifications.SetParent(y)
-		return y.Notifications.LinkDef(y, x)
+		return y.Notifications.LinkMeta(y, x)
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkDef(y, x)
+		return y.Groupings.LinkMeta(y, x)
 	case *Typedef:
 		y.Typedefs.SetParent(y)
-		return y.Typedefs.LinkDef(y, x)
+		return y.Typedefs.LinkMeta(y, x)
 	case *Choice:
 		y.Choices.SetParent(y)
-		return y.Choices.LinkDef(y, x)
+		return y.Choices.LinkMeta(y, x)
 	default:
 		y.Defs.SetParent(y)
-		return y.Defs.LinkDef(y, x)
+		return y.Defs.LinkMeta(y, x)
 	}
 }
-// technically not true, it's the DefContainers, but we'll see how this pans out
-func (y *Module) GetFirstDef() Def {
-	return y.Defs.GetFirstDef()
+// technically not true, it's the MetaContainers, but we'll see how this pans out
+func (y *Module) GetFirstMeta() Meta {
+	return y.Defs.GetFirstMeta()
 }
-func (y *Module) DataDefs() DefList {
+func (y *Module) DataDefs() MetaList {
 	return &y.Defs
 }
-func (y *Module) GetRpcs() DefList {
+func (y *Module) GetRpcs() MetaList {
 	return &y.Rpcs
 }
-func (y *Module) GetNotifications() DefList {
+func (y *Module) GetNotifications() MetaList {
 	return &y.Notifications
 }
 // HasGroupings
-func (y *Module) GetGroupings() DefList {
+func (y *Module) GetGroupings() MetaList {
 	log.Println("getting module groupings", y.Groupings)
 	return &y.Groupings
 }
-func (y *Module) GetChoices() DefList {
+func (y *Module) GetChoices() MetaList {
 	return &y.Choices
 }
-func (y *Module) GetTypeDefs() DefList {
+func (y *Module) GetTypeDefs() MetaList {
 	return &y.Typedefs
 }
 
@@ -240,7 +240,7 @@ func (y *Module) GetTypeDefs() DefList {
 type Choice struct {
 	Ident string
 	Description string
-	DefBase
+	MetaBase
 	ListBase
 }
 // Identifiable
@@ -254,69 +254,69 @@ func (y *Choice) GetDescription() (string) {
 func (y *Choice) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *Choice) SetParent(parent DefList) {
+// Meta
+func (y *Choice) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *Choice) GetParent() DefList {
+func (y *Choice) GetParent() MetaList {
 	return y.Parent
 }
-func (y *Choice) GetSibling() Def {
+func (y *Choice) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *Choice) SetSibling(sibling Def) {
+func (y *Choice) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *Choice) AddDef(def Def) error {
-	return y.LinkDef(y, def)
+// MetaList
+func (y *Choice) AddMeta(meta Meta) error {
+	return y.LinkMeta(y, meta)
 }
-func (y *Choice) GetFirstDef() Def {
-	return y.FirstDef
+func (y *Choice) GetFirstMeta() Meta {
+	return y.FirstMeta
 }
 // Other
 func (c *Choice) GetCase(ident string) *ChoiceCase {
 	return FindByPathWithoutResolvingProxies(c, ident).(*ChoiceCase)
 }
-// DefProxy
-func (y *Choice) ResolveProxy() DefIterator {
-	return &DefListIterator{position:y.GetFirstDef(),resolveProxies:true}
+// MetaProxy
+func (y *Choice) ResolveProxy() MetaIterator {
+	return &MetaListIterator{position:y.GetFirstMeta(),resolveProxies:true}
 }
 
 ////////////////////////////////////////////////////
 
 type ChoiceCase struct {
 	Ident string
-	DefBase
+	MetaBase
 	ListBase
 }
 // Identifiable
 func (y *ChoiceCase) GetIdent() (string) {
 	return y.Ident
 }
-// Def
-func (y *ChoiceCase) SetParent(parent DefList) {
+// Meta
+func (y *ChoiceCase) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *ChoiceCase) GetParent() DefList {
+func (y *ChoiceCase) GetParent() MetaList {
 	return y.Parent
 }
-func (y *ChoiceCase) GetSibling() Def {
+func (y *ChoiceCase) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *ChoiceCase) SetSibling(sibling Def) {
+func (y *ChoiceCase) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *ChoiceCase) AddDef(def Def) error {
-	return y.LinkDef(y, def)
+// MetaList
+func (y *ChoiceCase) AddMeta(meta Meta) error {
+	return y.LinkMeta(y, meta)
 }
-func (y *ChoiceCase) GetFirstDef() Def {
-	return y.FirstDef
+func (y *ChoiceCase) GetFirstMeta() Meta {
+	return y.FirstMeta
 }
-// DefProxy
-func (y *ChoiceCase) ResolveProxy() DefIterator {
-	return &DefListIterator{position:y.GetFirstDef(), resolveProxies:true}
+// MetaProxy
+func (y *ChoiceCase) ResolveProxy() MetaIterator {
+	return &MetaListIterator{position:y.GetFirstMeta(), resolveProxies:true}
 }
 
 ////////////////////////////////////////////////////
@@ -342,10 +342,10 @@ func (y *Revision) SetDescription(d string) {
 type Container struct {
 	Ident string
 	Description string
-	DefBase
+	MetaBase
 	ListBase
-	Groupings DefContainer
-	Choices DefContainer
+	Groupings MetaContainer
+	Choices MetaContainer
 	IsConfig bool
 	IsMandatory bool
 }
@@ -360,43 +360,43 @@ func (y *Container) GetDescription() (string) {
 func (y *Container) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *Container) SetParent(parent DefList) {
+// Meta
+func (y *Container) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *Container) GetParent() DefList {
+func (y *Container) GetParent() MetaList {
 	return y.Parent
 }
-func (y *Container) GetSibling() Def {
+func (y *Container) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *Container) SetSibling(sibling Def) {
+func (y *Container) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *Container) AddDef(def Def) error {
-	switch def.(type) {
+// MetaList
+func (y *Container) AddMeta(meta Meta) error {
+	switch meta.(type) {
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkDef(y, def)
+		return y.Groupings.LinkMeta(y, meta)
 	case *Choice:
 		y.Choices.SetParent(y)
-		return y.Choices.LinkDef(y, def)
+		return y.Choices.LinkMeta(y, meta)
 	default:
-		e := y.LinkDef(y, def)
+		e := y.LinkMeta(y, meta)
 		return e
 	}
 }
-func (y *Container) GetFirstDef() Def {
-	return y.FirstDef
+func (y *Container) GetFirstMeta() Meta {
+	return y.FirstMeta
 }
 // HasChoices
 func (y *Container) GetFirstChoice() *Choice {
 	y.Choices.SetParent(y)
-	return y.Choices.FirstDef.(*Choice)
+	return y.Choices.FirstMeta.(*Choice)
 }
 // HasGroupings
-func (y *Container) GetGroupings() DefList {
+func (y *Container) GetGroupings() MetaList {
 	return &y.Groupings
 }
 
@@ -405,10 +405,10 @@ func (y *Container) GetGroupings() DefList {
 type List struct {
 	Ident string
 	Description string
-	DefBase
+	MetaBase
 	ListBase
-	Groupings DefContainer
-	Choices DefContainer
+	Groupings MetaContainer
+	Choices MetaContainer
 	IsConfig bool
 	IsMandatory bool
 }
@@ -423,42 +423,42 @@ func (y *List) GetDescription() (string) {
 func (y *List) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *List) SetParent(parent DefList) {
+// Meta
+func (y *List) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *List) GetParent() DefList {
+func (y *List) GetParent() MetaList {
 	return y.Parent
 }
-func (y *List) GetSibling() Def {
+func (y *List) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *List) SetSibling(sibling Def) {
+func (y *List) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *List) AddDef(def Def) error {
-	switch def.(type) {
+// MetaList
+func (y *List) AddMeta(meta Meta) error {
+	switch meta.(type) {
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkDef(y, def)
+		return y.Groupings.LinkMeta(y, meta)
 	case *Choice:
 		y.Choices.SetParent(y)
-		return y.Choices.LinkDef(y, def)
+		return y.Choices.LinkMeta(y, meta)
 	default:
-		return y.LinkDef(y, def)
+		return y.LinkMeta(y, meta)
 	}
 }
-func (y *List) GetFirstDef() Def {
-	return y.FirstDef
+func (y *List) GetFirstMeta() Meta {
+	return y.FirstMeta
 }
 // HasChoices
 func (y *List) GetFirstChoice() *Choice {
 	y.Choices.SetParent(y)
-	return y.Choices.FirstDef.(*Choice)
+	return y.Choices.FirstMeta.(*Choice)
 }
 // HasGroupings
-func (y *List) GetGroupings() DefList {
+func (y *List) GetGroupings() MetaList {
 	return &y.Groupings
 }
 
@@ -467,7 +467,7 @@ func (y *List) GetGroupings() DefList {
 type Leaf struct {
 	Ident string
 	Description string
-	DefBase
+	MetaBase
 	IsConfig bool
 	IsMandatory bool
 }
@@ -482,17 +482,17 @@ func (y *Leaf) GetDescription() (string) {
 func (y *Leaf) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *Leaf) SetParent(parent DefList) {
+// Meta
+func (y *Leaf) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *Leaf) GetParent() DefList {
+func (y *Leaf) GetParent() MetaList {
 	return y.Parent
 }
-func (y *Leaf) GetSibling() Def {
+func (y *Leaf) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *Leaf) SetSibling(sibling Def) {
+func (y *Leaf) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
 
@@ -501,7 +501,7 @@ func (y *Leaf) SetSibling(sibling Def) {
 type LeafList struct {
 	Ident string
 	Description string
-	DefBase
+	MetaBase
 	IsConfig bool
 	IsMandatory bool
 }
@@ -516,17 +516,17 @@ func (y *LeafList) GetDescription() (string) {
 func (y *LeafList) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *LeafList) SetParent(parent DefList) {
+// Meta
+func (y *LeafList) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *LeafList) GetParent() DefList {
+func (y *LeafList) GetParent() MetaList {
 	return y.Parent
 }
-func (y *LeafList) GetSibling() Def {
+func (y *LeafList) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *LeafList) SetSibling(sibling Def) {
+func (y *LeafList) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
 
@@ -535,9 +535,9 @@ func (y *LeafList) SetSibling(sibling Def) {
 type Grouping struct {
 	Ident string
 	Description string
-	DefBase
+	MetaBase
 	ListBase
-	Choices DefContainer
+	Choices MetaContainer
 	IsConfig bool
 	IsMandatory bool
 }
@@ -552,91 +552,91 @@ func (y *Grouping) GetDescription() (string) {
 func (y *Grouping) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *Grouping) SetParent(parent DefList) {
+// Meta
+func (y *Grouping) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *Grouping) GetParent() DefList {
+func (y *Grouping) GetParent() MetaList {
 	return y.Parent
 }
-func (y *Grouping) GetSibling() Def {
+func (y *Grouping) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *Grouping) SetSibling(sibling Def) {
+func (y *Grouping) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *Grouping) AddDef(def Def) error {
-	switch def.(type) {
+// MetaList
+func (y *Grouping) AddMeta(meta Meta) error {
+	switch meta.(type) {
 	case *Choice:
 		y.Choices.SetParent(y)
-		return y.Choices.LinkDef(y, def)
+		return y.Choices.LinkMeta(y, meta)
 	default:
-		return y.LinkDef(y, def)
+		return y.LinkMeta(y, meta)
 	}
 }
-func (y *Grouping) GetFirstDef() Def {
-	return y.FirstDef
+func (y *Grouping) GetFirstMeta() Meta {
+	return y.FirstMeta
 }
 // HasChoices
 func (y *Grouping) GetFirstChoice() *Choice {
 	y.Choices.SetParent(y)
-	return y.Choices.FirstDef.(*Choice)
+	return y.Choices.FirstMeta.(*Choice)
 }
-// DefProxy
-//func (y *Grouping) ResolveProxy() DefIterator {
-//	return &DefListIterator{position:y.GetFirstDef(), resolveProxies:true}
+// MetaProxy
+//func (y *Grouping) ResolveProxy() MetaIterator {
+//	return &MetaListIterator{position:y.GetFirstMeta(), resolveProxies:true}
 //}
 
 ////////////////////////////////////////////////////
 
 type RpcInput struct {
-	DefBase
+	MetaBase
 	ListBase
-	Groupings DefContainer
-	Choices DefContainer
+	Groupings MetaContainer
+	Choices MetaContainer
 }
 // Identifiable
 func (y *RpcInput) GetIdent() (string) {
 	// Not technically true, but works
 	return "input"
 }
-// Def
-func (y *RpcInput) SetParent(parent DefList) {
+// Meta
+func (y *RpcInput) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *RpcInput) GetParent() DefList {
+func (y *RpcInput) GetParent() MetaList {
 	return y.Parent
 }
-func (y *RpcInput) GetSibling() Def {
+func (y *RpcInput) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *RpcInput) SetSibling(sibling Def) {
+func (y *RpcInput) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *RpcInput) AddDef(def Def) error {
-	switch def.(type) {
+// MetaList
+func (y *RpcInput) AddMeta(meta Meta) error {
+	switch meta.(type) {
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkDef(y, def)
+		return y.Groupings.LinkMeta(y, meta)
 	case *Choice:
 		y.Choices.SetParent(y)
-		return y.Choices.LinkDef(y, def)
+		return y.Choices.LinkMeta(y, meta)
 	default:
-		return y.LinkDef(y, def)
+		return y.LinkMeta(y, meta)
 	}
 }
-func (y *RpcInput) GetFirstDef() Def {
-	return y.FirstDef
+func (y *RpcInput) GetFirstMeta() Meta {
+	return y.FirstMeta
 }
 // HasChoices
 func (y *RpcInput) GetFirstChoice() *Choice {
 	y.Choices.SetParent(y)
-	return y.Choices.FirstDef.(*Choice)
+	return y.Choices.FirstMeta.(*Choice)
 }
 // HasGroupings
-func (y *RpcInput) GetGroupings() DefList {
+func (y *RpcInput) GetGroupings() MetaList {
 	return &y.Groupings
 }
 
@@ -644,51 +644,51 @@ func (y *RpcInput) GetGroupings() DefList {
 ////////////////////////////////////////////////////
 
 type RpcOutput struct {
-	DefBase
+	MetaBase
 	ListBase
-	Groupings DefContainer
-	Choices DefContainer
+	Groupings MetaContainer
+	Choices MetaContainer
 }
 // Identifiable
 func (y *RpcOutput) GetIdent() (string) {
 	return "output"
 }
-// Def
-func (y *RpcOutput) SetParent(parent DefList) {
+// Meta
+func (y *RpcOutput) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *RpcOutput) GetParent() DefList {
+func (y *RpcOutput) GetParent() MetaList {
 	return y.Parent
 }
-func (y *RpcOutput) GetSibling() Def {
+func (y *RpcOutput) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *RpcOutput) SetSibling(sibling Def) {
+func (y *RpcOutput) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *RpcOutput) AddDef(def Def) error {
-	switch def.(type) {
+// MetaList
+func (y *RpcOutput) AddMeta(meta Meta) error {
+	switch meta.(type) {
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkDef(y, def)
+		return y.Groupings.LinkMeta(y, meta)
 	case *Choice:
 		y.Choices.SetParent(y)
-		return y.Choices.LinkDef(y, def)
+		return y.Choices.LinkMeta(y, meta)
 	default:
-		return y.LinkDef(y, def)
+		return y.LinkMeta(y, meta)
 	}
 }
-func (y *RpcOutput) GetFirstDef() Def {
-	return y.FirstDef
+func (y *RpcOutput) GetFirstMeta() Meta {
+	return y.FirstMeta
 }
 // HasChoices
 func (y *RpcOutput) GetFirstChoice() *Choice {
 	y.Choices.SetParent(y)
-	return y.Choices.FirstDef.(*Choice)
+	return y.Choices.FirstMeta.(*Choice)
 }
 // HasGroupings
-func (y *RpcOutput) GetGroupings() DefList {
+func (y *RpcOutput) GetGroupings() MetaList {
 	return &y.Groupings
 }
 
@@ -697,7 +697,7 @@ func (y *RpcOutput) GetGroupings() DefList {
 type Rpc struct {
 	Ident string
 	Description string
-	DefBase
+	MetaBase
 	Input *RpcInput
 	Output *RpcOutput
 }
@@ -712,22 +712,22 @@ func (y *Rpc) GetDescription() (string) {
 func (y *Rpc) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *Rpc) SetParent(parent DefList) {
+// Meta
+func (y *Rpc) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *Rpc) GetParent() DefList {
+func (y *Rpc) GetParent() MetaList {
 	return y.Parent
 }
-func (y *Rpc) GetSibling() Def {
+func (y *Rpc) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *Rpc) SetSibling(sibling Def) {
+func (y *Rpc) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *Rpc) AddDef(def Def) error {
-	switch t:= def.(type) {
+// MetaList
+func (y *Rpc) AddMeta(meta Meta) error {
+	switch t:= meta.(type) {
 	case *RpcInput:
 		t.SetParent(y)
 		y.Input = t
@@ -736,14 +736,14 @@ func (y *Rpc) AddDef(def Def) error {
 		t.SetParent(y)
 		y.Output = t
 	default:
-		return &yangError{"Illegal call to add definition: rpc has fixed input and output children"}
+		return &yangError{"Illegal call to add metainition: rpc has fixed input and output children"}
 	}
 	if y.Output != nil {
 		y.Input.Sibling = y.Output
 	}
 	return nil
 }
-func (y *Rpc) GetFirstDef() Def {
+func (y *Rpc) GetFirstMeta() Meta {
 	if y.Input != nil {
 		return y.Input
 	}
@@ -755,10 +755,10 @@ func (y *Rpc) GetFirstDef() Def {
 type Notification struct {
 	Ident string
 	Description string
-	DefBase
+	MetaBase
 	ListBase
-	Groupings DefContainer
-	Choices DefContainer
+	Groupings MetaContainer
+	Choices MetaContainer
 }
 // Identifiable
 func (y *Notification) GetIdent() (string) {
@@ -771,34 +771,34 @@ func (y *Notification) GetDescription() (string) {
 func (y *Notification) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *Notification) SetParent(parent DefList) {
+// Meta
+func (y *Notification) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *Notification) GetParent() DefList {
+func (y *Notification) GetParent() MetaList {
 	return y.Parent
 }
-func (y *Notification) GetSibling() Def {
+func (y *Notification) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *Notification) SetSibling(sibling Def) {
+func (y *Notification) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *Notification) AddDef(def Def) error {
-	switch def.(type) {
+// MetaList
+func (y *Notification) AddMeta(meta Meta) error {
+	switch meta.(type) {
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkDef(y, def)
+		return y.Groupings.LinkMeta(y, meta)
 	case *Choice:
 		y.Choices.SetParent(y)
-		return y.Choices.LinkDef(y, def)
+		return y.Choices.LinkMeta(y, meta)
 	default:
-		return y.LinkDef(y, def)
+		return y.LinkMeta(y, meta)
 	}
 }
-func (y *Notification) GetFirstDef() Def {
-	return y.FirstDef
+func (y *Notification) GetFirstMeta() Meta {
+	return y.FirstMeta
 }
 
 ////////////////////////////////////////////////////
@@ -806,7 +806,7 @@ func (y *Notification) GetFirstDef() Def {
 type Typedef struct {
 	Ident string
 	Description string
-	DefContainer
+	MetaContainer
 }
 // Identifiable
 func (y *Typedef) GetIdent() (string) {
@@ -819,26 +819,26 @@ func (y *Typedef) GetDescription() (string) {
 func (y *Typedef) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *Typedef) SetParent(parent DefList) {
+// Meta
+func (y *Typedef) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *Typedef) GetParent() DefList {
+func (y *Typedef) GetParent() MetaList {
 	return y.Parent
 }
-func (y *Typedef) GetSibling() Def {
+func (y *Typedef) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *Typedef) SetSibling(sibling Def) {
+func (y *Typedef) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// DefList
-func (y *Typedef) AddDef(def Def) error {
-	y.DefContainer.SetParent(y)
-	return y.DefContainer.LinkDef(y, def)
+// MetaList
+func (y *Typedef) AddMeta(meta Meta) error {
+	y.MetaContainer.SetParent(y)
+	return y.MetaContainer.LinkMeta(y, meta)
 }
-func (y *Typedef) GetFirstDef() Def {
-	return y.FirstDef
+func (y *Typedef) GetFirstMeta() Meta {
+	return y.FirstMeta
 }
 
 ////////////////////////////////////////////////////
@@ -846,7 +846,7 @@ func (y *Typedef) GetFirstDef() Def {
 type Uses struct {
 	Ident string
 	Description string
-	DefBase
+	MetaBase
 	grouping *Grouping
 	// augment
 	// if-feature
@@ -866,17 +866,17 @@ func (y *Uses) GetDescription() (string) {
 func (y *Uses) SetDescription(d string) {
 	y.Description = d
 }
-// Def
-func (y *Uses) SetParent(parent DefList) {
+// Meta
+func (y *Uses) SetParent(parent MetaList) {
 	y.Parent = parent
 }
-func (y *Uses) GetParent() DefList {
+func (y *Uses) GetParent() MetaList {
 	return y.Parent
 }
-func (y *Uses) GetSibling() Def {
+func (y *Uses) GetSibling() Meta {
 	return y.Sibling
 }
-func (y *Uses) SetSibling(sibling Def) {
+func (y *Uses) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
 func (y *Uses) FindGrouping(ident string) *Grouping {
@@ -895,10 +895,10 @@ func (y *Uses) FindGrouping(ident string) *Grouping {
 	}
 	return y.grouping
 }
-// DefProxy
-func (y *Uses) ResolveProxy() DefIterator {
+// MetaProxy
+func (y *Uses) ResolveProxy() MetaIterator {
 	if g := y.FindGrouping(y.Ident); g != nil {
-		return NewDefListIterator(g, true)
+		return NewMetaListIterator(g, true)
 	}
 	return nil
 }

@@ -1,30 +1,30 @@
 package yang
 
-type DefIterator interface {
-	NextDef() Def
-	HasNextDef() bool
+type MetaIterator interface {
+	NextMeta() Meta
+	HasNextMeta() bool
 }
-type DefProxy interface {
-	ResolveProxy() DefIterator
+type MetaProxy interface {
+	ResolveProxy() MetaIterator
 }
-type DefListIterator struct {
-	position Def
-	currentProxy DefIterator
+type MetaListIterator struct {
+	position Meta
+	currentProxy MetaIterator
 	resolveProxies bool
 }
 
-func NewDefListIterator(list DefList, resolveProxies bool) DefIterator {
-	return &DefListIterator{position:list.GetFirstDef(), resolveProxies:resolveProxies}
+func NewMetaListIterator(list MetaList, resolveProxies bool) MetaIterator {
+	return &MetaListIterator{position:list.GetFirstMeta(), resolveProxies:resolveProxies}
 }
 
-func (self *DefListIterator) HasNextDef() bool {
+func (self *MetaListIterator) HasNextMeta() bool {
 	return self.position != nil && self.currentProxy != nil
 }
 
-func (self *DefListIterator) NextDef() Def {
+func (self *MetaListIterator) NextMeta() Meta {
 	for self.position != nil || self.currentProxy != nil {
 		if self.currentProxy != nil {
-			next := self.currentProxy.NextDef()
+			next := self.currentProxy.NextMeta()
 			if next != nil {
 				return next
 			} else {
@@ -32,7 +32,7 @@ func (self *DefListIterator) NextDef() Def {
 			}
 		} else {
 			if self.resolveProxies {
-				proxy, isProxy := self.position.(DefProxy)
+				proxy, isProxy := self.position.(MetaProxy)
 				if !isProxy {
 					next := self.position
 					self.position = self.position.GetSibling()

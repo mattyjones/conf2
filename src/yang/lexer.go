@@ -102,27 +102,27 @@ func (l *lexer) error(msg string)  stateFunc {
 	return nil
 }
 
-type yangDefStack struct {
+type yangMetaStack struct {
 	defs []Identifiable
 	count int
 }
 
-func (s *yangDefStack) Push(def Identifiable) {
+func (s *yangMetaStack) Push(def Identifiable) {
 	s.defs[s.count] = def
 	s.count++
 }
 
-func (s *yangDefStack) Pop() Identifiable {
+func (s *yangMetaStack) Pop() Identifiable {
 	s.count--
 	return s.defs[s.count]
 }
 
-func (s *yangDefStack) Peek() Identifiable {
+func (s *yangMetaStack) Peek() Identifiable {
 	return s.defs[s.count - 1]
 }
 
-func newDefStack(size int) *yangDefStack {
-	return &yangDefStack{
+func newDefStack(size int) *yangMetaStack {
+	return &yangMetaStack{
 		defs : make([]Identifiable, size),
 		count : 0,
 	}
@@ -137,7 +137,7 @@ type lexer struct {
 	tokens []Token
 	head int
 	tail int
-	stack *yangDefStack
+	stack *yangMetaStack
 	lastError error
 }
 

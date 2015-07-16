@@ -32,12 +32,12 @@ func HasError(l yyLexer, e error) bool {
 	return true
 }
 
-func popAndAddDef(yylval *yySymType) error {
+func popAndAddMeta(yylval *yySymType) error {
 	i := yylval.stack.Pop()
-	if def, ok := i.(Def); ok {
+	if def, ok := i.(Meta); ok {
 		parent := yylval.stack.Peek()
-		if parentList, ok := parent.(DefList); ok {
-			return parentList.AddDef(def)
+		if parentList, ok := parent.(MetaList); ok {
+			return parentList.AddMeta(def)
 		} else {
 			return &yangError{fmt.Sprintf("Cannot add \"%s\" to \"%s\"; not collection type.", i.GetIdent(), parent.GetIdent())}
 		}
@@ -51,7 +51,7 @@ type yySymType struct {
 	yys   int
 	ident string
 	token string
-	stack *yangDefStack
+	stack *yangMetaStack
 }
 
 const token_ident = 57346
@@ -705,7 +705,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		//line parser.y:151
 		{
-			if HasError(yylex, popAndAddDef(&yylval)) {
+			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
 			}
 		}
@@ -713,7 +713,7 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line parser.y:156
 		{
-			if HasError(yylex, popAndAddDef(&yylval)) {
+			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
 			}
 		}
@@ -721,7 +721,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		//line parser.y:173
 		{
-			if HasError(yylex, popAndAddDef(&yylval)) {
+			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
 			}
 		}
@@ -729,7 +729,7 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line parser.y:178
 		{
-			if HasError(yylex, popAndAddDef(&yylval)) {
+			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
 			}
 		}
@@ -749,7 +749,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		//line parser.y:237
 		{
-			if HasError(yylex, popAndAddDef(&yylval)) {
+			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
 			}
 		}
@@ -758,7 +758,7 @@ yydefault:
 		//line parser.y:244
 		{
 			yylval.stack.Push(&Uses{Ident: yyDollar[2].token})
-			if HasError(yylex, popAndAddDef(&yylval)) {
+			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
 			}
 		}
@@ -806,7 +806,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		//line parser.y:311
 		{
-			if HasError(yylex, popAndAddDef(&yylval)) {
+			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
 			}
 		}
@@ -820,7 +820,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		//line parser.y:338
 		{
-			if HasError(yylex, popAndAddDef(&yylval)) {
+			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
 			}
 		}
@@ -834,7 +834,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		//line parser.y:365
 		{
-			if HasError(yylex, popAndAddDef(&yylval)) {
+			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
 			}
 		}

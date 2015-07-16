@@ -36,10 +36,10 @@ module ff {
 	if m.Revision.Ident != "99-99-9999" {
 		t.Errorf("revision is %s", m.Revision.Ident)
 	}
-	if m.GetFirstDef() == nil {
+	if m.GetFirstMeta() == nil {
 		t.Errorf("Container x is missing")
 	}
-	if m.GetFirstDef().GetIdent() != "x" {
+	if m.GetFirstMeta().GetIdent() != "x" {
 		t.Errorf("Container x not identified")
 	}
 }
