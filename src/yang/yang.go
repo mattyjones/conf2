@@ -1,5 +1,7 @@
 package yang
 
+import "log"
+
 ///////////////////
 // Interfaces
 //////////////////
@@ -51,21 +53,6 @@ type DataDef interface {
 	NextDataDef() DataDef
 }
 
-type DataDefIterable interface {
-	// Identifiable
-	GetIdent() string
-	// Def
-	GetParent() DefList
-	SetParent(DefList)
-	GetSibling() Def
-	SetSibling(Def)
-	// DefList
-	AddDef(Def) error
-	GetFirstDef() Def
-	// DataDefIterable
-	GetFirstDataDef() DataDef
-}
-
 // Examples: Container, List, Grouping
 type HasChoices interface {
 	// Identifiable
@@ -78,8 +65,6 @@ type HasChoices interface {
 	// DefList
 	AddDef(Def) error
 	GetFirstDef() Def
-	// DataDefIterable
-	GetFirstDataDef() DataDef
 	// HasChoices
 	GetFirstChoice() *Choice
 }
@@ -95,10 +80,8 @@ type HasGroupings interface {
 	// DefList
 	AddDef(Def) error
 	GetFirstDef() Def
-	// DataDefIterable
-	GetFirstDataDef() DataDef
 	// HasGroupings
-	GetFirstGrouping() *Grouping
+	GetGroupings() DefList
 }
 
 ///////////////////////
@@ -113,6 +96,9 @@ type ListBase struct {
 }
 func (y *ListBase) LinkDef(impl DefList, def Def) error {
 	def.SetParent(impl)
+	if y.LastDef != nil {
+		y.LastDef.SetSibling(def)
+	}
 	y.LastDef = def
 	if y.FirstDef == nil {
 		y.FirstDef = def
@@ -125,24 +111,26 @@ type DefBase struct {
 	Parent DefList
 	Sibling Def
 }
-func (y *DefBase) SetParent(parent DefList) {
-	y.Parent = parent
-	y.Sibling = parent.GetFirstDef()
-}
+//func (y *DefBase) SetParent(parent DefList) {
+//	y.Parent = parent
+	//y.Sibling = parent.GetFirstDef()
+//}
 
 // Def and DefList combination helpers
 type DefContainer struct {
 	DefBase
 	ListBase
 }
+//func (y *DefContainer) LinkDef(impl DefList, def Def) error {
+//	return y.ListBase.LinkDef(impl, def)
+//}
+
+// Store DefList
 func (y *DefContainer) SetParent(parent DefList) {
-	y.DefBase.SetParent(parent)
+	y.Parent = parent
 }
 func (y *DefContainer) GetParent() DefList {
 	return y.DefBase.Parent
-}
-func (y *DefContainer) LinkDef(impl DefList, def Def) error {
-	return y.ListBase.LinkDef(impl, def)
 }
 func (y *DefContainer) AddDef(def Def) error {
 	return y.LinkDef(y, def)
@@ -164,11 +152,11 @@ func (y *DefContainer) SetSibling(sibling Def) {
 type Module struct {
 	Ident string
 	Description string
-	DefBase
 	Namespace string
 	Revision *Revision
 	Prefix string
-	DataDefs DefContainer
+	DefBase
+	Defs DefContainer
 	Rpcs DefContainer
 	Notifications DefContainer
 	Groupings DefContainer
@@ -218,17 +206,33 @@ func (y *Module) AddDef(def Def) error {
 		y.Choices.SetParent(y)
 		return y.Choices.LinkDef(y, x)
 	default:
-		y.DataDefs.SetParent(y)
-		return y.DataDefs.LinkDef(y, x)
-
+		y.Defs.SetParent(y)
+		return y.Defs.LinkDef(y, x)
 	}
 }
 // technically not true, it's the DefContainers, but we'll see how this pans out
 func (y *Module) GetFirstDef() Def {
-	return y.DataDefs.FirstDef
+	return y.Defs.GetFirstDef()
+}
+func (y *Module) DataDefs() DefList {
+	return &y.Defs
 }
 func (y *Module) GetRpcs() DefList {
 	return &y.Rpcs
+}
+func (y *Module) GetNotifications() DefList {
+	return &y.Notifications
+}
+// HasGroupings
+func (y *Module) GetGroupings() DefList {
+	log.Println("getting module groupings", y.Groupings)
+	return &y.Groupings
+}
+func (y *Module) GetChoices() DefList {
+	return &y.Choices
+}
+func (y *Module) GetTypeDefs() DefList {
+	return &y.Typedefs
 }
 
 ////////////////////////////////////////////////////
@@ -236,7 +240,8 @@ func (y *Module) GetRpcs() DefList {
 type Choice struct {
 	Ident string
 	Description string
-	DefContainer
+	DefBase
+	ListBase
 }
 // Identifiable
 func (y *Choice) GetIdent() (string) {
@@ -264,21 +269,26 @@ func (y *Choice) SetSibling(sibling Def) {
 }
 // DefList
 func (y *Choice) AddDef(def Def) error {
-	return y.DefContainer.LinkDef(y, def)
+	return y.LinkDef(y, def)
 }
 func (y *Choice) GetFirstDef() Def {
 	return y.FirstDef
 }
 // Other
 func (c *Choice) GetCase(ident string) *ChoiceCase {
-	return FindByIdent(c, ident).(*ChoiceCase)
+	return FindByPathWithoutResolvingProxies(c, ident).(*ChoiceCase)
+}
+// DefProxy
+func (y *Choice) ResolveProxy() DefIterator {
+	return &DefListIterator{position:y.GetFirstDef(),resolveProxies:true}
 }
 
 ////////////////////////////////////////////////////
 
 type ChoiceCase struct {
 	Ident string
-	DefContainer
+	DefBase
+	ListBase
 }
 // Identifiable
 func (y *ChoiceCase) GetIdent() (string) {
@@ -299,10 +309,14 @@ func (y *ChoiceCase) SetSibling(sibling Def) {
 }
 // DefList
 func (y *ChoiceCase) AddDef(def Def) error {
-	return y.DefContainer.LinkDef(y, def)
+	return y.LinkDef(y, def)
 }
 func (y *ChoiceCase) GetFirstDef() Def {
 	return y.FirstDef
+}
+// DefProxy
+func (y *ChoiceCase) ResolveProxy() DefIterator {
+	return &DefListIterator{position:y.GetFirstDef(), resolveProxies:true}
 }
 
 ////////////////////////////////////////////////////
@@ -328,7 +342,8 @@ func (y *Revision) SetDescription(d string) {
 type Container struct {
 	Ident string
 	Description string
-	DefContainer
+	DefBase
+	ListBase
 	Groupings DefContainer
 	Choices DefContainer
 	IsConfig bool
@@ -368,8 +383,8 @@ func (y *Container) AddDef(def Def) error {
 		y.Choices.SetParent(y)
 		return y.Choices.LinkDef(y, def)
 	default:
-		y.DefContainer.SetParent(y)
-		return y.DefContainer.LinkDef(y, def)
+		e := y.LinkDef(y, def)
+		return e
 	}
 }
 func (y *Container) GetFirstDef() Def {
@@ -381,8 +396,8 @@ func (y *Container) GetFirstChoice() *Choice {
 	return y.Choices.FirstDef.(*Choice)
 }
 // HasGroupings
-func (y *Container) GetFirstGrouping() *Grouping {
-	return y.Groupings.FirstDef.(*Grouping)
+func (y *Container) GetGroupings() DefList {
+	return &y.Groupings
 }
 
 ////////////////////////////////////////////////////
@@ -390,7 +405,8 @@ func (y *Container) GetFirstGrouping() *Grouping {
 type List struct {
 	Ident string
 	Description string
-	DefContainer
+	DefBase
+	ListBase
 	Groupings DefContainer
 	Choices DefContainer
 	IsConfig bool
@@ -423,15 +439,14 @@ func (y *List) SetSibling(sibling Def) {
 // DefList
 func (y *List) AddDef(def Def) error {
 	switch def.(type) {
-		case *Grouping:
+	case *Grouping:
 		y.Groupings.SetParent(y)
 		return y.Groupings.LinkDef(y, def)
-		case *Choice:
+	case *Choice:
 		y.Choices.SetParent(y)
 		return y.Choices.LinkDef(y, def)
-		default:
-		y.DefContainer.SetParent(y)
-		return y.DefContainer.LinkDef(y, def)
+	default:
+		return y.LinkDef(y, def)
 	}
 }
 func (y *List) GetFirstDef() Def {
@@ -443,8 +458,8 @@ func (y *List) GetFirstChoice() *Choice {
 	return y.Choices.FirstDef.(*Choice)
 }
 // HasGroupings
-func (y *List) GetFirstGrouping() *Grouping {
-	return y.Groupings.FirstDef.(*Grouping)
+func (y *List) GetGroupings() DefList {
+	return &y.Groupings
 }
 
 ////////////////////////////////////////////////////
@@ -520,7 +535,8 @@ func (y *LeafList) SetSibling(sibling Def) {
 type Grouping struct {
 	Ident string
 	Description string
-	DefContainer
+	DefBase
+	ListBase
 	Choices DefContainer
 	IsConfig bool
 	IsMandatory bool
@@ -556,8 +572,7 @@ func (y *Grouping) AddDef(def Def) error {
 		y.Choices.SetParent(y)
 		return y.Choices.LinkDef(y, def)
 	default:
-		y.DefContainer.SetParent(y)
-		return y.DefContainer.LinkDef(y, def)
+		return y.LinkDef(y, def)
 	}
 }
 func (y *Grouping) GetFirstDef() Def {
@@ -568,11 +583,16 @@ func (y *Grouping) GetFirstChoice() *Choice {
 	y.Choices.SetParent(y)
 	return y.Choices.FirstDef.(*Choice)
 }
+// DefProxy
+//func (y *Grouping) ResolveProxy() DefIterator {
+//	return &DefListIterator{position:y.GetFirstDef(), resolveProxies:true}
+//}
 
 ////////////////////////////////////////////////////
 
 type RpcInput struct {
-	DefContainer
+	DefBase
+	ListBase
 	Groupings DefContainer
 	Choices DefContainer
 }
@@ -604,8 +624,7 @@ func (y *RpcInput) AddDef(def Def) error {
 		y.Choices.SetParent(y)
 		return y.Choices.LinkDef(y, def)
 	default:
-		y.DefContainer.SetParent(y)
-		return y.DefContainer.LinkDef(y, def)
+		return y.LinkDef(y, def)
 	}
 }
 func (y *RpcInput) GetFirstDef() Def {
@@ -617,15 +636,16 @@ func (y *RpcInput) GetFirstChoice() *Choice {
 	return y.Choices.FirstDef.(*Choice)
 }
 // HasGroupings
-func (y *RpcInput) GetFirstGrouping() *Grouping {
-	return y.Groupings.FirstDef.(*Grouping)
+func (y *RpcInput) GetGroupings() DefList {
+	return &y.Groupings
 }
 
 
 ////////////////////////////////////////////////////
 
 type RpcOutput struct {
-	DefContainer
+	DefBase
+	ListBase
 	Groupings DefContainer
 	Choices DefContainer
 }
@@ -656,8 +676,7 @@ func (y *RpcOutput) AddDef(def Def) error {
 		y.Choices.SetParent(y)
 		return y.Choices.LinkDef(y, def)
 	default:
-		y.DefContainer.SetParent(y)
-		return y.DefContainer.LinkDef(y, def)
+		return y.LinkDef(y, def)
 	}
 }
 func (y *RpcOutput) GetFirstDef() Def {
@@ -669,8 +688,8 @@ func (y *RpcOutput) GetFirstChoice() *Choice {
 	return y.Choices.FirstDef.(*Choice)
 }
 // HasGroupings
-func (y *RpcOutput) GetFirstGrouping() *Grouping {
-	return y.Groupings.FirstDef.(*Grouping)
+func (y *RpcOutput) GetGroupings() DefList {
+	return &y.Groupings
 }
 
 ////////////////////////////////////////////////////
@@ -736,7 +755,8 @@ func (y *Rpc) GetFirstDef() Def {
 type Notification struct {
 	Ident string
 	Description string
-	DefContainer
+	DefBase
+	ListBase
 	Groupings DefContainer
 	Choices DefContainer
 }
@@ -774,8 +794,7 @@ func (y *Notification) AddDef(def Def) error {
 		y.Choices.SetParent(y)
 		return y.Choices.LinkDef(y, def)
 	default:
-		y.DefContainer.SetParent(y)
-		return y.DefContainer.LinkDef(y, def)
+		return y.LinkDef(y, def)
 	}
 }
 func (y *Notification) GetFirstDef() Def {
@@ -820,4 +839,66 @@ func (y *Typedef) AddDef(def Def) error {
 }
 func (y *Typedef) GetFirstDef() Def {
 	return y.FirstDef
+}
+
+////////////////////////////////////////////////////
+
+type Uses struct {
+	Ident string
+	Description string
+	DefBase
+	grouping *Grouping
+	// augment
+	// if-feature
+	// refine
+	// reference
+	// status
+	// when
+}
+// Identifiable
+func (y *Uses) GetIdent() (string) {
+	return y.Ident
+}
+// Describable
+func (y *Uses) GetDescription() (string) {
+	return y.Description
+}
+func (y *Uses) SetDescription(d string) {
+	y.Description = d
+}
+// Def
+func (y *Uses) SetParent(parent DefList) {
+	y.Parent = parent
+}
+func (y *Uses) GetParent() DefList {
+	return y.Parent
+}
+func (y *Uses) GetSibling() Def {
+	return y.Sibling
+}
+func (y *Uses) SetSibling(sibling Def) {
+	y.Sibling = sibling
+}
+func (y *Uses) FindGrouping(ident string) *Grouping {
+	// lazy load grouping
+	if y.grouping == nil {
+		p := y.GetParent()
+		for p != nil && y.grouping == nil {
+			if withGrouping, hasGrouping := p.(HasGroupings); hasGrouping {
+				found := FindByPath(withGrouping.GetGroupings(), y.GetIdent())
+				if found != nil {
+					y.grouping = found.(*Grouping)
+				}
+			}
+			p  = p.GetParent()
+		}
+	}
+	return y.grouping
+}
+// DefProxy
+func (y *Uses) ResolveProxy() DefIterator {
+	if g := y.FindGrouping(y.Ident); g != nil {
+		return NewDefListIterator(g, true)
+	}
+	return nil
 }

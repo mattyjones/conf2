@@ -17,31 +17,30 @@ func (l *lexer) Lex(lval *yySymType) int {
 
 func (l *lexer) Error(e string) {
     line, col := l.Position()
-    fmt.Println(fmt.Sprintf("%s at line %d, col %d", e, line, col))
+    msg := fmt.Sprintf("%s - line %d, col %d", e, line, col)
+    l.lastError = &yangError{msg}
 }
 
-func popAndAddDef(yylval *yySymType) bool {
+func HasError(l yyLexer, e error) bool {
+    if e == nil {
+        return false
+    }
+    l.Error(e.Error())
+    return true
+}
+
+func popAndAddDef(yylval *yySymType) error {
     i := yylval.stack.Pop()
-    def, ok := i.(Def)
-    if ok {
+    if def, ok := i.(Def); ok {
         parent := yylval.stack.Peek()
-        parentList, ok := parent.(DefList)
-        if ok {
-            err := parentList.AddDef(def)
-            if err == nil {
-                return true
-            }
-            if yyDebug > 1 {
-                __yyfmt__.Printf(err.Error())
-            }
-        } else if yyDebug > 1 {
-            __yyfmt__.Printf("Internal Error: %s doesn't implement DefList.", parent.GetIdent())
+        if parentList, ok := parent.(DefList); ok {
+            return parentList.AddDef(def)
+        } else {
+            return &yangError{fmt.Sprintf("Cannot add \"%s\" to \"%s\"; not collection type.", i.GetIdent(), parent.GetIdent())}
         }
     } else {
-        __yyfmt__.Printf("Internal Error: %s doesn't implement Def.", i.GetIdent())
+        return &yangError{fmt.Sprintf("\"%s\" cannot be stored in a collection type.", i.GetIdent())}
     }
-
-    return false
 }
 
 %}
@@ -150,12 +149,12 @@ module_body_stmt :
 
 module_body_stmts :
     module_body_stmt {
-      if ! popAndAddDef(&yylval) {
+      if HasError(yylex, popAndAddDef(&yylval)) {
         goto ret1
       }
     }
     | module_body_stmts module_body_stmt {
-      if ! popAndAddDef(&yylval) {
+      if HasError(yylex, popAndAddDef(&yylval)) {
         goto ret1
       }
     };
@@ -172,12 +171,12 @@ body_stmt :
 
 body_stmts :
     body_stmt  {
-        if ! popAndAddDef(&yylval) {
+        if HasError(yylex, popAndAddDef(&yylval)) {
           goto ret1
         }
       }
     | body_stmts body_stmt  {
-       if ! popAndAddDef(&yylval) {
+       if HasError(yylex, popAndAddDef(&yylval)) {
          goto ret1
        }
      };
@@ -233,13 +232,22 @@ container_body_stmts :
 
 container_body_stmt :
     description token_semi
-    | kywd_uses token_ident token_semi
+    | uses_stmt
     | kywd_config token_string token_semi
     | body_stmt {
-         if ! popAndAddDef(&yylval) {
+         if HasError(yylex, popAndAddDef(&yylval)) {
            goto ret1
          }
        }
+
+uses_stmt :
+     kywd_uses token_ident token_semi {
+         yylval.stack.Push(&Uses{Ident:$2})
+         if HasError(yylex, popAndAddDef(&yylval)) {
+           goto ret1
+         }
+     }
+/* TODO: support alternate uses form */
 
 rpc_stmt :
     rpc_def
@@ -298,10 +306,10 @@ notification_body_stmts :
 /* TODO: if, stats, reference, typedef*/
 notification_body_stmt :
     description token_semi
-    | kywd_uses token_ident token_semi
+    | uses_stmt
     | kywd_config token_string token_semi
     | body_stmt {
-        if ! popAndAddDef(&yylval) {
+        if HasError(yylex, popAndAddDef(&yylval)) {
             goto ret1
         }
     };
@@ -328,7 +336,7 @@ grouping_body_stmt :
     description token_semi
     | reference_stmt
     | body_stmt {
-       if ! popAndAddDef(&yylval) {
+       if HasError(yylex, popAndAddDef(&yylval)) {
            goto ret1
        }
     };
@@ -350,12 +358,12 @@ list_body_stmts :
 list_body_stmt :
     description token_semi
     | kywd_max_elements token_int token_semi
-    | kywd_uses token_string token_semi
+    | uses_stmt
     | kywd_config token_string token_semi
     | kywd_key token_string token_semi
     | kywd_unique token_string token_semi
     | body_stmt  {
-        if ! popAndAddDef(&yylval) {
+        if HasError(yylex, popAndAddDef(&yylval)) {
             goto ret1
         }
     }
@@ -379,7 +387,7 @@ leaf_body_stmts :
 leaf_body_stmt :
     type_stmt
     | description token_semi
-    | kywd_uses token_ident token_semi
+    | uses_stmt
     | kywd_config token_string token_semi
     | kywd_default token_string token_semi
     | kywd_mandatory token_string token_semi

@@ -31,10 +31,10 @@ module stone {
         leaf-list members {
             type string;
         }
-        leaf spawn-point {
+        container spawn-point {
             uses position;
         }
-        leaf base-position {
+        container base-position {
             uses position;
         }
     }

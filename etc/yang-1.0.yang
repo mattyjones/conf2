@@ -1,0 +1,198 @@
+module yang {
+    namespace "http://yang.org/yang";
+    prefix "yang";
+    description "Yang definition of yang";
+    revision 2015-07-11 {
+        description "Yang 1.0";
+    }
+
+    grouping def-header {
+        leaf ident {
+            type string;
+        }
+        leaf description {
+            type string;
+        }
+    }
+
+    grouping container {
+        uses def-header;
+        uses uses;
+        // when, if, must
+        // presence
+        // config
+        // status
+        // reference
+        // typedef ??
+        // grouping ??
+        uses definitions;
+    }
+
+    grouping list {
+        uses def-header;
+        uses uses;
+        uses definitions;
+    }
+
+    grouping leaf {
+        uses def-header;
+        // config
+        leaf config {
+            type string;
+        }
+        // default
+        // if-feature
+        // mandatory
+        leaf mandatory {
+            type string;
+        }
+        // must
+        // reference
+        // status
+        // type
+        uses type;
+        // units
+        // when
+    }
+
+    grouping leaf-list {
+        uses def-header;
+
+    }
+
+    grouping uses {
+        leaf grouping {
+            type string;
+        }
+        list refine {
+            leaf default {
+                type string;
+            }
+        }
+    }
+
+    grouping choice {
+        uses def-header;
+        container cases {
+            uses definitions;
+        }
+    }
+
+    grouping definitions {
+        list choices {
+            leaf ident {
+                type string;
+            }
+            leaf description {
+                type string;
+            }
+            list cases {
+                leaf ident {
+                    type string;
+                }
+                /*
+                  list if maintained by iterating
+                  thru definitions for matching choices
+                  should we maintain ref here?
+                */
+
+            }
+        }
+        list definitions {
+            choice body-stmt {
+                case container {
+                    uses container;
+                }
+                case list {
+                    uses list;
+                }
+                case leaf {
+                    uses leaf;
+                }
+                case leaf-list {
+                    uses leaf-list;
+                }
+                case choice {
+                    uses choice;
+                }
+            }
+        }
+    }
+
+    grouping type {
+        leaf ident {
+            type string;
+        }
+        lead range {
+            type string;
+        }
+        list enumeration {
+            leaf ident {
+                type string;
+            };
+        }
+    }
+
+    container module {
+        leaf ident {
+            type string;
+        }
+        leaf namespace {
+            type string;
+        }
+        leaf prefix {
+            type string;
+        }
+        leaf description {
+            type string;
+        }
+        container revision {
+            leaf rev-date {
+                type string;
+            }
+            leaf description {
+                type string;
+            }
+        }
+        list typedefs {
+            uses def-header;
+            uses type;
+            leaf ident {
+                type string;
+            }
+        }
+        list groupings {
+            uses def-header;
+            // anyxml
+            // choice
+            // container/grouping/leaf/leaf-list/list
+            // reference
+            // status
+            // typedef
+            // uses
+            uses uses;
+            leaf ident {
+                type string;
+            }
+        }
+        list rpc {
+            uses def-header;
+            leaf ident {
+                type string;
+            }
+            container input {
+                uses body-stmts;
+            }
+            container output {
+                uses body-stmts;
+            }
+        }
+        list notification {
+            uses def-header;
+            leaf ident {
+                type string;
+            }
+        }
+        uses definitions;
+    }
+}

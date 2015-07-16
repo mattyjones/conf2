@@ -1,7 +1,10 @@
 package yang
 
 // This uses the go feature call go tools in the build process. To ensure this gets
-//  called before compilation, call go generate before bo build
+//  called before compilation, make this call before "go build yang"
+//
+//    go generate yang
+//
 //go:generate go tool yacc -o parser.go parser.y
 
 import (
@@ -94,9 +97,10 @@ func (l *lexer) error(msg string)  stateFunc {
 		ParseErr,
 		msg,
 	})
+	fmt.Println("Setting err ", msg)
+	l.Error(msg)
 	return nil
 }
-
 
 type yangDefStack struct {
 	defs []Identifiable
@@ -133,11 +137,8 @@ type lexer struct {
 	tokens []Token
 	head int
 	tail int
-
-	// Go 1.5 has state in yyParser so we'll stick state
-	// in lexer for now
-	//   https://github.com/golang/go/commit/c7fa3c625ee0dd09d8ce88b060ffd883ac50582b
 	stack *yangDefStack
+	lastError error
 }
 
 func (l *lexer) next() (r rune) {

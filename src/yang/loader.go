@@ -24,11 +24,18 @@ func LoadModule(resolver ResourceResolver, yangfile string) (*Module, error) {
 func loadModuleFromByteArray(data []byte) (*Module, error) {
 	l := lex(string(data))
 	err_code := yyParse(l)
-	if err_code == 0 {
-		d := l.stack.Peek()
-		return d.(*Module), nil
+	if err_code != 0 || l.lastError != nil {
+		if l.lastError == nil {
+			// Developer - Find out why there's no error
+			msg := fmt.Sprint("Error parsing, code ", string(err_code))
+			l.lastError = &yangError{msg}
+
+		}
+		return nil, l.lastError
 	}
-	return nil, &yangError{fmt.Sprintf("Error %d loading yang file", err_code)}
+
+	d := l.stack.Peek()
+	return d.(*Module), nil
 }
 
 type ResourceResolver interface {
