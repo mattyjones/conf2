@@ -18,18 +18,22 @@ func NewMetaListIterator(list MetaList, resolveProxies bool) MetaIterator {
 }
 
 func (self *MetaListIterator) HasNextMeta() bool {
-	return self.position != nil && self.currentProxy != nil
+	if self.position != nil {
+		return true
+	}
+	if self.currentProxy != nil {
+		return self.currentProxy.HasNextMeta()
+	}
+	return false
 }
 
 func (self *MetaListIterator) NextMeta() Meta {
-	for self.position != nil || self.currentProxy != nil {
+	for self.HasNextMeta() {
 		if self.currentProxy != nil {
-			next := self.currentProxy.NextMeta()
-			if next != nil {
-				return next
-			} else {
-				self.currentProxy = nil
+			if self.currentProxy.HasNextMeta() {
+				return self.currentProxy.NextMeta()
 			}
+			self.currentProxy = nil
 		} else {
 			if self.resolveProxies {
 				proxy, isProxy := self.position.(MetaProxy)

@@ -1,6 +1,7 @@
 package yang
 import (
 	"strings"
+	"unicode"
 )
 
 func FindByIdent(i MetaIterator, ident string) Meta {
@@ -12,6 +13,38 @@ func FindByIdent(i MetaIterator, ident string) Meta {
 		child = i.NextMeta()
 	}
 	return nil
+}
+
+func MetaNameToFieldName(in string) string {
+	// assumes fix is always shorter because char can be dropped and not added
+	fixed := make([]rune, len(in))
+	cap := true
+	j := 0
+	for _, r := range in {
+		if r == '-' {
+			cap = true
+		} else {
+			if cap {
+				fixed[j] = unicode.ToUpper(r)
+			} else {
+				fixed[j] = r
+			}
+			j += 1
+			cap = false
+		}
+	}
+	return string(fixed[:j])
+}
+
+func ListToArray(l MetaList) []Meta {
+	// PERFORMANCE: is it better to iterate twice, pass 1 to find length?
+	meta := make([]Meta, 0)
+	i := NewMetaListIterator(l, true)
+	for i.HasNextMeta() {
+		m := i.NextMeta()
+		meta = append(meta, m)
+	}
+	return meta
 }
 
 func FindByPathWithoutResolvingProxies(root MetaList, path string) Meta {

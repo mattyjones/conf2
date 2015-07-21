@@ -10,18 +10,26 @@ import (
 func LoadModuleFromCByteArray(cdata *C.char, len C.int) {
 	// TODO: improve performance by not copying
 	gdata := []byte(C.GoStringN(cdata, len))
-	loadModuleFromByteArray(gdata)
+	LoadModuleFromByteArray(gdata)
 }
 
 func LoadModule(resolver ResourceResolver, yangfile string) (*Module, error) {
 	data, err := resolver.LoadResource(yangfile)
 	if err == nil {
-		return loadModuleFromByteArray(data)
+		return LoadModuleFromByteArray(data)
 	}
 	return nil, err
 }
 
-func loadModuleFromByteArray(data []byte) (*Module, error) {
+func LoadModuleFromFile(yangfile string) (*Module, error) {
+	if rdr, err := ioutil.ReadFile(yangfile); err == nil {
+		return LoadModuleFromByteArray(rdr)
+	} else {
+		return nil, err
+	}
+}
+
+func LoadModuleFromByteArray(data []byte) (*Module, error) {
 	l := lex(string(data))
 	err_code := yyParse(l)
 	if err_code != 0 || l.lastError != nil {

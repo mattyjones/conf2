@@ -1,6 +1,6 @@
 package c2io
 
-// #include "c2io/c2io_stream.h"
+// #include "c2io_stream.h"
 // extern int c2io_read_stream(c2io_read_stream_impl impl_func, void *sinkPtr, void *source_handle, void *bufPtr, char *resourceId);
 import "C"
 

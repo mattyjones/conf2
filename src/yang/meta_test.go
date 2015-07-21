@@ -49,8 +49,23 @@ func TestMetaProxy(t *testing.T) {
 	nextResolvedMeta := i2.NextMeta()
 	if nextResolvedMeta != g1a {
 		t.Error("resolved in iterator didn't work")
-	} else {
-		t.Log("AOK")
 	}
-
 }
+
+func TestChoiceGetCase(t *testing.T) {
+	c1 := Choice{Ident:"c1"}
+	cc1 := ChoiceCase{Ident:"cc1"}
+	l1 := Leaf{Ident:"l1"}
+	cc1.AddMeta(&l1)
+	cc2 := ChoiceCase{Ident:"cc2"}
+	l2 := Leaf{Ident:"l2"}
+	cc2.AddMeta(&l2)
+	c1.AddMeta(&cc1)
+	c1.AddMeta(&cc2)
+	actual := c1.GetCase("cc2")
+	if actual.GetIdent() != "cc2" {
+		t.Error("GetCase failed")
+	}
+}
+
+

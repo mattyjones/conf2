@@ -59,6 +59,7 @@ func popAndAddMeta(yylval *yySymType) error {
 %token token_semi
 %token <token> token_rev_ident
 
+/* KEEP LIST IN SYNC WITH lexer.go */
 %token kywd_namespace
 %token kywd_description
 %token kywd_revision
@@ -142,22 +143,13 @@ module_stmt :
 module_body_stmt :
     typedef_stmt
     | grouping_stmt
-    | list_stmt
-    | container_stmt
     | rpc_stmt
     | notification_stmt
+    | body_stmt
 
 module_body_stmts :
-    module_body_stmt {
-      if HasError(yylex, popAndAddMeta(&yylval)) {
-        goto ret1
-      }
-    }
-    | module_body_stmts module_body_stmt {
-      if HasError(yylex, popAndAddMeta(&yylval)) {
-        goto ret1
-      }
-    };
+    module_body_stmt
+    | module_body_stmts module_body_stmt;
 
 optional_body_stmts :
     /*empty*/
@@ -168,24 +160,59 @@ body_stmt :
     | container_stmt
     | leaf_stmt
     | leaf_list_stmt
+    | uses_stmt
+    | choice_stmt
 
 body_stmts :
-    body_stmt  {
-        if HasError(yylex, popAndAddMeta(&yylval)) {
-          goto ret1
-        }
+    body_stmt | body_stmts body_stmt;
+
+choice_stmt :
+    choice_def
+    token_curly_open
+    choice_stmt_body
+    token_curly_close {
+      if HasError(yylex, popAndAddMeta(&yylval)) {
+        goto ret1
       }
-    | body_stmts body_stmt  {
-       if HasError(yylex, popAndAddMeta(&yylval)) {
-         goto ret1
-       }
-     };
+    }
+
+choice_stmt_body :
+    /* empty */
+    | description token_semi
+    | case_stmts
+
+choice_def :
+    kywd_choice token_ident {
+        yylval.stack.Push(&Choice{Ident:$2})
+    };
+
+case_stmts :
+    case_stmt | case_stmts case_stmt;
+
+case_stmt :
+    case_def
+    token_curly_open
+    optional_body_stmts
+    token_curly_close {
+      if HasError(yylex, popAndAddMeta(&yylval)) {
+        goto ret1
+      }
+    }
+
+case_def :
+    kywd_case token_ident {
+        yylval.stack.Push(&ChoiceCase{Ident:$2})
+    };
 
 typedef_stmt :
-        typedef_def
-        token_curly_open
-        typedef_stmt_body
-        token_curly_close;
+    typedef_def
+    token_curly_open
+    typedef_stmt_body
+    token_curly_close {
+      if HasError(yylex, popAndAddMeta(&yylval)) {
+        goto ret1
+      }
+    };
 
 typedef_def :
     kywd_typedef token_ident {
@@ -203,7 +230,10 @@ typedef_stmt_body_stmt:
         | kywd_default token_string token_semi;
 
 type_stmt :
-        kywd_type token_ident type_stmt_body
+        kywd_type token_ident type_stmt_body {
+         y := yylval.stack.Peek().(HasType)
+         y.SetType($2)
+        }
         ;
 
 type_stmt_body :
@@ -219,7 +249,11 @@ container_stmt :
     container_def
     token_curly_open
     container_body_stmts
-    token_curly_close;
+    token_curly_close {
+        if HasError(yylex, popAndAddMeta(&yylval)) {
+            goto ret1
+        }
+    };
 
 container_def :
     kywd_container token_ident {
@@ -232,13 +266,8 @@ container_body_stmts :
 
 container_body_stmt :
     description token_semi
-    | uses_stmt
     | kywd_config token_string token_semi
-    | body_stmt {
-         if HasError(yylex, popAndAddMeta(&yylval)) {
-           goto ret1
-         }
-       }
+    | body_stmt
 
 uses_stmt :
      kywd_uses token_ident token_semi {
@@ -253,7 +282,11 @@ rpc_stmt :
     rpc_def
     token_curly_open
     rpc_body_stmts
-    token_curly_close;
+    token_curly_close {
+        if HasError(yylex, popAndAddMeta(&yylval)) {
+            goto ret1
+        }
+    };
 
 rpc_def :
     kywd_rpc token_ident {
@@ -268,14 +301,14 @@ rpc_body_stmt:
     description token_semi
     | reference_stmt
     | rpc_input optional_body_stmts token_curly_close {
-         input := yylval.stack.Pop().(*RpcInput)
-         rpc := yylval.stack.Peek().(*Rpc)
-         rpc.Input = input
+        if HasError(yylex, popAndAddMeta(&yylval)) {
+            goto ret1
+        }
     }
     | rpc_output optional_body_stmts token_curly_close {
-         output := yylval.stack.Pop().(*RpcOutput)
-         rpc := yylval.stack.Peek().(*Rpc)
-         rpc.Output = output
+        if HasError(yylex, popAndAddMeta(&yylval)) {
+            goto ret1
+        }
     };
 
 rpc_input :
@@ -292,7 +325,11 @@ notification_stmt :
     notification_def
     token_curly_open
     notification_body_stmts
-    token_curly_close;
+    token_curly_close {
+        if HasError(yylex, popAndAddMeta(&yylval)) {
+            goto ret1
+        }
+    };
 
 notification_def :
     kywd_notification token_ident {
@@ -306,17 +343,16 @@ notification_body_stmts :
 /* TODO: if, stats, reference, typedef*/
 notification_body_stmt :
     description token_semi
-    | uses_stmt
     | kywd_config token_string token_semi
-    | body_stmt {
+    | body_stmt;
+
+grouping_stmt :
+    grouping_def
+    grouping_body_defined {
         if HasError(yylex, popAndAddMeta(&yylval)) {
             goto ret1
         }
     };
-
-grouping_stmt :
-    grouping_def
-    grouping_body_defined;
 
 grouping_body_defined:
     token_curly_open
@@ -335,16 +371,16 @@ grouping_body_stmts :
 grouping_body_stmt :
     description token_semi
     | reference_stmt
-    | body_stmt {
-       if HasError(yylex, popAndAddMeta(&yylval)) {
-           goto ret1
-       }
-    };
+    | body_stmt;
 
 list_stmt :
     list_def token_curly_open
     list_body_stmts
-    token_curly_close;
+    token_curly_close{
+         if HasError(yylex, popAndAddMeta(&yylval)) {
+             goto ret1
+         }
+     };
 
 list_def :
     kywd_list token_ident {
@@ -358,21 +394,20 @@ list_body_stmts :
 list_body_stmt :
     description token_semi
     | kywd_max_elements token_int token_semi
-    | uses_stmt
     | kywd_config token_string token_semi
     | kywd_key token_string token_semi
     | kywd_unique token_string token_semi
-    | body_stmt  {
-        if HasError(yylex, popAndAddMeta(&yylval)) {
-            goto ret1
-        }
-    }
+    | body_stmt
 
 leaf_stmt:
     leaf_def
     token_curly_open
     leaf_body_stmts
-    token_curly_close;
+    token_curly_close {
+         if HasError(yylex, popAndAddMeta(&yylval)) {
+             goto ret1
+         }
+     };
 
 leaf_def :
     kywd_leaf token_ident {
@@ -387,7 +422,6 @@ leaf_body_stmts :
 leaf_body_stmt :
     type_stmt
     | description token_semi
-    | uses_stmt
     | kywd_config token_string token_semi
     | kywd_default token_string token_semi
     | kywd_mandatory token_string token_semi
@@ -397,7 +431,11 @@ leaf_list_stmt :
     leaf_list_def
     token_curly_open
     leaf_body_stmts
-    token_curly_close;
+    token_curly_close {
+        if HasError(yylex, popAndAddMeta(&yylval)) {
+            goto ret1
+        }
+    };
 
 leaf_list_def :
     kywd_leaf_list token_ident {

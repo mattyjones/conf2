@@ -1,7 +1,5 @@
 package yang
 
-import "log"
-
 ///////////////////
 // Interfaces
 //////////////////
@@ -31,6 +29,8 @@ type Meta interface {
 
 // Examples: Module, Container but not Leaf or LeafList
 type MetaList interface {
+	// Identifiable
+	GetIdent() string
 	// Meta
 	GetParent() MetaList
 	SetParent(MetaList)
@@ -53,22 +53,6 @@ type DataDef interface {
 	NextDataDef() DataDef
 }
 
-// Examples: Container, List, Grouping
-type HasChoices interface {
-	// Identifiable
-	GetIdent() string
-	// Meta
-	GetParent() MetaList
-	SetParent(MetaList)
-	GetSibling() Meta
-	SetSibling(Meta)
-	// MetaList
-	AddMeta(Meta) error
-	GetFirstMeta() Meta
-	// HasChoices
-	GetFirstChoice() *Choice
-}
-
 type HasGroupings interface {
 	// Identifiable
 	GetIdent() string
@@ -84,6 +68,33 @@ type HasGroupings interface {
 	GetGroupings() MetaList
 }
 
+type HasTypedefs interface {
+	// Identifiable
+	GetIdent() string
+	// Meta
+	GetParent() MetaList
+	SetParent(MetaList)
+	GetSibling() Meta
+	SetSibling(Meta)
+	// MetaList
+	AddMeta(Meta) error
+	GetFirstMeta() Meta
+	// HasTypedefs
+	GetTypedefs() MetaList
+}
+
+type HasType interface {
+	// Identifiable
+	GetIdent() string
+	// Meta
+	GetParent() MetaList
+	SetParent(MetaList)
+	GetSibling() Meta
+	SetSibling(Meta)
+	// HasType
+	Type() string
+	SetType(dataType string)
+}
 ///////////////////////
 // Base structs
 ///////////////////////
@@ -111,38 +122,45 @@ type MetaBase struct {
 	Parent MetaList
 	Sibling Meta
 }
-//func (y *MetaBase) SetParent(parent MetaList) {
-//	y.Parent = parent
-	//y.Sibling = parent.GetFirstMeta()
-//}
 
 // Meta and MetaList combination helpers
 type MetaContainer struct {
+	Ident string
 	MetaBase
 	ListBase
 }
-//func (y *MetaContainer) LinkMeta(impl MetaList, meta Meta) error {
-//	return y.ListBase.LinkMeta(impl, meta)
-//}
 
-// Store MetaList
+// Meta
+func (y *MetaContainer) GetIdent() (string) {
+	return y.Ident
+}
+// Meta
 func (y *MetaContainer) SetParent(parent MetaList) {
 	y.Parent = parent
 }
 func (y *MetaContainer) GetParent() MetaList {
-	return y.MetaBase.Parent
+	return y.Parent
 }
+func (y *MetaContainer) GetSibling() Meta {
+	return y.Sibling
+}
+func (y *MetaContainer) SetSibling(sibling Meta) {
+	y.Sibling = sibling
+}
+// MetaList
 func (y *MetaContainer) AddMeta(meta Meta) error {
 	return y.LinkMeta(y, meta)
 }
 func (y *MetaContainer) GetFirstMeta() Meta {
 	return y.FirstMeta
 }
-func (y *MetaContainer) GetSibling() Meta {
-	return y.FirstMeta
+
+type MetaError struct {
+	Msg string
 }
-func (y *MetaContainer) SetSibling(sibling Meta) {
-	y.MetaBase.Sibling = sibling
+
+func (e *MetaError) Error() string {
+	return e.Msg
 }
 
 ////////////////////////
@@ -160,7 +178,6 @@ type Module struct {
 	Rpcs MetaContainer
 	Notifications MetaContainer
 	Groupings MetaContainer
-	Choices MetaContainer
 	Typedefs MetaContainer
 }
 // Identifiable
@@ -202,9 +219,6 @@ func (y *Module) AddMeta(meta Meta) error {
 	case *Typedef:
 		y.Typedefs.SetParent(y)
 		return y.Typedefs.LinkMeta(y, x)
-	case *Choice:
-		y.Choices.SetParent(y)
-		return y.Choices.LinkMeta(y, x)
 	default:
 		y.Defs.SetParent(y)
 		return y.Defs.LinkMeta(y, x)
@@ -225,17 +239,16 @@ func (y *Module) GetNotifications() MetaList {
 }
 // HasGroupings
 func (y *Module) GetGroupings() MetaList {
-	log.Println("getting module groupings", y.Groupings)
 	return &y.Groupings
 }
-func (y *Module) GetChoices() MetaList {
-	return &y.Choices
-}
-func (y *Module) GetTypeDefs() MetaList {
+func (y *Module) GetTypedefs() MetaList {
 	return &y.Typedefs
 }
 
 ////////////////////////////////////////////////////
+
+type ChoiceDecider func(Choice, ChoiceCase, interface{})
+
 
 type Choice struct {
 	Ident string
@@ -345,9 +358,9 @@ type Container struct {
 	MetaBase
 	ListBase
 	Groupings MetaContainer
-	Choices MetaContainer
-	IsConfig bool
-	IsMandatory bool
+	Typedefs MetaContainer
+	Config bool
+	Mandatory bool
 }
 // Identifiable
 func (y *Container) GetIdent() (string) {
@@ -379,9 +392,6 @@ func (y *Container) AddMeta(meta Meta) error {
 	case *Grouping:
 		y.Groupings.SetParent(y)
 		return y.Groupings.LinkMeta(y, meta)
-	case *Choice:
-		y.Choices.SetParent(y)
-		return y.Choices.LinkMeta(y, meta)
 	default:
 		e := y.LinkMeta(y, meta)
 		return e
@@ -390,14 +400,13 @@ func (y *Container) AddMeta(meta Meta) error {
 func (y *Container) GetFirstMeta() Meta {
 	return y.FirstMeta
 }
-// HasChoices
-func (y *Container) GetFirstChoice() *Choice {
-	y.Choices.SetParent(y)
-	return y.Choices.FirstMeta.(*Choice)
-}
 // HasGroupings
 func (y *Container) GetGroupings() MetaList {
 	return &y.Groupings
+}
+// HasTypedefs
+func (y *Container) GetTypedefs() MetaList {
+	return &y.Typedefs
 }
 
 ////////////////////////////////////////////////////
@@ -408,9 +417,9 @@ type List struct {
 	MetaBase
 	ListBase
 	Groupings MetaContainer
-	Choices MetaContainer
-	IsConfig bool
-	IsMandatory bool
+	Typedefs MetaContainer
+	Config bool
+	Mandatory bool
 }
 // Identifiable
 func (y *List) GetIdent() (string) {
@@ -442,9 +451,6 @@ func (y *List) AddMeta(meta Meta) error {
 	case *Grouping:
 		y.Groupings.SetParent(y)
 		return y.Groupings.LinkMeta(y, meta)
-	case *Choice:
-		y.Choices.SetParent(y)
-		return y.Choices.LinkMeta(y, meta)
 	default:
 		return y.LinkMeta(y, meta)
 	}
@@ -452,14 +458,13 @@ func (y *List) AddMeta(meta Meta) error {
 func (y *List) GetFirstMeta() Meta {
 	return y.FirstMeta
 }
-// HasChoices
-func (y *List) GetFirstChoice() *Choice {
-	y.Choices.SetParent(y)
-	return y.Choices.FirstMeta.(*Choice)
-}
 // HasGroupings
 func (y *List) GetGroupings() MetaList {
 	return &y.Groupings
+}
+// HasTypedefs
+func (y *List) GetTypedefs() MetaList {
+	return &y.Typedefs
 }
 
 ////////////////////////////////////////////////////
@@ -468,9 +473,16 @@ type Leaf struct {
 	Ident string
 	Description string
 	MetaBase
-	IsConfig bool
-	IsMandatory bool
+	Config bool
+	Mandatory bool
+	DataType string
 }
+
+// Distinguishes the concrete type in choice-cases
+func (y *Leaf) Leaf() Meta {
+	return y
+}
+
 // Identifiable
 func (y *Leaf) GetIdent() (string) {
 	return y.Ident
@@ -495,6 +507,14 @@ func (y *Leaf) GetSibling() Meta {
 func (y *Leaf) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+// HasType
+func (y *Leaf) Type() string {
+	return y.DataType
+}
+func (y *Leaf) SetType(dataType string) {
+	y.DataType = dataType
+}
+
 
 ////////////////////////////////////////////////////
 
@@ -502,8 +522,9 @@ type LeafList struct {
 	Ident string
 	Description string
 	MetaBase
-	IsConfig bool
-	IsMandatory bool
+	Config bool
+	Mandatory bool
+	DataType string
 }
 // Identifiable
 func (y *LeafList) GetIdent() (string) {
@@ -529,6 +550,13 @@ func (y *LeafList) GetSibling() Meta {
 func (y *LeafList) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+// HasType
+func (y *LeafList) Type() string {
+	return y.DataType
+}
+func (y *LeafList) SetType(dataType string) {
+	y.DataType = dataType
+}
 
 ////////////////////////////////////////////////////
 
@@ -537,9 +565,10 @@ type Grouping struct {
 	Description string
 	MetaBase
 	ListBase
-	Choices MetaContainer
-	IsConfig bool
-	IsMandatory bool
+	Config bool
+	Mandatory bool
+	Groupings MetaContainer
+	Typedefs MetaContainer
 }
 // Identifiable
 func (y *Grouping) GetIdent() (string) {
@@ -567,34 +596,27 @@ func (y *Grouping) SetSibling(sibling Meta) {
 }
 // MetaList
 func (y *Grouping) AddMeta(meta Meta) error {
-	switch meta.(type) {
-	case *Choice:
-		y.Choices.SetParent(y)
-		return y.Choices.LinkMeta(y, meta)
-	default:
-		return y.LinkMeta(y, meta)
-	}
+	return y.LinkMeta(y, meta)
 }
 func (y *Grouping) GetFirstMeta() Meta {
 	return y.FirstMeta
 }
-// HasChoices
-func (y *Grouping) GetFirstChoice() *Choice {
-	y.Choices.SetParent(y)
-	return y.Choices.FirstMeta.(*Choice)
+// HasGroupings
+func (y *Grouping) GetGroupings() MetaList {
+	return &y.Groupings
 }
-// MetaProxy
-//func (y *Grouping) ResolveProxy() MetaIterator {
-//	return &MetaListIterator{position:y.GetFirstMeta(), resolveProxies:true}
-//}
+// HasTypedefs
+func (y *Grouping) GetTypedefs() MetaList {
+	return &y.Typedefs
+}
 
 ////////////////////////////////////////////////////
 
 type RpcInput struct {
 	MetaBase
 	ListBase
+	Typedefs MetaContainer
 	Groupings MetaContainer
-	Choices MetaContainer
 }
 // Identifiable
 func (y *RpcInput) GetIdent() (string) {
@@ -620,9 +642,6 @@ func (y *RpcInput) AddMeta(meta Meta) error {
 	case *Grouping:
 		y.Groupings.SetParent(y)
 		return y.Groupings.LinkMeta(y, meta)
-	case *Choice:
-		y.Choices.SetParent(y)
-		return y.Choices.LinkMeta(y, meta)
 	default:
 		return y.LinkMeta(y, meta)
 	}
@@ -630,14 +649,13 @@ func (y *RpcInput) AddMeta(meta Meta) error {
 func (y *RpcInput) GetFirstMeta() Meta {
 	return y.FirstMeta
 }
-// HasChoices
-func (y *RpcInput) GetFirstChoice() *Choice {
-	y.Choices.SetParent(y)
-	return y.Choices.FirstMeta.(*Choice)
-}
 // HasGroupings
 func (y *RpcInput) GetGroupings() MetaList {
 	return &y.Groupings
+}
+// HasTypedefs
+func (y *RpcInput) GetTypedefs() MetaList {
+	return &y.Typedefs
 }
 
 
@@ -647,7 +665,7 @@ type RpcOutput struct {
 	MetaBase
 	ListBase
 	Groupings MetaContainer
-	Choices MetaContainer
+	Typedefs MetaContainer
 }
 // Identifiable
 func (y *RpcOutput) GetIdent() (string) {
@@ -672,9 +690,6 @@ func (y *RpcOutput) AddMeta(meta Meta) error {
 	case *Grouping:
 		y.Groupings.SetParent(y)
 		return y.Groupings.LinkMeta(y, meta)
-	case *Choice:
-		y.Choices.SetParent(y)
-		return y.Choices.LinkMeta(y, meta)
 	default:
 		return y.LinkMeta(y, meta)
 	}
@@ -682,14 +697,13 @@ func (y *RpcOutput) AddMeta(meta Meta) error {
 func (y *RpcOutput) GetFirstMeta() Meta {
 	return y.FirstMeta
 }
-// HasChoices
-func (y *RpcOutput) GetFirstChoice() *Choice {
-	y.Choices.SetParent(y)
-	return y.Choices.FirstMeta.(*Choice)
-}
 // HasGroupings
 func (y *RpcOutput) GetGroupings() MetaList {
 	return &y.Groupings
+}
+// HasTypedefs
+func (y *RpcOutput) GetTypedefsGroupings() MetaList {
+	return &y.Typedefs
 }
 
 ////////////////////////////////////////////////////
@@ -753,13 +767,14 @@ func (y *Rpc) GetFirstMeta() Meta {
 ////////////////////////////////////////////////////
 
 type Notification struct {
-	Ident string
+	Ident     string
 	Description string
 	MetaBase
 	ListBase
 	Groupings MetaContainer
-	Choices MetaContainer
+	Typedefs MetaContainer
 }
+
 // Identifiable
 func (y *Notification) GetIdent() (string) {
 	return y.Ident
@@ -790,15 +805,20 @@ func (y *Notification) AddMeta(meta Meta) error {
 	case *Grouping:
 		y.Groupings.SetParent(y)
 		return y.Groupings.LinkMeta(y, meta)
-	case *Choice:
-		y.Choices.SetParent(y)
-		return y.Choices.LinkMeta(y, meta)
 	default:
 		return y.LinkMeta(y, meta)
 	}
 }
 func (y *Notification) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+// HasGroupings
+func (y *Notification) GetGroupings() MetaList {
+	return &y.Groupings
+}
+// HasGroupings
+func (y *Notification) GetTypedefs() MetaList {
+	return &y.Typedefs
 }
 
 ////////////////////////////////////////////////////
@@ -807,6 +827,7 @@ type Typedef struct {
 	Ident string
 	Description string
 	MetaContainer
+	DataType string
 }
 // Identifiable
 func (y *Typedef) GetIdent() (string) {
@@ -839,6 +860,18 @@ func (y *Typedef) AddMeta(meta Meta) error {
 }
 func (y *Typedef) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+// HasType
+func (y *Typedef) Type() string {
+	return y.DataType
+}
+func (y *Typedef) SetType(dataType string) {
+	y.DataType = dataType
+}
+// Typedef
+func (y *Typedef) GetEnumerations() MetaList {
+	// TODO
+	return nil
 }
 
 ////////////////////////////////////////////////////

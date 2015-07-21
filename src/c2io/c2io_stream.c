@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "c2io/c2io_stream.h"
+#include "c2io_stream.h"
 
 // Bridge function to call C function pointer in a given language to convert from language
 // data streams to go data streams

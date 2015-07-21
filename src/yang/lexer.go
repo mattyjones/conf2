@@ -44,6 +44,8 @@ var keywords = [...]string{
 	"}",
 	";",
 	"[revision]",
+
+	// KEEP LIST IN SYNC WITH parser.y
 	"namespace",
 	"description",
 	"revision",
@@ -70,6 +72,8 @@ var keywords = [...]string{
 	"reference",
 	"leaf-list",
 	"max-elements",
+	"choice",
+	"case",
 }
 
 const eof rune = 0
@@ -313,6 +317,8 @@ func lexBegin(l *lexer) stateFunc {
 		kywd_leaf,
 		kywd_list,
 		kywd_rpc,
+		kywd_choice,
+		kywd_case,
 	}
 	for _, ttype := range defTypes {
 		if l.acceptToken(ttype) {

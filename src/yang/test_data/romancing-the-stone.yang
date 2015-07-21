@@ -1,10 +1,8 @@
-module stone {
+module rtstone {
     namespace "rtstone";
     prefix "rtstone";
-    description "zzz";
-
     revision 0000-00-00 {
-        description "xx";
+        description "";
     }
 
     grouping position {
@@ -26,15 +24,15 @@ module stone {
                 enum blue;
                 enum green;
                 enum yellow;
-            }
+            };
         }
         leaf-list members {
             type string;
         }
-        container spawn-point {
+        leaf spawn-point {
             uses position;
         }
-        container base-position {
+        leaf base-position {
             uses position;
         }
     }
@@ -53,12 +51,9 @@ module stone {
             container entry {
                 /* should be leaf-ref i guess */
                 leaf team {
-                    type string;
+                    type "string";
                 }
-                leaf start-time {
-                    type int32;
-                }
-                leaf duration {
+                leaf time {
                     type int32;
                 }
             }
@@ -66,17 +61,7 @@ module stone {
         leaf time-limit {
             type int32;
         }
-        list spawn-inventory {
-            container item {
-                leaf item {
-                    type int32;
-                }
-                leaf amount {
-                    type int32;
-                }
-            }
-        }
-        list chest-inventory {
+        list initial-inventory {
             container item {
                 leaf item {
                     type int32;
@@ -88,6 +73,28 @@ module stone {
         }
         list wardrobe {
             leaf item {
+                type int32;
+            }
+        }
+    }
+
+    rpc start-game {
+        input {
+            leaf seconds-from-now {
+                type int32;
+            }
+        }
+    }
+    rpc end-game {
+        input {
+            leaf seconds-from-now {
+                type int32;
+            }
+        }
+    }
+    rpc restart-game {
+        input {
+            leaf seconds-from-now {
                 type int32;
             }
         }

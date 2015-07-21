@@ -15,105 +15,14 @@ module yang {
         }
     }
 
-    grouping container {
-        uses def-header;
-        uses uses;
-        // when, if, must
-        // presence
-        // config
-        // status
-        // reference
-        // typedef ??
-        // grouping ??
-        uses definitions;
-    }
-
-    grouping list {
-        uses def-header;
-        uses uses;
-        uses definitions;
-    }
-
-    grouping leaf {
-        uses def-header;
-        // config
-        leaf config {
-            type string;
-        }
-        // default
-        // if-feature
-        // mandatory
-        leaf mandatory {
-            type string;
-        }
-        // must
-        // reference
-        // status
-        // type
-        uses type;
-        // units
-        // when
-    }
-
-    grouping leaf-list {
-        uses def-header;
-
-    }
-
     grouping uses {
-        leaf grouping {
-            type string;
-        }
-        list refine {
-            leaf default {
+        container uses {
+            leaf grouping {
                 type string;
             }
-        }
-    }
-
-    grouping choice {
-        uses def-header;
-        container cases {
-            uses definitions;
-        }
-    }
-
-    grouping definitions {
-        list choices {
-            leaf ident {
-                type string;
-            }
-            leaf description {
-                type string;
-            }
-            list cases {
-                leaf ident {
+            list refine {
+                leaf default {
                     type string;
-                }
-                /*
-                  list if maintained by iterating
-                  thru definitions for matching choices
-                  should we maintain ref here?
-                */
-
-            }
-        }
-        list definitions {
-            choice body-stmt {
-                case container {
-                    uses container;
-                }
-                case list {
-                    uses list;
-                }
-                case leaf {
-                    uses leaf;
-                }
-                case leaf-list {
-                    uses leaf-list;
-                }
-                case choice {
-                    uses choice;
                 }
             }
         }
@@ -123,27 +32,111 @@ module yang {
         leaf ident {
             type string;
         }
-        lead range {
+        leaf range {
             type string;
         }
         list enumeration {
             leaf ident {
                 type string;
-            };
+            }
         }
     }
 
-    container module {
-        leaf ident {
-            type string;
+    grouping groupings-typedefs {
+        list groupings {
+            /*
+              !! CIRCULAR
+            */
+            uses grouping;
         }
+        list typedefs {
+            uses def-header;
+            uses type;
+        }
+    }
+
+    grouping containers-lists-leafs-uses-choice {
+        list definitions {
+            choice body-stmt {
+                case container {
+                    container container {
+                        uses def-header;
+                        uses uses;
+                        uses groupings-typedefs;
+                        uses containers-lists-leafs-uses-choice;
+                    }
+                }
+                case list {
+                    container list {
+                        uses def-header;
+                        uses uses;
+                        uses groupings-typedefs;
+                        uses containers-lists-leafs-uses-choice;
+                    }
+                }
+                case leaf {
+                    container leaf {
+                        uses def-header;
+                        leaf config {
+                            type bool;
+                        }
+                        leaf mandatory {
+                            type bool;
+                        }
+                        uses type;
+                    }
+                }
+                case leaf-list {
+                    container leaf-list {
+                        uses def-header;
+                        leaf config {
+                            type string;
+                        }
+                        leaf mandatory {
+                            type string;
+                        }
+                        uses type;
+                    }
+                }
+                case uses {
+                    container uses {
+                        uses uses;
+                    }
+                }
+                case choice {
+                    container choice {
+                        uses def-header;
+                        list cases {
+                            leaf ident {
+                                type string;
+                            }
+                            /*
+                             !! CIRCULAR
+                            */
+                            uses containers-lists-leafs-uses-choice;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    grouping grouping {
+        uses def-header;
+
+        /*
+          !! CIRCULAR
+        */
+        uses groupings-typedefs;
+        uses containers-lists-leafs-uses-choice;
+    }
+
+    container module {
+        uses def-header;
         leaf namespace {
             type string;
         }
         leaf prefix {
-            type string;
-        }
-        leaf description {
             type string;
         }
         container revision {
@@ -154,45 +147,23 @@ module yang {
                 type string;
             }
         }
-        list typedefs {
+        list rpcs {
             uses def-header;
-            uses type;
-            leaf ident {
-                type string;
-            }
-        }
-        list groupings {
-            uses def-header;
-            // anyxml
-            // choice
-            // container/grouping/leaf/leaf-list/list
-            // reference
-            // status
-            // typedef
-            // uses
-            uses uses;
-            leaf ident {
-                type string;
-            }
-        }
-        list rpc {
-            uses def-header;
-            leaf ident {
-                type string;
-            }
             container input {
-                uses body-stmts;
+                uses groupings-typedefs;
+                uses containers-lists-leafs-uses-choice;
             }
             container output {
-                uses body-stmts;
+                uses groupings-typedefs;
+                uses containers-lists-leafs-uses-choice;
             }
         }
-        list notification {
+        list notifications {
             uses def-header;
-            leaf ident {
-                type string;
-            }
+            uses groupings-typedefs;
+            uses containers-lists-leafs-uses-choice;
         }
-        uses definitions;
+        uses groupings-typedefs;
+        uses containers-lists-leafs-uses-choice;
     }
 }
