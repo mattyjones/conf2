@@ -1,7 +1,8 @@
-package c2io
+package browser
 import (
 	"testing"
 	"yang"
+	"yang/format"
 	"bytes"
 	"os"
 	"fmt"

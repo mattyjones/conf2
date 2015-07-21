@@ -1,4 +1,4 @@
-package c2io
+package browser
 import (
 	"testing"
 	"yang"

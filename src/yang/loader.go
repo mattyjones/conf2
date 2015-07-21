@@ -1,33 +1,9 @@
 package yang
 
 import (
-	"C"
 	"io/ioutil"
 	"fmt"
 )
-
-//export LoadModuleFromCByteArray
-func LoadModuleFromCByteArray(cdata *C.char, len C.int) {
-	// TODO: improve performance by not copying
-	gdata := []byte(C.GoStringN(cdata, len))
-	LoadModuleFromByteArray(gdata)
-}
-
-func LoadModule(resolver ResourceResolver, yangfile string) (*Module, error) {
-	data, err := resolver.LoadResource(yangfile)
-	if err == nil {
-		return LoadModuleFromByteArray(data)
-	}
-	return nil, err
-}
-
-func LoadModuleFromFile(yangfile string) (*Module, error) {
-	if rdr, err := ioutil.ReadFile(yangfile); err == nil {
-		return LoadModuleFromByteArray(rdr)
-	} else {
-		return nil, err
-	}
-}
 
 func LoadModuleFromByteArray(data []byte) (*Module, error) {
 	l := lex(string(data))
@@ -45,6 +21,24 @@ func LoadModuleFromByteArray(data []byte) (*Module, error) {
 	d := l.stack.Peek()
 	return d.(*Module), nil
 }
+
+
+func LoadModule(resolver ResourceResolver, yangfile string) (*Module, error) {
+	data, err := resolver.LoadResource(yangfile)
+	if err == nil {
+		return LoadModuleFromByteArray(data)
+	}
+	return nil, err
+}
+
+func LoadModuleFromFile(yangfile string) (*Module, error) {
+	if rdr, err := ioutil.ReadFile(yangfile); err == nil {
+		return LoadModuleFromByteArray(rdr)
+	} else {
+		return nil, err
+	}
+}
+
 
 type ResourceResolver interface {
 	LoadResource(resource string) ([]byte, error)

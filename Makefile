@@ -35,7 +35,7 @@ generate :
 
 build :
 	CGO_CFLAGS="$(libc2yang_CFLAGS)" \
-	  go build yang
+	  go build yang yang/browser yang/comm
 
 TEST='Test*'
 Test% :

@@ -1,8 +1,7 @@
-package c2io
+package browser
 import (
 	"yang"
 	"reflect"
-	"fmt"
 )
 
 /**
@@ -29,7 +28,6 @@ func (self *MetaTransmitter) getValue(meta yang.HasType, obj interface{}) string
 	fieldName := yang.MetaNameToFieldName(meta.GetIdent())
 	objType := reflect.ValueOf(obj).Elem()
 	value := objType.FieldByName(fieldName)
-fmt.Println("type", meta.GetIdent(), "is type", meta.Type())
 	switch meta.Type() {
 		case "bool":
 			if value.Bool() {
@@ -81,7 +79,7 @@ func (self *MetaTransmitter) transmitDefinitions(meta *yang.List, data yang.Meta
 		if itemMeta, ok := choice.GetCase(caseType).GetFirstMeta().(*yang.Container); ok {
 			self.transmitObject(itemMeta, next)
 		} else {
-			return &yang.MetaError{"Expected container meta for definition"}
+			return &browserError{"Expected container meta for definition"}
 		}
 	}
 	self.out.ExitList(meta)

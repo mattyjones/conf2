@@ -1,8 +1,16 @@
-package c2io
+package browser
 
 import (
 	"yang"
 )
+
+type browserError struct {
+	Msg string
+}
+
+func (err *browserError) Error() string {
+	return err.Msg
+}
 
 type Visitor interface {
 	Visit(*yang.Meta, interface{})

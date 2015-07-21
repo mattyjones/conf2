@@ -155,11 +155,11 @@ func (y *MetaContainer) GetFirstMeta() Meta {
 	return y.FirstMeta
 }
 
-type MetaError struct {
+type metaError struct {
 	Msg string
 }
 
-func (e *MetaError) Error() string {
+func (e *metaError) Error() string {
 	return e.Msg
 }
 
@@ -750,7 +750,7 @@ func (y *Rpc) AddMeta(meta Meta) error {
 		t.SetParent(y)
 		y.Output = t
 	default:
-		return &yangError{"Illegal call to add metainition: rpc has fixed input and output children"}
+		return &metaError{"Illegal call to add metainition: rpc has fixed input and output children"}
 	}
 	if y.Output != nil {
 		y.Input.Sibling = y.Output

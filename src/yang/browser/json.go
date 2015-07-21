@@ -1,4 +1,5 @@
-package c2io
+package browser
+
 import (
 	"io"
 	"yang"
@@ -20,7 +21,7 @@ type JsonReceiver struct {
 	first bool
 }
 
-// Receiver
+// browser.Receiver
 func NewJsonReceiver(out io.Writer ) *JsonReceiver {
 	return &JsonReceiver{out:bufio.NewWriter(out)}
 }
@@ -115,6 +116,8 @@ type JsonTransmitter struct {
 	metaRoot yang.MetaList
 	out Receiver
 }
+
+// Transmitter
 func (self *JsonTransmitter) Transmit() (err error) {
 	var values map[string]interface{}
 	d := json.NewDecoder(self.in)
@@ -151,13 +154,13 @@ func (self *JsonTransmitter) ReadListValues(meta *yang.List, value interface{}) 
 				self.ReadValues(meta, arrayContainer)
 			} else {
 				msg := fmt.Sprint("expected a container for array item", meta.GetIdent())
-				return &yang.MetaError{msg}
+				return &browserError{msg}
 			}
 			self.out.ExitListItem(meta)
 		}
 	} else {
 		msg := fmt.Sprint("expected an array for array item", meta.GetIdent())
-		return &yang.MetaError{msg}
+		return &browserError{msg}
 	}
 	self.out.ExitList(meta)
 	return nil

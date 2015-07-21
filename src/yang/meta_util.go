@@ -78,10 +78,3 @@ func find(root MetaList, path string, resolveProxies bool) (def Meta) {
 	return
 }
 
-type yangError struct {
-	s string
-}
-
-func (err *yangError) Error() string {
-	return err.s
-}

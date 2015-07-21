@@ -6,7 +6,7 @@ import (
 
 func LoadSampleModule(t *testing.T) (*Module) {
 	f := &FileResolver{}
-	m, err:= LoadModule(f, "test_data/romancing-the-stone.yang")
+	m, err:= LoadModule(f, "testdata/romancing-the-stone.yang")
 	if err != nil {
 		t.Error(err.Error())
 	}

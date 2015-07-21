@@ -1,4 +1,4 @@
-package c2io
+package comm
 
 import "C"
 
@@ -11,13 +11,6 @@ type echo struct {
 	data string
 }
 
-//export c2io_echoTest
-func c2io_echoTest(source DataSource, resourceId *C.char) *C.char {
-	ed := &echo{}
-	buff := make([]byte, 1024)
-	source.ReadData(ed, buff, C.GoString(resourceId))
-	return C.CString(ed.data)
-}
 
 func (e *echo) WriteData(buffer []byte) int {
 	// simple assumption, assumes data is < buffsize

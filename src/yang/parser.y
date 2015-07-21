@@ -5,6 +5,14 @@ import (
     "fmt"
 )
 
+type yangError struct {
+	s string
+}
+
+func (err *yangError) Error() string {
+	return err.s
+}
+
 func (l *lexer) Lex(lval *yySymType) int {
     t, _ := l.nextToken()
     if t.typ == ParseEof {
