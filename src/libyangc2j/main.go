@@ -1,4 +1,4 @@
-package main // import "libyangc2"
+package main // import "libyangc2j"
 
 import "C"
 import _ "yang"

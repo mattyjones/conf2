@@ -1,5 +1,7 @@
 package yang
 
+import "C"
+
 import (
 	"io/ioutil"
 	"fmt"
@@ -39,7 +41,6 @@ func LoadModuleFromFile(yangfile string) (*Module, error) {
 	}
 }
 
-
 type ResourceResolver interface {
 	LoadResource(resource string) ([]byte, error)
 }
@@ -49,4 +50,11 @@ type FileResolver struct {
 
 func (fs *FileResolver) LoadResource(fname string) ([]byte, error) {
 	return ioutil.ReadFile(fname)
+}
+
+//export yangc2_load_module
+func yangc2_load_module(cdata *C.char, len C.int) {
+	// TODO: improve performance by not copying
+	gdata := []byte(C.GoStringN(cdata, len))
+	LoadModuleFromByteArray(gdata)
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func TestSimpleExample(t *testing.T) {
-	data, err := ioutil.ReadFile("test_data/simple.test.yang")
+	data, err := ioutil.ReadFile("testdata/simple.yang")
 
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -35,7 +35,7 @@ func TestSimpleExample(t *testing.T) {
 
 
 func TestStoneLex(t *testing.T) {
-	stone, err := ioutil.ReadFile("test_data/romancing-the-stone.yang")
+	stone, err := ioutil.ReadFile("testdata/romancing-the-stone.yang")
 	if err != nil {
 		t.Errorf("could not load file %s", err)
 	}

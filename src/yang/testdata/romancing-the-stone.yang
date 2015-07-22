@@ -19,20 +19,15 @@ module rtstone {
 
     grouping team {
         leaf color {
-            type enumeration {
-                enum red;
-                enum blue;
-                enum green;
-                enum yellow;
-            };
+            type string;
         }
         leaf-list members {
             type string;
         }
-        leaf spawn-point {
+        container spawn-point {
             uses position;
         }
-        leaf base-position {
+        container base-position {
             uses position;
         }
     }
@@ -49,9 +44,8 @@ module rtstone {
         }
         list leaderboard {
             container entry {
-                /* should be leaf-ref i guess */
                 leaf team {
-                    type "string";
+                    type string;
                 }
                 leaf time {
                     type int32;
