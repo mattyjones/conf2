@@ -34,6 +34,7 @@ generate :
 	go generate yang
 
 build :
+	CGO_CFLAGS="$(libyangc2_CFLAGS)" \
 	  go build yang yang/comm
 
 TEST='Test*'
@@ -41,7 +42,7 @@ Test% :
 	$(MAKE) test TEST='$@'
 
 test : src/yang/parser.go
-	CGO_CFLAGS="$(libc2yang_CFLAGS)" \
+	CGO_CFLAGS="$(libyangc2_CFLAGS)" \
 	  go test -v yang -run $(TEST)
 
 install: libyangc2 libyangc2j;
@@ -51,7 +52,8 @@ JAVA_SRC = $(shell find drivers/java/src \( \
 	-not -name '*Test.java' \) -type f)
 
 JNI_SRCS = \
-	org.conf2.yang.comm.Driver
+	org.conf2.yang.comm.Driver \
+	org.conf2.yang.Loader \
 
 driver-java :
 	javac -d drivers/java/classes $(JAVA_SRC)

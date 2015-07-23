@@ -24,37 +24,22 @@ func LoadModuleFromByteArray(data []byte) (*Module, error) {
 	return d.(*Module), nil
 }
 
-
-func LoadModule(resolver ResourceResolver, yangfile string) (*Module, error) {
-	data, err := resolver.LoadResource(yangfile)
-	if err == nil {
-		return LoadModuleFromByteArray(data)
-	}
-	return nil, err
-}
-
-func LoadModuleFromFile(yangfile string) (*Module, error) {
-	if rdr, err := ioutil.ReadFile(yangfile); err == nil {
-		return LoadModuleFromByteArray(rdr)
-	} else {
+func LoadModule(source ResourceSource, yangfile string) (*Module, error) {
+	if res, err := source.OpenResource(yangfile); err != nil {
 		return nil, err
+	} else {
+		defer res.Close()
+		if data, err := ioutil.ReadAll(res); err != nil {
+			return nil, err
+		} else {
+			return LoadModuleFromByteArray(data)
+		}
 	}
 }
 
-type ResourceResolver interface {
-	LoadResource(resource string) ([]byte, error)
-}
-
-type FileResolver struct {
-}
-
-func (fs *FileResolver) LoadResource(fname string) ([]byte, error) {
-	return ioutil.ReadFile(fname)
-}
-
-//export yangc2_load_module
-func yangc2_load_module(cdata *C.char, len C.int) {
-	// TODO: improve performance by not copying
-	gdata := []byte(C.GoStringN(cdata, len))
-	LoadModuleFromByteArray(gdata)
+//export yangc2_load_module_from_resource_source
+func yangc2_load_module_from_resource_source(source ResourceSource, resourceStr *C.char) error {
+	resourceId := C.GoString(resourceStr)
+	_, err := LoadModule(source, resourceId)
+	return err
 }

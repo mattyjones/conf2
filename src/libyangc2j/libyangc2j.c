@@ -1,7 +1,10 @@
 #include <string.h>
+#include <stdbool.h>
 #include "org_conf2_yang_comm_Driver.h"
-#include "yang/comm/yangc2_comm_stream.h"
-#include "yang/comm.h"
+#include "org_conf2_yang_Loader.h"
+
+#include "yang/yangc2_stream.h"
+#include "yang.h"
 
 JavaVM* jvm = NULL;
 
@@ -20,6 +23,25 @@ RcError checkError(JNIEnv *env) {
     return RC_BAD;
   }
   return RC_OK;
+}
+
+char *get_exception_message(JNIEnv *env, jthrowable err) {
+  jclass throwable_class = (*env)->FindClass(env, "java/lang/Throwable");
+  jmethodID to_string = (*env)->GetMethodID(env, throwable_class, "toString", "()Ljava/lang/String;");
+  jstring msg = (*env)->CallObjectMethod(env, throwable_class, to_string);
+  return (char *)(*env)->GetStringUTFChars(env, msg, 0);
+}
+
+bool checkFsError(JNIEnv *env, GoInterface *err) {
+  if ((*env)->ExceptionCheck(env)) {
+    jthrowable exception = (*env)->ExceptionOccurred(env);
+    char *msg = get_exception_message(env, exception);
+    *err = yangc2_new_fs_error(msg);
+    (*env)->ExceptionClear(env);
+    return true;
+  }
+
+  return false;
 }
 
 void initJvmReference(JNIEnv* env) {
@@ -68,54 +90,73 @@ JNIEnv *getCurrentJniEnv() {
   return env;
 }
 
-int java_read_stream(void *sinkPtr, void *resourceLoader, void *buffPtr, char *resourceId) {
-  RcError err = RC_OK;
-  GoInterface sink = *((GoInterface *) sinkPtr);
-  GoSlice buff = *((GoSlice *)buffPtr);
+void *java_open_stream(void *source_handle, char *resId, void *errPtr) {
+  GoInterface *err = (GoInterface *) errPtr;
   JNIEnv* env = getCurrentJniEnv();
   jclass loaderIface = (*env)->FindClass(env, "org/conf2/yang/comm/DataSource");
-  if (err = checkError(env)) {
-    return err;
+  if (checkFsError(env, err)) {
+    return NULL;
   }
   jmethodID getResourceMethod = (*env)->GetMethodID(env, loaderIface, "getResource", "(Ljava/lang/String;)Ljava/io/InputStream;");
-  if (err = checkError(env)) {
-    return err;
+  if (checkFsError(env, err)) {
+    return NULL;
   }
   jclass inputStreamCls = (*env)->FindClass(env, "java/io/InputStream");
-  if (err = checkError(env)) {
-    return err;
+  if (checkFsError(env, err)) {
+    return NULL;
   }
-  jobject resourceIdStr = (*env)->NewStringUTF(env, resourceId);
-  jobject inputStream = (*env)->CallObjectMethod(env, resourceLoader, getResourceMethod, resourceIdStr);
-  if (!(err = checkError(env))) {
-    jmethodID readMethod = (*env)->GetMethodID(env, inputStreamCls, "read", "([BII)I");
-    if (!(err = checkError(env))) {
-      jobject buffer = (*env)->NewByteArray(env, buff.len);
-      jint len = (*env)->CallIntMethod(env, inputStream, readMethod, buffer, 0, buff.len);
-      void* chunk;
-      if (!(err = checkError(env))) {
-        while (len > 0) {
-          chunk = (*env)->GetByteArrayElements(env, buffer, 0);
-          if (chunk != NULL) {
-            memcpy(buff.data, chunk, len);
-            if (err = yangc2_comm_datasink_writedata(sink, buff)) {
-              break;
-            }
-            (*env)->ReleaseByteArrayElements(env, buffer, chunk, JNI_ABORT);
-            len = (*env)->CallIntMethod(env, inputStream, readMethod, buffer, 0, buff.len);
-            if (err = checkError(env)) {
-              break;
-            }
-          }
-        }
-      }
-      (*env)->DeleteLocalRef(env, buffer);
+  jobject resourceIdStr = (*env)->NewStringUTF(env, resId);
+  jobject inputStream = (*env)->CallObjectMethod(env, source_handle, getResourceMethod, resourceIdStr);
+  if (checkFsError(env, err)) {
+    return NULL;
+  }
+  return inputStream;
+}
+
+int java_read_stream(void *stream_handle, void *buffSlicePtr, int maxAmount, void *errPtr) {
+  GoInterface *err = (GoInterface *) errPtr;
+  JNIEnv* env = getCurrentJniEnv();
+  GoSlice buff = *((GoSlice *)buffSlicePtr);
+  jobject inputStream = stream_handle;
+  jclass inputStreamCls = (*env)->FindClass(env, "java/io/InputStream");
+  if (checkFsError(env, err)) {
+    return 0;
+  }
+  jmethodID readMethod = (*env)->GetMethodID(env, inputStreamCls, "read", "([BII)I");
+  if (checkFsError(env, err)) {
+    return 0;
+  }
+  // TODO: for performance, reuse byte buffer between reads. ideally figure out how to read
+  // straight into given buffer w/o allocating but i couldn't figure that out
+  jobject buffer = (*env)->NewByteArray(env, buff.cap);
+  jint amountRead = (*env)->CallIntMethod(env, inputStream, readMethod, buffer, 0, buff.cap);
+  if (checkFsError(env, err)) {
+    return 0;
+  }
+  if (amountRead > 0) {
+    void* chunk = (*env)->GetByteArrayElements(env, buffer, 0);
+    if (chunk == NULL) {
+      *err = yangc2_new_fs_error("Could not allocate java byte buffer");
+    } else {
+      memcpy(buff.data, chunk, amountRead);
+      //buff.len = amountRead;
     }
-    jmethodID closeMethod = (*env)->GetMethodID(env, inputStreamCls, "close", "()V");
-    (*env)->CallObjectMethod(env, inputStream, closeMethod);
-    // closeQuietly - what would you do w/this error?
   }
-  return err;
+  (*env)->DeleteLocalRef(env, buffer);
+  return amountRead;
+}
+
+void java_close_stream(void *stream_handle, void *errPtr) {
+  GoInterface *err = (GoInterface *) errPtr;
+  JNIEnv* env = getCurrentJniEnv();
+  jobject inputStream = stream_handle;
+  jclass inputStreamCls = (*env)->FindClass(env, "java/io/InputStream");
+  if (checkFsError(env, err)) {
+    return;
+  }
+  jmethodID closeMethod = (*env)->GetMethodID(env, inputStreamCls, "close", "()V");
+  (*env)->CallObjectMethod(env, inputStream, closeMethod);
+  checkFsError(env, err);
 }
 
 JNIEXPORT void JNICALL Java_org_conf2_yang_comm_Driver_initializeDriver
@@ -126,9 +167,25 @@ JNIEXPORT void JNICALL Java_org_conf2_yang_comm_Driver_initializeDriver
 JNIEXPORT jstring JNICALL Java_org_conf2_yang_comm_Driver_echoTest
   (JNIEnv *env, jclass serviceCls, jobject resourceLoader, jstring resourceId) {
     initJvmReference(env);
-    GoInterface source = yangc2_comm_new_driver_data_source(&java_read_stream, resourceLoader);
+    GoInterface source = yangc2_new_driver_resource_source(&java_open_stream, &java_read_stream, &java_close_stream, resourceLoader);
     const char *cResourceId = (*env)->GetStringUTFChars(env, resourceId, 0);
-    char *results = yangc2_comm_echo_test(source, (char *)cResourceId);
+    char *results = yangc2_echo_test(source, (char *)cResourceId);
     (*env)->ReleaseStringUTFChars(env, resourceId, cResourceId);
     return (*env)->NewStringUTF(env, results);
+}
+
+JNIEXPORT jobject JNICALL Java_org_conf2_yang_Loader_loadModule
+  (JNIEnv *env, jclass loaderClass, jobject dataSourceHandle, jstring resource) {
+  GoInterface dsIface;
+  resolveDriverHandle(env, dataSourceHandle, &dsIface);
+  char *resourceStr = (char *)(*env)->GetStringUTFChars(env, resource, 0);
+  GoInterface err = yangc2_load_module_from_resource_source(dsIface, resourceStr);
+  return NULL;
+}
+
+JNIEXPORT jobject JNICALL Java_org_conf2_yang_comm_Driver_newDataSource
+  (JNIEnv *env, jobject driver, jobject dataSource) {
+  GoInterface ds = yangc2_new_driver_resource_source(&java_open_stream, &java_read_stream, &java_close_stream, dataSource);
+  jobject dsHandle = makeDriverHandle(env, ds);
+  return dsHandle;
 }

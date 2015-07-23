@@ -23,6 +23,14 @@ JNIEXPORT void JNICALL Java_org_conf2_yang_comm_Driver_initializeDriver
 JNIEXPORT jstring JNICALL Java_org_conf2_yang_comm_Driver_echoTest
   (JNIEnv *, jclass, jobject, jstring);
 
+/*
+ * Class:     org_conf2_yang_comm_Driver
+ * Method:    newDataSource
+ * Signature: (Lorg/conf2/yang/comm/DataSource;)Lorg/conf2/yang/comm/DriverHandle;
+ */
+JNIEXPORT jobject JNICALL Java_org_conf2_yang_comm_Driver_newDataSource
+  (JNIEnv *, jobject, jobject);
+
 #ifdef __cplusplus
 }
 #endif
