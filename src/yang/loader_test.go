@@ -5,8 +5,8 @@ import (
 )
 
 func LoadSampleModule(t *testing.T) (*Module) {
-	f := &FileDataSource{}
-	m, err:= LoadModule(f, "testdata/romancing-the-stone.yang")
+	f := &FileDataSource{Root:"testdata"}
+	m, err:= LoadModule(f, "romancing-the-stone.yang")
 	if err != nil {
 		t.Error(err.Error())
 	}

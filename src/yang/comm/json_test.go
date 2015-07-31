@@ -2,6 +2,7 @@ package comm
 import (
 	"testing"
 	"yang"
+	"yang/browse"
 	"bytes"
 	"strings"
 )
@@ -34,11 +35,16 @@ module json-test {
 		json := "{\"hobbies\":[{\"birding\":{\"favorite-species\":\"towhee\",\"extra\":\"double-mint\"}}]}"
 		inIo := strings.NewReader(json)
 		var actualBuff bytes.Buffer
-		out := NewJsonReceiver(&actualBuff)
-		in := JsonTransmitter{in:inIo, out:out, metaRoot:module}
-		if err = in.Transmit(); err != nil {
+		rcvr := NewJsonReceiver(&actualBuff)
+		out := rcvr.GetSelector()
+		in := NewJsonTransmitter(inIo).GetSelector()
+		v := browse.NewVisitor(in)
+		v.Out = browse.NewVisitor(out)
+		err = in(browse.READ_VALUE, module, v)
+		if err != nil {
 			t.Error("failed to transmit json", err)
 		} else {
+			rcvr.Flush();
 			actual := string(actualBuff.Bytes())
 			t.Log("Round Trip:", actual)
 			expected := "{\"hobbies\":[{\"birding\":{\"favorite-species\":\"towhee\"}}]}"

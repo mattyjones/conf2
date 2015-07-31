@@ -4,6 +4,7 @@ import (
 	"unicode"
 )
 
+
 func FindByIdent(i MetaIterator, ident string) Meta {
 	child := i.NextMeta()
 	for child != nil {

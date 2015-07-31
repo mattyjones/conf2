@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"os"
 	"fmt"
+	"yang/browse"
 )
 func TestScratch(t *testing.T) {
 	cwd, _ := os.Getwd()
@@ -25,7 +26,8 @@ func printMeta(m yang.Meta, level string) {
 }
 
 func TestYangMeta(t *testing.T) {
-	if yangModule, err := yang.LoadModuleFromFile("../../etc/yang-1.0.yang"); err != nil {
+	ds := &yang.FileDataSource{Root:"../../../etc"}
+	if yangModule, err := yang.LoadModule(ds, "yang-1.0.yang"); err != nil {
 		t.Error("yang module", err)
 	} else {
 		printMeta(yangModule, "")
@@ -57,15 +59,21 @@ module json-test {
 	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr)); err != nil {
 		t.Error("bad module", err)
 	} else {
-		if yangModule, err := yang.LoadModuleFromFile("../../etc/yang-1.0.yang"); err != nil {
+		ds := &yang.FileDataSource{Root:"../../../etc"}
+		if yangModule, err := yang.LoadModule(ds, "yang-1.0.yang"); err != nil {
 			t.Error("yang module", err)
 		} else {
 			var actual bytes.Buffer
-			out := NewJsonReceiver(&actual)
-			in := MetaTransmitter{metaRoot:yangModule, data:module, out:out}
-			if err = in.Transmit(); err != nil {
+			rcvr := NewJsonReceiver(&actual)
+			out := rcvr.GetSelector()
+			metaTx := &MetaTransmitter{meta:yangModule, data:module}
+			in := metaTx.GetSelector()
+			v := browse.NewVisitor(in)
+			v.Out = browse.NewVisitor(out)
+			if err = in(browse.READ_VALUE, yangModule.GetFirstMeta(), v); err != nil {
 				t.Error("failed to transmit json", err)
 			} else {
+				rcvr.Flush()
 				t.Log("Round Trip:", string(actual.Bytes()))
 			}
 		}

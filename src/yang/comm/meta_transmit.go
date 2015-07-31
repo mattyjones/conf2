@@ -1,7 +1,8 @@
 package comm
 import (
 	"yang"
-	"reflect"
+	"yang/browse"
+	"fmt"
 )
 
 /**
@@ -10,47 +11,364 @@ import (
  * meta.
  */
 type MetaTransmitter struct {
-	metaRoot yang.Meta // read: meta-meta
-	data yang.Meta // read: meta
-	out Receiver
-	level int
+	data *yang.Module // read: meta
+	meta *yang.Module
 }
 
-func (self *MetaTransmitter) Transmit() (err error) {
-	self.out.StartTransaction()
-	if err = self.transmitMeta(self.metaRoot, self.data); err == nil {
-		self.out.EndTransaction()
+func (self *MetaTransmitter) GetSelector() (s browse.Selection) {
+	moduleMeta := self.meta.GetFirstMeta().(yang.MetaList)
+	return selectModule(moduleMeta, self.data)
+}
+
+func selectModule(containerMeta yang.MetaList, data *yang.Module) (s browse.Selection) {
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		var selection browse.Selection
+		switch meta.GetIdent() {
+		case "revision":
+			selection = selectRevision(data.Revision)
+		case "rpcs":
+			selection = selectList(selectRpc, data.GetRpcs())
+		case "notifications":
+			/* TODO: replace w/notifications */
+			selection = selectList(selectContainerContainer, data.GetNotifications())
+		case "typedefs":
+			selection = selectList(selectTypedef, data.GetTypedefs())
+		case "groupings":
+			selection = selectList(selectGrouping, data.GetTypedefs())
+		case "definitions":
+			selection = selectDefinitionsList(meta.(yang.MetaList), data.DataDefs())
+		default:
+			return defaultHandler(s, op, containerMeta, meta, data, v)
+		}
+		switch op {
+		case browse.SELECT_CHILD:
+			v.Selection = selection
+		case browse.READ_VALUE:
+			return selection(browse.READ_VALUE, meta, v)
+		}
+
+		return
+	}
+	return s
+}
+
+func selectType(typeMeta yang.Meta, dataType *yang.DataType) (s browse.Selection) {
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		return defaultHandler(s, op, typeMeta, meta, dataType, v)
+	}
+	return s
+}
+
+func selectTypedef(containerMeta yang.MetaList, data yang.Meta) (s browse.Selection) {
+	tdef := data.(*yang.Typedef)
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		var selection browse.Selection
+		switch meta.GetIdent() {
+		case "type":
+			selection = selectType(meta, tdef.GetDataType())
+		default:
+			return defaultHandler(s, op, meta.GetParent(), meta, tdef, v)
+		}
+		switch op {
+		case browse.SELECT_CHILD:
+			v.Selection = selection
+		case browse.READ_VALUE:
+			return selection(browse.READ_VALUE, meta, v)
+		}
+		return
+	}
+	return s
+}
+
+func selectGrouping(containerMeta yang.MetaList, data yang.Meta) (s browse.Selection) {
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		var selection browse.Selection
+		switch meta.GetIdent() {
+		case "typedefs":
+			selection = selectList(selectTypedef, data.(yang.HasTypedefs).GetTypedefs())
+		case "groupings":
+			selection = selectList(selectGrouping, data.(yang.HasGroupings).GetGroupings())
+		case "definitions":
+			selection = selectDefinitionsList(meta.(yang.MetaList), data.(yang.MetaList))
+		default:
+			return defaultHandler(s, op, containerMeta, meta, data, v)
+		}
+		switch op {
+		case browse.SELECT_CHILD:
+			v.Selection = selection
+		case browse.READ_VALUE:
+			return selection(browse.READ_VALUE, meta, v)
+		}
+		return
+	}
+	return s
+}
+
+func selectRpc(containerMeta yang.MetaList, data yang.Meta) (s browse.Selection) {
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		var selection browse.Selection
+		switch meta.GetIdent() {
+			case "input":
+				selection = selectDefinitionsList(meta.(yang.MetaList), data.(*yang.Rpc).Input)
+			case "output":
+				selection = selectDefinitionsList(meta.(yang.MetaList), data.(*yang.Rpc).Output)
+			default:
+				return defaultHandler(s, op, containerMeta, meta, data, v)
+		}
+		switch op {
+		case browse.READ_VALUE:
+			return selection(op, meta, v)
+		case browse.SELECT_CHILD:
+			v.Selection = selection
+		}
+
+		return
+	}
+	return s
+}
+
+func selectRevision(rev *yang.Revision) (s browse.Selection) {
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		switch meta.GetIdent() {
+		case "rev-date":
+			if op == browse.READ_VALUE {
+				v.Val.Str = rev.Ident
+				err = v.Send(meta)
+			} else {
+				err = browse.NotImplemented(meta)
+			}
+		case "revision":
+			if err = v.EnterContainer(meta); err != nil {
+				i := yang.NewMetaListIterator(meta.(yang.MetaList), true)
+				for (i.HasNextMeta()) {
+					if err = s(browse.READ_VALUE, i.NextMeta(), v); err != nil {
+						return err
+					}
+				}
+				err = v.ExitContainer(meta)
+			}
+		default:
+			err = browse.UseReflection(op, meta, rev, v)
+		}
+		return
+	}
+	return s
+}
+
+func selectListContainer(containerMeta yang.MetaList, data yang.Meta) (s browse.Selection) {
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		var selection browse.Selection
+		switch meta.GetIdent() {
+		case "typedefs":
+			selection = selectList(selectTypedef, data.(yang.HasTypedefs).GetTypedefs())
+		case "groupings":
+			selection = selectList(selectGrouping, data.(yang.HasGroupings).GetGroupings())
+		case "definitions":
+			selection = selectDefinitionsList(meta.(yang.MetaList), data.(yang.MetaList))
+		default:
+			return defaultHandler(s, op, containerMeta, meta, data, v)
+		}
+		switch op {
+		case browse.SELECT_CHILD:
+			v.Selection = selection
+		case browse.READ_VALUE:
+			return selection(browse.READ_VALUE, meta, v)
+		}
+		return
+	}
+	return s
+}
+
+func selectUses(usesMeta yang.Meta, uses *yang.Uses) (s browse.Selection) {
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		return defaultHandler(s, op, usesMeta, meta, uses, v)
+
+	}
+	return s
+}
+
+func selectContainerContainer(containerMeta yang.MetaList, data yang.Meta) (s browse.Selection) {
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		var selection browse.Selection
+		switch meta.GetIdent() {
+		case "typedefs":
+			selection = selectList(selectTypedef, data.(yang.HasTypedefs).GetTypedefs())
+		case "groupings":
+			selection = selectList(selectGrouping, data.(yang.HasGroupings).GetGroupings())
+		case "definitions":
+			selection = selectDefinitionsList(meta.(yang.MetaList), data.(yang.MetaList))
+		default:
+			return defaultHandler(s, op, containerMeta, meta, data, v)
+		}
+		switch op {
+		case browse.SELECT_CHILD:
+			v.Selection = selection
+		case browse.READ_VALUE:
+			return selection(browse.READ_VALUE, meta, v)
+		}
+		return
+	}
+	return s
+}
+
+func selectLeafContainer(containerMeta yang.MetaList, data yang.Meta) (s browse.Selection) {
+	leaf := data.(*yang.Leaf)
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		var selection browse.Selection
+		switch meta.GetIdent() {
+		case "type":
+			selection = selectType(meta, leaf.GetDataType())
+		default:
+			return defaultHandler(s, op, containerMeta, meta, leaf, v)
+		}
+		switch op {
+		case browse.SELECT_CHILD:
+			v.Selection = selection
+		case browse.READ_VALUE:
+			return selection(browse.READ_VALUE, meta, v)
+		}
+		return
+	}
+	return s
+}
+
+func selectLeafListContainer(containerMeta yang.MetaList, data yang.Meta) (s browse.Selection) {
+	leafList := data.(*yang.LeafList)
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		var selection browse.Selection
+		switch meta.GetIdent() {
+		case "type":
+			selection = selectType(meta, leafList.GetDataType())
+		default:
+			return defaultHandler(s, op, containerMeta, meta, leafList, v)
+		}
+		switch op {
+		case browse.SELECT_CHILD:
+			v.Selection = selection
+		case browse.READ_VALUE:
+			return selection(browse.READ_VALUE, meta, v)
+		}
+		return
+	}
+	return s
+}
+
+func selectUsesContainer(containerMeta yang.MetaList, data yang.Meta) (s browse.Selection) {
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		return defaultHandler(s, op, containerMeta, meta, data, v)
+	}
+	return s
+}
+
+func selectChoiceContainer(containerMeta yang.MetaList, data yang.Meta) (s browse.Selection) {
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		return defaultHandler(s, op, containerMeta, meta, data, v)
+	}
+	return s
+}
+
+func definitionSelection(choice *yang.Choice, data yang.Meta) (selection browse.Selection, caseMeta yang.MetaList, err error) {
+	if caseMeta, err = resolveDefinitionCase(choice, data); err == nil {
+		switch caseMeta.GetIdent() {
+		case "list":
+			selection = selectListContainer(caseMeta, data)
+		case "container":
+			selection = selectContainerContainer(caseMeta, data)
+		case "leaf":
+			selection = selectLeafContainer(caseMeta, data)
+		case "leaf-list":
+			selection = selectLeafListContainer(caseMeta, data)
+		case "uses":
+			selection = selectUsesContainer(caseMeta, data)
+		case "choice":
+			selection = selectChoiceContainer(caseMeta, data)
+		}
 	}
 	return
 }
 
-func (self *MetaTransmitter) getValue(meta yang.HasType, obj interface{}) string {
-	fieldName := yang.MetaNameToFieldName(meta.GetIdent())
-	objType := reflect.ValueOf(obj).Elem()
-	value := objType.FieldByName(fieldName)
-	switch meta.Type() {
-		case "bool":
-			if value.Bool() {
-				return "true"
+func selectDefinitionsList(containerMeta yang.MetaList, data yang.MetaList) (s browse.Selection) {
+	choice := containerMeta.GetFirstMeta().(*yang.Choice)
+	s = func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		switch meta.GetIdent() {
+		case "body-stmt":
+
+		}
+		switch op {
+		case browse.SELECT_CHILD:
+			all := yang.NewMetaListIterator(data, false)
+			found := yang.FindByIdent(all, v.Val.Keys[0])
+			if found == nil {
+				return v.NotFound(v.Val.Keys[0])
 			}
-			return "false"
+			v.Selection, v.Position, err = definitionSelection(choice, found)
+		case browse.READ_VALUE:
+			v.EnterList(meta)
+			all := yang.NewMetaListIterator(data, false)
+			for all.HasNextMeta() {
+				v.EnterListItem(meta)
+				def := all.NextMeta()
+				selection, caseMeta, err := definitionSelection(choice, def)
+				if err != nil {
+					return err
+				}
+				if err = selection(browse.READ_VALUE, caseMeta, v); err != nil {
+					return err
+				}
+				v.ExitListItem(meta)
+			}
+			v.ExitList(meta)
 		default:
-			return value.String()
+			return browse.NotImplemented(meta)
+		}
+
+		return
+	}
+
+	return s
+}
+
+func selectList(delegate SelectionDelegate, data yang.MetaList) browse.Selection {
+	return func(op browse.Operation, meta yang.Meta, v *browse.Visitor) (err error) {
+		switch op {
+		case browse.SELECT_CHILD:
+			all := yang.NewMetaListIterator(data, false)
+			found := yang.FindByIdent(all, v.Val.Keys[0])
+			if found == nil {
+				return v.NotFound(v.Val.Keys[0])
+			}
+			v.Selection = delegate(meta.(yang.MetaList), found)
+		case browse.READ_VALUE:
+			v.EnterList(meta)
+			all := yang.NewMetaListIterator(data, false)
+			for all.HasNextMeta() {
+				v.EnterListItem(meta)
+				def := all.NextMeta()
+				selection := delegate(meta.(yang.MetaList), def)
+				if err = selection(browse.READ_VALUE, meta, v); err != nil {
+					return err
+				}
+				v.ExitListItem(meta)
+			}
+			v.ExitList(meta)
+		default:
+			return browse.NotImplemented(meta)
+		}
+		return
 	}
 }
 
-func (self *MetaTransmitter) transmitList(meta *yang.List, data yang.MetaList) {
-	self.out.NewList(meta)
-	// Do not resolve proxies in data otherwise we will recurse infinitely!
-	dataItems := yang.NewMetaListIterator(data, false)
-	for dataItems.HasNextMeta() {
-		next := dataItems.NextMeta()
-		self.transmitMeta(meta, next)
+func resolveDefinitionCase(choice *yang.Choice, data yang.Meta) (caseMeta yang.MetaList, err error) {
+	caseType := definitionType(data)
+	if caseMeta, ok := choice.GetCase(caseType).GetFirstMeta().(*yang.Container); !ok {
+		msg := fmt.Sprint("Could not find case meta for ", caseType)
+		return nil, &commError{msg}
+	} else {
+		return caseMeta, nil
 	}
-	self.out.ExitList(meta)
 }
 
-func (self *MetaTransmitter) definitionType(data yang.Meta) string {
+func definitionType(data yang.Meta) string {
 	switch data.(type) {
 	case *yang.List:
 		return "list"
@@ -69,72 +387,26 @@ func (self *MetaTransmitter) definitionType(data yang.Meta) string {
 	}
 }
 
-func (self *MetaTransmitter) transmitDefinitions(meta *yang.List, data yang.MetaList) (err error) {
-	self.out.NewList(meta)
-	choice := meta.GetFirstMeta().(*yang.Choice)
-	dataItems := yang.NewMetaListIterator(data, false)
-	for dataItems.HasNextMeta() {
-		next := dataItems.NextMeta()
-		caseType := self.definitionType(next)
-		if itemMeta, ok := choice.GetCase(caseType).GetFirstMeta().(*yang.Container); ok {
-			self.transmitObject(itemMeta, next)
-		} else {
-			return &commError{"Expected container meta for definition"}
-		}
-	}
-	self.out.ExitList(meta)
-	return nil
-}
+type SelectionDelegate func(yang.MetaList, yang.Meta) browse.Selection
 
-func (self *MetaTransmitter) transmitMeta(meta yang.Meta, data yang.Meta) (err error) {
-	if data == nil {
-		return
-	}
-	switch field := meta.(type) {
-	case *yang.List:
-		switch field.GetIdent() {
-		case "groupings":
-			self.transmitList(field, data.(yang.HasGroupings).GetGroupings())
-		case "definitions":
-			self.transmitDefinitions(field, data.(yang.MetaList))
-		case "enumerations":
-			self.transmitList(field, data.(*yang.Typedef).GetEnumerations())
-		case "typedefs":
-			self.transmitList(field, data.(yang.HasTypedefs).GetTypedefs())
-		case "rpcs":
-			self.transmitList(field, data.(*yang.Module).GetRpcs())
-		case "notifications":
-			self.transmitList(field, data.(*yang.Module).GetNotifications())
-		}
-    case *yang.Module:
-		self.transmitObject(field, data)
-	case *yang.Container:
-		self.transmitObject(field, data)
-	case *yang.Leaf:
-		switch field.GetIdent() {
-		case "rev-date":
-			self.out.PutStringLeaf(field, data.(*yang.Module).Revision.GetIdent())
-		default:
-			dataValue := self.getValue(field, data)
-			if dataValue != "" {
-				self.out.PutStringLeaf(field, dataValue)
+func readAll(selection browse.Selection, meta yang.Meta, v *browse.Visitor) (err error) {
+	if err = v.EnterContainer(meta); err != nil {
+		i := yang.NewMetaListIterator(meta.(yang.MetaList), true)
+		for (i.HasNextMeta()) {
+			if err = selection(browse.READ_VALUE, i.NextMeta(), v); err != nil {
+				return err
 			}
 		}
-		// TODO: Support PutIntLeaf by looking at type
-	case *yang.LeafList:
-		// TODO: Support PutIntLeafList by looking at type
+		err = v.ExitContainer(meta)
 	}
-
-	return nil
-}
-
-func (self *MetaTransmitter) transmitObject(meta yang.MetaList, data yang.Meta) (err error) {
-	self.out.NewObject(meta)
-	i := yang.NewMetaListIterator(meta, true)
-	for i.HasNextMeta() {
-		next := i.NextMeta()
-		self.transmitMeta(next, data)
-	}
-	self.out.ExitObject(meta)
 	return
 }
+
+func defaultHandler(s browse.Selection, op browse.Operation, containerMeta yang.Meta, meta yang.Meta, data interface{}, v *browse.Visitor) (err error) {
+	if op == browse.READ_VALUE && meta == containerMeta {
+		return readAll(s, meta, v)
+	} else {
+		return browse.UseReflection(op, meta, data, v)
+	}
+}
+

@@ -14,7 +14,7 @@ func TestSimpleParse(t *testing.T) {
 	l := lex(string(yang[:]))
 	err_code := yyParse(l)
 	if err_code != 0 {
-		t.Fail()
+		t.Error(l.lastError)
 	}
 }
 
@@ -27,6 +27,6 @@ func TestStoneParse(t *testing.T) {
 	l := lex(string(yang[:]))
 	err_code := yyParse(l)
 	if err_code != 0 {
-		t.Fail()
+		t.Error(l.lastError)
 	}
 }

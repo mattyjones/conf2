@@ -15,28 +15,15 @@ module yang {
         }
     }
 
-    grouping uses {
-        container uses {
-            leaf grouping {
+    grouping type {
+        container type {
+            leaf ident {
                 type string;
             }
-            list refine {
-                leaf default {
-                    type string;
-                }
+            leaf range {
+                type string;
             }
-        }
-    }
-
-    grouping type {
-        leaf ident {
-            type string;
-        }
-        leaf range {
-            type string;
-        }
-        list enumeration {
-            leaf ident {
+            leaf-list enumeration {
                 type string;
             }
         }
@@ -44,12 +31,14 @@ module yang {
 
     grouping groupings-typedefs {
         list groupings {
+            key "ident";
             /*
               !! CIRCULAR
             */
             uses grouping;
         }
         list typedefs {
+            key "ident";
             uses def-header;
             uses type;
         }
@@ -57,11 +46,11 @@ module yang {
 
     grouping containers-lists-leafs-uses-choice {
         list definitions {
+            key "ident";
             choice body-stmt {
                 case container {
                     container container {
                         uses def-header;
-                        uses uses;
                         uses groupings-typedefs;
                         uses containers-lists-leafs-uses-choice;
                     }
@@ -69,7 +58,9 @@ module yang {
                 case list {
                     container list {
                         uses def-header;
-                        uses uses;
+                        leaf-list keys {
+                            type string;
+                        }
                         uses groupings-typedefs;
                         uses containers-lists-leafs-uses-choice;
                     }
@@ -78,10 +69,10 @@ module yang {
                     container leaf {
                         uses def-header;
                         leaf config {
-                            type bool;
+                            type boolean;
                         }
                         leaf mandatory {
-                            type bool;
+                            type boolean;
                         }
                         uses type;
                     }
@@ -100,13 +91,15 @@ module yang {
                 }
                 case uses {
                     container uses {
-                        uses uses;
+                        uses def-header;
+                        /* need to expand this to use refine */
                     }
                 }
                 case choice {
                     container choice {
                         uses def-header;
                         list cases {
+                            key "ident";
                             leaf ident {
                                 type string;
                             }
@@ -148,6 +141,7 @@ module yang {
             }
         }
         list rpcs {
+            key "ident";
             uses def-header;
             container input {
                 uses groupings-typedefs;
@@ -159,6 +153,7 @@ module yang {
             }
         }
         list notifications {
+            key "ident";
             uses def-header;
             uses groupings-typedefs;
             uses containers-lists-leafs-uses-choice;

@@ -13,6 +13,29 @@ type MetaListIterator struct {
 	resolveProxies bool
 }
 
+type EmptyInterator int
+
+func (e EmptyInterator) HasNextMeta() bool {
+	return false;
+}
+func (e EmptyInterator) NextMeta() Meta {
+	return nil;
+}
+
+type SingletonIterator struct {
+	Meta Meta
+}
+
+func (s *SingletonIterator) HasNextMeta() bool {
+	return s.Meta != nil;
+}
+func (s *SingletonIterator) NextMeta() Meta {
+	m := s.Meta
+	s.Meta = nil
+	return m;
+}
+
+
 func NewMetaListIterator(list MetaList, resolveProxies bool) MetaIterator {
 	return &MetaListIterator{position:list.GetFirstMeta(), resolveProxies:resolveProxies}
 }

@@ -3,6 +3,7 @@ package yang
 
 import (
     "fmt"
+    "strings"
 )
 
 type yangError struct {
@@ -11,6 +12,10 @@ type yangError struct {
 
 func (err *yangError) Error() string {
 	return err.s
+}
+
+func tokenString(s string) string {
+    return s[1:len(s) - 1]
 }
 
 func (l *lexer) Lex(lval *yySymType) int {
@@ -56,6 +61,7 @@ func popAndAddMeta(yylval *yySymType) error {
 %union {
     ident string
     token string
+    dataType *DataType
     stack *yangMetaStack
 }
 
@@ -129,7 +135,7 @@ revision_stmt :
     };
 
 description : kywd_description token_string {
-        yylval.stack.Peek().(Describable).SetDescription($2)
+        yylval.stack.Peek().(Describable).SetDescription(tokenString($2))
     }
 
 module_stmts :
@@ -140,12 +146,12 @@ module_stmts :
 module_stmt :
     kywd_namespace token_string {
          d := yylval.stack.Peek()
-         d.(*Module).Namespace = $2
+         d.(*Module).Namespace = tokenString($2)
     }
     | description
     | kywd_prefix token_string {
          m := yylval.stack.Peek().(*Module)
-         m.Prefix = $2
+         m.Prefix = tokenString($2)
     }
 
 module_body_stmt :
@@ -235,22 +241,30 @@ typedef_stmt_body :
 typedef_stmt_body_stmt:
         type_stmt
         | description token_semi
-        | kywd_default token_string token_semi;
-
-type_stmt :
-        kywd_type token_ident type_stmt_body {
-         y := yylval.stack.Peek().(HasType)
-         y.SetType($2)
-        }
+        | kywd_default token_string token_semi
         ;
+
+type_stmt : type_stmt_def type_stmt_body {
+         y := yylval.stack.Peek().(HasDataType)
+         y.SetDataType(yylval.dataType)
+        };
+
+type_stmt_def : kywd_type token_ident {
+            yylval.dataType = &DataType{Ident:$2}
+        };
 
 type_stmt_body :
-        token_curly_open type_stmt_types token_curly_close
-        | token_semi
-        ;
+        token_semi
+        | token_curly_open type_stmt_types token_curly_close;
 
 type_stmt_types :
-        kywd_length token_string token_semi
+        kywd_length token_string token_semi {
+            var err error
+            if err = yylval.dataType.DecodeLength(tokenString($2)); err != nil {
+                yylex.Error(err.Error())
+                goto ret1
+            }
+        }
         | enum_stmts;
 
 container_stmt :
@@ -403,9 +417,19 @@ list_body_stmt :
     description token_semi
     | kywd_max_elements token_int token_semi
     | kywd_config token_string token_semi
-    | kywd_key token_string token_semi
+    | key_stmt
     | kywd_unique token_string token_semi
     | body_stmt
+
+key_stmt: kywd_key token_string token_semi {
+     if list, valid := yylval.stack.Peek().(*List); valid {
+       list.Keys = strings.Split(tokenString($2), " ")
+     } else {
+        yylex.Error("expected a list for key statement")
+        goto ret1
+     }
+}
+
 
 leaf_stmt:
     leaf_def
@@ -451,10 +475,13 @@ leaf_list_def :
     };
 
 enum_stmts :
-    enum_stmt | enum_stmts enum_stmt;
+    enum_stmt
+    | enum_stmts enum_stmt;
 
 enum_stmt :
-    kywd_enum token_ident token_semi;
+    kywd_enum token_ident token_semi {
+        yylval.dataType.Enumeration = append(yylval.dataType.Enumeration, $2)
+    };
 
 reference_stmt :
     kywd_reference token_string token_semi;

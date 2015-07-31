@@ -27,6 +27,8 @@ libyangc2j_LDFLAGS = \
 
 GO_ARCH = linux_amd64
 
+PKGS = yang yang/browse yang/comm
+
 all : generate driver-java build test install
 
 .PHONY: generate driver-java build test install
@@ -35,7 +37,7 @@ generate :
 
 build :
 	CGO_CFLAGS="$(libyangc2_CFLAGS)" \
-	  go build yang yang/comm
+	  go build $(PKGS)
 
 TEST='Test*'
 Test% :
@@ -43,7 +45,7 @@ Test% :
 
 test : src/yang/parser.go
 	CGO_CFLAGS="$(libyangc2_CFLAGS)" \
-	  go test -v yang -run $(TEST)
+	  go test -v $(PKGS) -run $(TEST)
 
 install: libyangc2 libyangc2j;
 

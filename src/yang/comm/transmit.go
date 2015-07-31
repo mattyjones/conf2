@@ -32,5 +32,5 @@ type Receiver interface {
 }
 
 type Transmitter interface {
-	Transmit() error
+	Transmit(to yang.MetaList, r Receiver) error
 }

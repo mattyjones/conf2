@@ -1,4 +1,8 @@
 package yang
+import (
+	"strings"
+	"strconv"
+)
 
 ///////////////////
 // Interfaces
@@ -11,7 +15,7 @@ type Identifiable interface {
 
 // Examples: Most everything except items like ChoiceCase, RpcInput
 type Describable interface {
-	GetIdent() string
+	Identifiable
 	SetDescription(string)
 	GetDescription() string
 }
@@ -39,6 +43,7 @@ type MetaList interface {
 	// MetaList
 	AddMeta(Meta) error
 	GetFirstMeta() Meta
+	ReplaceMeta(oldChild Meta, newChild Meta) error
 }
 
 type DataDef interface {
@@ -83,7 +88,7 @@ type HasTypedefs interface {
 	GetTypedefs() MetaList
 }
 
-type HasType interface {
+type HasDataType interface {
 	// Identifiable
 	GetIdent() string
 	// Meta
@@ -92,8 +97,8 @@ type HasType interface {
 	GetSibling() Meta
 	SetSibling(Meta)
 	// HasType
-	Type() string
-	SetType(dataType string)
+	GetDataType() *DataType
+	SetDataType(dataType *DataType)
 }
 ///////////////////////
 // Base structs
@@ -105,7 +110,7 @@ type ListBase struct {
 	FirstMeta Meta
 	LastMeta Meta
 }
-func (y *ListBase) LinkMeta(impl MetaList, meta Meta) error {
+func (y *ListBase) linkMeta(impl MetaList, meta Meta) error {
 	meta.SetParent(impl)
 	if y.LastMeta != nil {
 		y.LastMeta.SetSibling(meta)
@@ -113,6 +118,24 @@ func (y *ListBase) LinkMeta(impl MetaList, meta Meta) error {
 	y.LastMeta = meta
 	if y.FirstMeta == nil {
 		y.FirstMeta = meta
+	}
+	return nil
+}
+func (y *ListBase) swapMeta(oldChild Meta, newChild Meta) error {
+	previousSibling := y.FirstMeta
+	for previousSibling != nil && previousSibling != oldChild {
+		previousSibling = previousSibling.GetSibling()
+	}
+	if previousSibling == nil {
+		return &yangError{"child not found"}
+	}
+	previousSibling.SetSibling(newChild)
+	newChild.SetSibling(oldChild.GetSibling())
+	if y.FirstMeta == oldChild {
+		y.FirstMeta = newChild
+	}
+	if y.LastMeta == oldChild {
+		y.LastMeta = newChild
 	}
 	return nil
 }
@@ -149,10 +172,13 @@ func (y *MetaContainer) SetSibling(sibling Meta) {
 }
 // MetaList
 func (y *MetaContainer) AddMeta(meta Meta) error {
-	return y.LinkMeta(y, meta)
+	return y.linkMeta(y, meta)
 }
 func (y *MetaContainer) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+func (y *MetaContainer) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.swapMeta(oldChild, newChild)
 }
 
 type metaError struct {
@@ -209,19 +235,19 @@ func (y *Module) AddMeta(meta Meta) error {
 	switch x := meta.(type) {
 	case *Rpc:
 		y.Rpcs.SetParent(y)
-		return y.Rpcs.LinkMeta(y, x)
+		return y.Rpcs.linkMeta(y, x)
 	case *Notification:
 		y.Notifications.SetParent(y)
-		return y.Notifications.LinkMeta(y, x)
+		return y.Notifications.linkMeta(y, x)
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkMeta(y, x)
+		return y.Groupings.linkMeta(y, x)
 	case *Typedef:
 		y.Typedefs.SetParent(y)
-		return y.Typedefs.LinkMeta(y, x)
+		return y.Typedefs.linkMeta(y, x)
 	default:
 		y.Defs.SetParent(y)
-		return y.Defs.LinkMeta(y, x)
+		return y.Defs.linkMeta(y, x)
 	}
 }
 // technically not true, it's the MetaContainers, but we'll see how this pans out
@@ -236,6 +262,9 @@ func (y *Module) GetRpcs() MetaList {
 }
 func (y *Module) GetNotifications() MetaList {
 	return &y.Notifications
+}
+func (y *Module) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.Defs.ReplaceMeta(oldChild, newChild)
 }
 // HasGroupings
 func (y *Module) GetGroupings() MetaList {
@@ -282,10 +311,13 @@ func (y *Choice) SetSibling(sibling Meta) {
 }
 // MetaList
 func (y *Choice) AddMeta(meta Meta) error {
-	return y.LinkMeta(y, meta)
+	return y.linkMeta(y, meta)
 }
 func (y *Choice) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+func (y *Choice) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.swapMeta(oldChild, newChild)
 }
 // Other
 func (c *Choice) GetCase(ident string) *ChoiceCase {
@@ -322,10 +354,13 @@ func (y *ChoiceCase) SetSibling(sibling Meta) {
 }
 // MetaList
 func (y *ChoiceCase) AddMeta(meta Meta) error {
-	return y.LinkMeta(y, meta)
+	return y.linkMeta(y, meta)
 }
 func (y *ChoiceCase) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+func (y *ChoiceCase) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.swapMeta(oldChild, newChild)
 }
 // MetaProxy
 func (y *ChoiceCase) ResolveProxy() MetaIterator {
@@ -391,14 +426,17 @@ func (y *Container) AddMeta(meta Meta) error {
 	switch meta.(type) {
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkMeta(y, meta)
+		return y.Groupings.linkMeta(y, meta)
 	default:
-		e := y.LinkMeta(y, meta)
+		e := y.linkMeta(y, meta)
 		return e
 	}
 }
 func (y *Container) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+func (y *Container) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.swapMeta(oldChild, newChild)
 }
 // HasGroupings
 func (y *Container) GetGroupings() MetaList {
@@ -420,6 +458,7 @@ type List struct {
 	Typedefs MetaContainer
 	Config bool
 	Mandatory bool
+	Keys []string
 }
 // Identifiable
 func (y *List) GetIdent() (string) {
@@ -450,13 +489,16 @@ func (y *List) AddMeta(meta Meta) error {
 	switch meta.(type) {
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkMeta(y, meta)
+		return y.Groupings.linkMeta(y, meta)
 	default:
-		return y.LinkMeta(y, meta)
+		return y.linkMeta(y, meta)
 	}
 }
 func (y *List) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+func (y *List) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.swapMeta(oldChild, newChild)
 }
 // HasGroupings
 func (y *List) GetGroupings() MetaList {
@@ -475,7 +517,7 @@ type Leaf struct {
 	MetaBase
 	Config bool
 	Mandatory bool
-	DataType string
+	DataType *DataType
 }
 
 // Distinguishes the concrete type in choice-cases
@@ -507,11 +549,11 @@ func (y *Leaf) GetSibling() Meta {
 func (y *Leaf) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// HasType
-func (y *Leaf) Type() string {
+// HasDataType
+func (y *Leaf) GetDataType() *DataType {
 	return y.DataType
 }
-func (y *Leaf) SetType(dataType string) {
+func (y *Leaf) SetDataType(dataType *DataType) {
 	y.DataType = dataType
 }
 
@@ -524,7 +566,7 @@ type LeafList struct {
 	MetaBase
 	Config bool
 	Mandatory bool
-	DataType string
+	DataType *DataType
 }
 // Identifiable
 func (y *LeafList) GetIdent() (string) {
@@ -551,10 +593,10 @@ func (y *LeafList) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
 // HasType
-func (y *LeafList) Type() string {
+func (y *LeafList) GetDataType() *DataType {
 	return y.DataType
 }
-func (y *LeafList) SetType(dataType string) {
+func (y *LeafList) SetDataType(dataType *DataType) {
 	y.DataType = dataType
 }
 
@@ -596,10 +638,13 @@ func (y *Grouping) SetSibling(sibling Meta) {
 }
 // MetaList
 func (y *Grouping) AddMeta(meta Meta) error {
-	return y.LinkMeta(y, meta)
+	return y.linkMeta(y, meta)
 }
 func (y *Grouping) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+func (y *Grouping) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.swapMeta(oldChild, newChild)
 }
 // HasGroupings
 func (y *Grouping) GetGroupings() MetaList {
@@ -641,13 +686,16 @@ func (y *RpcInput) AddMeta(meta Meta) error {
 	switch meta.(type) {
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkMeta(y, meta)
+		return y.Groupings.linkMeta(y, meta)
 	default:
-		return y.LinkMeta(y, meta)
+		return y.linkMeta(y, meta)
 	}
 }
 func (y *RpcInput) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+func (y *RpcInput) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.swapMeta(oldChild, newChild)
 }
 // HasGroupings
 func (y *RpcInput) GetGroupings() MetaList {
@@ -689,13 +737,16 @@ func (y *RpcOutput) AddMeta(meta Meta) error {
 	switch meta.(type) {
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkMeta(y, meta)
+		return y.Groupings.linkMeta(y, meta)
 	default:
-		return y.LinkMeta(y, meta)
+		return y.linkMeta(y, meta)
 	}
 }
 func (y *RpcOutput) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+func (y *RpcOutput) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.swapMeta(oldChild, newChild)
 }
 // HasGroupings
 func (y *RpcOutput) GetGroupings() MetaList {
@@ -750,7 +801,7 @@ func (y *Rpc) AddMeta(meta Meta) error {
 		t.SetParent(y)
 		y.Output = t
 	default:
-		return &metaError{"Illegal call to add metainition: rpc has fixed input and output children"}
+		return &metaError{"Illegal call to add meta: rpc has fixed input and output children"}
 	}
 	if y.Output != nil {
 		y.Input.Sibling = y.Output
@@ -762,6 +813,9 @@ func (y *Rpc) GetFirstMeta() Meta {
 		return y.Input
 	}
 	return y.Output
+}
+func (y *Rpc) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.AddMeta(newChild)
 }
 
 ////////////////////////////////////////////////////
@@ -804,13 +858,16 @@ func (y *Notification) AddMeta(meta Meta) error {
 	switch meta.(type) {
 	case *Grouping:
 		y.Groupings.SetParent(y)
-		return y.Groupings.LinkMeta(y, meta)
+		return y.Groupings.linkMeta(y, meta)
 	default:
-		return y.LinkMeta(y, meta)
+		return y.linkMeta(y, meta)
 	}
 }
 func (y *Notification) GetFirstMeta() Meta {
 	return y.FirstMeta
+}
+func (y *Notification) ReplaceMeta(oldChild Meta, newChild Meta) error {
+	return y.swapMeta(oldChild, newChild)
 }
 // HasGroupings
 func (y *Notification) GetGroupings() MetaList {
@@ -826,8 +883,8 @@ func (y *Notification) GetTypedefs() MetaList {
 type Typedef struct {
 	Ident string
 	Description string
-	MetaContainer
-	DataType string
+	MetaBase
+	DataType *DataType
 }
 // Identifiable
 func (y *Typedef) GetIdent() (string) {
@@ -853,26 +910,92 @@ func (y *Typedef) GetSibling() Meta {
 func (y *Typedef) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
-// MetaList
-func (y *Typedef) AddMeta(meta Meta) error {
-	y.MetaContainer.SetParent(y)
-	return y.MetaContainer.LinkMeta(y, meta)
-}
-func (y *Typedef) GetFirstMeta() Meta {
-	return y.FirstMeta
-}
-// HasType
-func (y *Typedef) Type() string {
+// HasDataType
+func (y *Typedef) GetDataType() *DataType {
 	return y.DataType
 }
-func (y *Typedef) SetType(dataType string) {
+
+func (y *Typedef) SetDataType(dataType *DataType) {
 	y.DataType = dataType
 }
-// Typedef
-func (y *Typedef) GetEnumerations() MetaList {
-	// TODO
-	return nil
+
+type DataType struct {
+	Ident string
+	Range string
+	Enumeration []string
+	MinLength int
+	MaxLength int
+	Path string
+	Pattern string
+	/*
+	FractionDigits
+	Bit
+	Base
+	RequireInstance
+	Type?!  subtype?
+	 */
 }
+
+func (y *DataType) Resolve() *DataType {
+	/* Will look into hierarchy and overlay */
+	return y;
+}
+
+func (y *DataType) DecodeLength(encoded string) (err error) {
+	/* TODO: Support multiple lengths using "|" */
+	segments := strings.Split(encoded, "..")
+	if len(segments) == 2 {
+		if y.MinLength, err = strconv.Atoi(segments[0]); err == nil {
+			y.MaxLength, err = strconv.Atoi(segments[1])
+		}
+	} else {
+		y.MaxLength, err = strconv.Atoi(segments[0])
+	}
+	return
+}
+
+var TYPE_BINARY = DataType{Ident:"binary"}
+var TYPE_BITS = DataType{Ident:"bits"}
+var TYPE_BOOLEAN = DataType{Ident:"boolean"}
+var TYPE_DECIMAL64 = DataType{Ident:"decimal64"}
+var TYPE_EMPTY = DataType{Ident:"empty"}
+var TYPE_ENUMERATION = DataType{Ident:"enumeration"}
+var TYPE_IDENTITYREF  = DataType{Ident:"identitydef"}
+var TYPE_INSTANCE_IDENTIFIER = DataType{Ident:"instance-identifier"}
+var TYPE_INT8 = DataType{Ident:"int8"}
+var TYPE_INT16 = DataType{Ident:"int16"}
+var TYPE_INT32 = DataType{Ident:"int32"}
+var TYPE_INT64 = DataType{Ident:"int64"}
+var TYPE_LEAFREF = DataType{Ident:"leafref"}
+var TYPE_STRING = DataType{Ident:"string"}
+var TYPE_UINT8 = DataType{Ident:"uint8"}
+var TYPE_UINT16 = DataType{Ident:"uint16"}
+var TYPE_UINT32 = DataType{Ident:"uint32"}
+var TYPE_UINT64 = DataType{Ident:"uint64"}
+var TYPE_UNION = DataType{Ident:"union"}
+
+var internalTypes = map[string]DataType{
+	TYPE_BINARY.Ident: TYPE_BINARY,
+	TYPE_BITS.Ident: TYPE_BITS,
+	TYPE_BOOLEAN.Ident : TYPE_BOOLEAN,
+	TYPE_DECIMAL64.Ident : TYPE_DECIMAL64,
+	TYPE_EMPTY.Ident : TYPE_EMPTY,
+	TYPE_ENUMERATION.Ident : TYPE_ENUMERATION,
+	TYPE_IDENTITYREF.Ident : TYPE_IDENTITYREF,
+	TYPE_INSTANCE_IDENTIFIER.Ident : TYPE_INSTANCE_IDENTIFIER,
+	TYPE_INT8.Ident : TYPE_INT8,
+	TYPE_INT16.Ident : TYPE_INT16,
+	TYPE_INT32.Ident : TYPE_INT32,
+	TYPE_INT64.Ident : TYPE_INT64,
+	TYPE_LEAFREF.Ident : TYPE_LEAFREF,
+	TYPE_STRING.Ident : TYPE_STRING,
+	TYPE_UINT8.Ident : TYPE_UINT8,
+	TYPE_UINT16.Ident : TYPE_UINT16,
+	TYPE_UINT32.Ident : TYPE_UINT32,
+	TYPE_UINT64.Ident : TYPE_UINT64,
+	TYPE_UNION.Ident : TYPE_UNION,
+}
+
 
 ////////////////////////////////////////////////////
 
