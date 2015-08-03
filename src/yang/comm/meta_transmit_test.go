@@ -64,16 +64,17 @@ module json-test {
 			t.Error("yang module", err)
 		} else {
 			var actual bytes.Buffer
-			rcvr := NewJsonReceiver(&actual)
-			out := rcvr.GetSelector()
-			metaTx := &MetaTransmitter{meta:yangModule, data:module}
-			in := metaTx.GetSelector()
-			v := browse.NewVisitor(in)
-			v.Out = browse.NewVisitor(out)
-			if err = in(browse.READ_VALUE, yangModule.GetFirstMeta(), v); err != nil {
+			out := NewJsonReceiver(&actual)
+			dbg := &browse.DebuggingWriter{Delegate:out}
+			metaTx := &MetaTransmitter{meta:yangModule, module:module}
+			in, err := metaTx.RootSelector()
+			if err != nil {
+				t.Error(err)
+			}
+			if err = browse.Transfer(in, dbg); err != nil {
 				t.Error("failed to transmit json", err)
 			} else {
-				rcvr.Flush()
+				out.Flush()
 				t.Log("Round Trip:", string(actual.Bytes()))
 			}
 		}

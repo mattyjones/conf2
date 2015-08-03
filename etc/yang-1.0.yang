@@ -32,10 +32,13 @@ module yang {
     grouping groupings-typedefs {
         list groupings {
             key "ident";
+            uses def-header;
+
             /*
               !! CIRCULAR
             */
-            uses grouping;
+            uses groupings-typedefs;
+            uses containers-lists-leafs-uses-choice;
         }
         list typedefs {
             key "ident";
@@ -112,16 +115,6 @@ module yang {
                 }
             }
         }
-    }
-
-    grouping grouping {
-        uses def-header;
-
-        /*
-          !! CIRCULAR
-        */
-        uses groupings-typedefs;
-        uses containers-lists-leafs-uses-choice;
     }
 
     container module {

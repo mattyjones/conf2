@@ -16,6 +16,24 @@ func FindByIdent(i MetaIterator, ident string) Meta {
 	return nil
 }
 
+func FindByIdent2(parent MetaList, ident string) Meta {
+	i := NewMetaListIterator(parent, true)
+	return FindByIdent(i, ident)
+}
+
+func IsLeaf(m Meta) bool {
+	switch m.(type) {
+	case *Leaf, *LeafList:
+		return true
+	}
+	return false
+}
+
+func IsList(m Meta) bool {
+	_, isList := m.(*List)
+	return isList
+}
+
 func MetaNameToFieldName(in string) string {
 	// assumes fix is always shorter because char can be dropped and not added
 	fixed := make([]rune, len(in))

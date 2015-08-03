@@ -35,16 +35,20 @@ module json-test {
 		json := "{\"hobbies\":[{\"birding\":{\"favorite-species\":\"towhee\",\"extra\":\"double-mint\"}}]}"
 		inIo := strings.NewReader(json)
 		var actualBuff bytes.Buffer
-		rcvr := NewJsonReceiver(&actualBuff)
-		out := rcvr.GetSelector()
-		in := NewJsonTransmitter(inIo).GetSelector()
-		v := browse.NewVisitor(in)
-		v.Out = browse.NewVisitor(out)
-		err = in(browse.READ_VALUE, module, v)
+		out := NewJsonReceiver(&actualBuff)
+		//dbg := &browse.DebuggingWriter{Delegate:out}
+		if err != nil {
+			t.Error(err)
+		}
+		in, err := NewJsonTransmitter(inIo).GetSelector(module)
+		if err != nil {
+			t.Error(err)
+		}
+		err = browse.Transfer(in, out)
 		if err != nil {
 			t.Error("failed to transmit json", err)
 		} else {
-			rcvr.Flush();
+			out.Flush();
 			actual := string(actualBuff.Bytes())
 			t.Log("Round Trip:", actual)
 			expected := "{\"hobbies\":[{\"birding\":{\"favorite-species\":\"towhee\"}}]}"

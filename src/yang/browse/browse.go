@@ -5,6 +5,7 @@ import (
 	"strings"
 	"fmt"
 	"reflect"
+	"log"
 )
 
 type browseError struct {
@@ -55,9 +56,8 @@ func (ps *PathSegment) parseSegment(segment string) {
 	}
 }
 
-
 type Browser interface {
-	GetSelector() Selection
+	RootSelector() (*Selection, error)
 }
 
 type Value struct {
@@ -69,25 +69,33 @@ type Value struct {
 	Strlist []string
 	Boollist []bool
 	Keys []string
-//	Selection Selection
-//	CaseMeta yang.Meta
 }
 
-func (v *Value) SetString(meta yang.Meta, str string) {
-	// TODO: Coerse value according to meta
-	v.Str = str
+type Selection struct {
+	Meta yang.MetaList
+	Position yang.Meta
+	ListIterator ListIterator
+	Selector Selector
+	Reader Reader
+	Writer Writer
 }
 
-func (v *Value) GetString(meta yang.Meta) string {
-	// TODO: Coerse value according to meta
-	return v.Str
-}
+type ListIterator func(keys []string, first bool) (hasMore bool, err error)
+type Selector func(ident string) (*Selection, error)
+type Reader func(val *Value) (error)
 
-func (v *Value) SetInt(meta yang.Meta, i int) {
-	v.Int = i
-}
+type Writer interface {
+	EnterContainer(yang.MetaList) error
+	ExitContainer(yang.MetaList) error
 
-type Selection func(op Operation, meta yang.Meta, v *Visitor) error
+	EnterList(*yang.List) error
+	ExitList(*yang.List) error
+
+	EnterListItem(*yang.List) error
+	ExitListItem(*yang.List) error
+
+	UpdateValue(meta yang.Meta, val *Value) error
+}
 
 type Operation int
 const (
@@ -97,80 +105,187 @@ const (
 	POST_CREATE_CHILD
 	POST_CREATE_LIST
 	POST_CREATE_LIST_ITEM
-	READ_VALUE
 	UPDATE_VALUE
 	DELETE_CHILD
-	SELECT_CHILD
 )
 
-func (v *Visitor) MakeSelection(path *Path, initialMeta yang.Meta) (meta yang.Meta, err error) {
-	meta = initialMeta
-	var val Value
-	for i, segment := range path.Segments {
-		val.Keys = segment.Keys
-		v.Selection(SELECT_CHILD, meta, v)
-		lastSegment := (i == len(path.Segments) - 1)
-		if !lastSegment {
-			// TODO: Need to handle case meta
-			if metaList, isList := meta.(yang.MetaList); !isList {
-				return nil, &browseError{Msg:"Invalid path"}
-			} else {
-				i := yang.NewMetaListIterator(metaList, true)
-				meta = yang.FindByIdent(i, segment.Ident)
+type NullWriter struct {
+}
+
+func (NullWriter) EnterContainer(yang.MetaList) error {
+	return nil
+}
+
+func (NullWriter) ExitContainer(yang.MetaList) error {
+	return nil
+}
+
+func (NullWriter) EnterList(*yang.List) error {
+	return nil
+}
+
+func (NullWriter) ExitList(*yang.List) error {
+	return nil
+}
+
+func (NullWriter) EnterListItem(*yang.List) error {
+	return nil
+}
+
+func (NullWriter) ExitListItem(*yang.List) error {
+	return nil
+}
+
+func (NullWriter) UpdateValue(meta yang.Meta, val *Value) error {
+	return nil
+}
+
+type DebuggingWriter struct {
+	Delegate Writer
+}
+
+func (w *DebuggingWriter) EnterContainer(m yang.MetaList) error {
+	log.Println("Entering Container", m.GetIdent())
+	return w.Delegate.EnterContainer(m)
+}
+
+func (w *DebuggingWriter) ExitContainer(m yang.MetaList) error {
+	log.Println("Exiting Container", m.GetIdent())
+	return w.Delegate.ExitContainer(m)
+}
+
+func (w *DebuggingWriter) EnterList(m *yang.List) error {
+	log.Println("Entering List", m.GetIdent())
+	return w.Delegate.EnterList(m)
+}
+
+func (w *DebuggingWriter) ExitList(m *yang.List) error {
+	log.Println("Exiting List", m.GetIdent())
+	return w.Delegate.ExitList(m)
+}
+
+func (w *DebuggingWriter) EnterListItem(m *yang.List) error {
+	log.Println("Entering List Item", m.GetIdent())
+	return w.Delegate.EnterListItem(m)
+}
+
+func (w *DebuggingWriter) ExitListItem(m *yang.List) error {
+	log.Println("Existing List Item", m.GetIdent())
+	return w.Delegate.ExitListItem(m)
+}
+
+func (w *DebuggingWriter) UpdateValue(m yang.Meta, v *Value) error {
+	log.Println("Updating Value", m.GetIdent())
+	return w.Delegate.UpdateValue(m, v)
+}
+
+func Advance(selection *Selection, path *Path) (child *Selection, err error) {
+	return readContainer(selection, NullWriter{}, path, 0)
+}
+
+func Transfer(from *Selection, to Writer) (err error) {
+	_, err = readContainer(from, to, nil, 0)
+	return
+}
+
+func readContainer(from *Selection, to Writer, path *Path, level int) (selection *Selection, err error) {
+	var segment PathSegment
+	if path != nil && len(path.Segments) > level {
+		segment = path.Segments[level]
+	}
+	selection = from
+	var fromChild *Selection
+	metaList, isContainerInList := from.Meta.(*yang.List)
+	if isContainerInList {
+		if err = to.EnterListItem(metaList); err != nil {
+			return
+		}
+	} else {
+		if err = to.EnterContainer(from.Meta); err != nil {
+			return
+		}
+	}
+	i := yang.NewMetaListIterator(from.Meta, true)
+	var isContainer bool
+	for i.HasNextMeta() {
+		meta := i.NextMeta()
+		if segment.Ident != "" {
+			if meta.GetIdent() != segment.Ident {
+				continue
 			}
+		}
+		val := Value{}
+		if fromChild, err = from.Selector(meta.GetIdent()); err != nil {
+			return
+		}
+		if from.Position == nil {
+			continue
+		}
+		if fromChild != nil {
+			fromChild.Meta, isContainer = from.Position.(yang.MetaList)
+			if !isContainer {
+				msg := fmt.Sprint("leaf node returned a selector:", from.Position.GetIdent())
+				return nil, &browseError{Msg:msg}
+			}
+			if yang.IsList(from.Position) {
+				if selection, err = readList(fromChild, to, path, level + 1); err != nil {
+					return
+				}
+			} else {
+				if selection, err = readContainer(fromChild, to, path, level + 1); err != nil {
+					return
+				}
+			}
+		} else {
+			if err = from.Reader(&val); err != nil {
+				return
+			}
+			if err = to.UpdateValue(from.Position, &val); err != nil {
+				return
+			}
+		}
+	}
+	if isContainerInList {
+		if err = to.ExitListItem(metaList); err != nil {
+			return
+		}
+	} else {
+		if err = to.ExitContainer(from.Meta); err != nil {
+			return
 		}
 	}
 	return
 }
 
-type Visitor struct {
-	Out			*Visitor
-	Val 		Value
-	Selection	Selection
-	Position    yang.Meta
-}
-
-func NewVisitor(selection Selection) (v *Visitor) {
-	v = &Visitor{Selection:selection}
-	return
-}
-
-func (v *Visitor) EnterContainer(meta yang.Meta) (err error) {
-	if err = v.Out.Selection(CREATE_CHILD, meta, v.Out); err == nil {
-		err = v.Out.Selection(SELECT_CHILD, meta, v.Out)
+func readList(from *Selection, to Writer, path *Path, level int) (selection *Selection, err error) {
+	var segment PathSegment
+	if path != nil && len(path.Segments) > level {
+		segment = path.Segments[level]
+	}
+	selection = from
+	metaList := from.Meta.(*yang.List)
+	var hasMore bool
+	if hasMore, err = from.ListIterator(segment.Keys, true); err != nil {
+		return
+	} else if (!hasMore) {
+		return
+	}
+	if err = to.EnterList(metaList); err != nil {
+		return
+	}
+	for hasMore {
+		// list in list is illegal AFAIK
+		if selection, err = readContainer(from, to, path, level + 1); err != nil {
+			return
+		}
+		if hasMore, err = from.ListIterator(segment.Keys, false); err != nil {
+			return
+		}
+	}
+	if err = to.ExitList(metaList); err != nil {
+		return
 	}
 	return
-}
-
-func (v *Visitor) EnterList(meta yang.Meta) (err error) {
-	if err = v.Out.Selection(CREATE_LIST, meta, v.Out); err == nil {
-		err = v.Out.Selection(SELECT_CHILD, meta, v.Out)
-	}
-	return
-}
-
-func (v *Visitor) EnterListItem(meta yang.Meta) (err error) {
-	if err = v.Out.Selection(CREATE_LIST_ITEM, meta, v.Out); err == nil {
-		err = v.Out.Selection(SELECT_CHILD, meta, v.Out)
-	}
-	return
-}
-
-func (v *Visitor) ExitContainer(meta yang.Meta) error {
-	return v.Out.Selection(POST_CREATE_CHILD, meta, v.Out)
-}
-
-func (v *Visitor) ExitList(meta yang.Meta) error {
-	return v.Out.Selection(POST_CREATE_LIST, meta, v.Out)
-}
-
-func (v *Visitor) ExitListItem(meta yang.Meta) error {
-	return v.Out.Selection(POST_CREATE_LIST_ITEM, meta, v.Out)
-}
-
-func (v *Visitor) Send(meta yang.Meta) error {
-	v.Out.Val = v.Val
-	return v.Out.Selection(UPDATE_VALUE, meta, v.Out)
 }
 
 type ResponseCode int
@@ -181,52 +296,51 @@ const (
 	MISSING_KEY
 )
 
+func NotImplementedByName(ident string) error {
+	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("browsing of \"%s\" not implemented", ident)}
+}
+
 func NotImplemented(meta yang.Meta) error {
 	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("browsing of \"%s\" not implemented", meta.GetIdent())}
 }
 
-func (v *Visitor) NotFound(key string) error {
+func NotFound(key string) error {
 	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("item identified with key \"%s\" not found", key)}
 }
 
-func (v *Visitor) ListKeyRequired() error {
+func ListKeyRequired() error {
 	return &browseError{Code:MISSING_KEY, Msg:fmt.Sprintf("List key required")}
 }
 
-func UseReflection(op Operation, meta yang.Meta, obj interface{}, v *Visitor) error {
-	fieldName := yang.MetaNameToFieldName(meta.GetIdent())
+func ReadField(meta yang.Meta, obj interface{}, v *Value) error {
+	return ReadFieldWithFieldName(yang.MetaNameToFieldName(meta.GetIdent()), meta, obj, v)
+}
+
+func ReadFieldWithFieldName(fieldName string, meta yang.Meta, obj interface{}, v *Value) error {
 	objType := reflect.ValueOf(obj).Elem()
 	value := objType.FieldByName(fieldName)
 	switch tmeta := meta.(type) {
 	case *yang.Leaf:
-		switch op {
-		case READ_VALUE:
-			switch tmeta.GetDataType().Resolve().Ident {
-			case "boolean":
-				if value.Bool() {
-					v.Val.Bool = true
-				}
-				v.Val.Bool = false
-			case "int32":
-				v.Val.Int = int(value.Int())
-			default:
-				v.Val.Str = value.String()
+		switch tmeta.GetDataType().Resolve().Ident {
+		case "boolean":
+			if value.Bool() {
+				v.Bool = true
 			}
-			v.Send(meta)
-
+			v.Bool = false
+		case "int32":
+			v.Int = int(value.Int())
 		default:
-			return NotImplemented(meta)
+			v.Str = value.String()
 		}
 	case *yang.LeafList:
 		switch tmeta.GetDataType().Resolve().Ident {
 		case "boolean":
-			v.Val.Boollist = value.Interface().([]bool)
+			v.Boollist = value.Interface().([]bool)
 		case "int32":
-			v.Val.Intlist = value.Interface().([]int)
+			v.Intlist = value.Interface().([]int)
 		default:
-			v.Val.Strlist = value.Interface().([]string)
+			v.Strlist = value.Interface().([]string)
 		}
-		v.Send(meta)
 	default:
 		return NotImplemented(meta)
 	}

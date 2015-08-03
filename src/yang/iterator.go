@@ -4,9 +4,7 @@ type MetaIterator interface {
 	NextMeta() Meta
 	HasNextMeta() bool
 }
-type MetaProxy interface {
-	ResolveProxy() MetaIterator
-}
+
 type MetaListIterator struct {
 	position Meta
 	currentProxy MetaIterator

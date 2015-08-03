@@ -100,6 +100,11 @@ type HasDataType interface {
 	GetDataType() *DataType
 	SetDataType(dataType *DataType)
 }
+
+type MetaProxy interface {
+	ResolveProxy() MetaIterator
+}
+
 ///////////////////////
 // Base structs
 ///////////////////////
@@ -322,10 +327,6 @@ func (y *Choice) ReplaceMeta(oldChild Meta, newChild Meta) error {
 // Other
 func (c *Choice) GetCase(ident string) *ChoiceCase {
 	return FindByPathWithoutResolvingProxies(c, ident).(*ChoiceCase)
-}
-// MetaProxy
-func (y *Choice) ResolveProxy() MetaIterator {
-	return &MetaListIterator{position:y.GetFirstMeta(),resolveProxies:true}
 }
 
 ////////////////////////////////////////////////////
