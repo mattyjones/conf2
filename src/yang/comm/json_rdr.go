@@ -36,17 +36,15 @@ type JsonNode struct {
 func readLeafOrLeafList(meta yang.Meta, data interface{}, val *browse.Value) (err error) {
 	switch tmeta := meta.(type) {
 	case *yang.Leaf:
-		s := data.(string)
 		switch tmeta.DataType.Resolve().Ident {
 		case "int32":
-			if val.Int, err = strconv.Atoi(s); err != nil {
-				return
-			}
+			val.Int = int(data.(float64))
 		case "string":
+			s := data.(string)
 			val.Str = s
 		case "boolean":
+			s := data.(string)
 			val.Bool = ("true" == s)
-
 		}
 	case *yang.LeafList:
 		a := data.([]string)

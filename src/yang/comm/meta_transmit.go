@@ -285,7 +285,6 @@ func selectDefinitionsList(dataList yang.MetaList) (s *browse.Selection, err err
 	i := &defsIterator{dataList:dataList}
 	s.ListIterator = i.ListIterator
 	s.Selector = func(ident string) (s2 *browse.Selection, e error) {
-fmt.Println("data", i.data)
 		choice := s.Meta.GetFirstMeta().(*yang.Choice)
 		if s.Position, e = resolveDefinitionCase(choice, i.data); e != nil {
 			return nil, e

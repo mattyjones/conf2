@@ -34,6 +34,10 @@ func IsList(m Meta) bool {
 	return isList
 }
 
+func IsContainer(m Meta) bool {
+	return ! IsList(m) && ! IsLeaf(m)
+}
+
 func MetaNameToFieldName(in string) string {
 	// assumes fix is always shorter because char can be dropped and not added
 	fixed := make([]rune, len(in))

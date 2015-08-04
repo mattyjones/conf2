@@ -77,12 +77,13 @@ type Selection struct {
 	ListIterator ListIterator
 	Selector Selector
 	Reader Reader
-	Writer Writer
+	Edit Editor
 }
 
 type ListIterator func(keys []string, first bool) (hasMore bool, err error)
 type Selector func(ident string) (*Selection, error)
 type Reader func(val *Value) (error)
+type Editor func(op Operation, val *Value) (error)
 
 type Writer interface {
 	EnterContainer(yang.MetaList) error
@@ -96,6 +97,103 @@ type Writer interface {
 
 	UpdateValue(meta yang.Meta, val *Value) error
 }
+
+type WriteableSelection struct {
+	stack []*Selection
+	selection *Selection
+}
+
+func NewWriteableSelection(root *Selection) (ws *WriteableSelection) {
+	ws = &WriteableSelection{}
+	ws.stack = make([]*Selection, 10)
+	ws.selection = root
+	ws.stack[0] = ws.selection
+	return ws
+}
+
+func (ws *WriteableSelection) EnterContainer(m yang.MetaList) (err error) {
+	ws.selection.Position = m
+	if ws.selection.Edit == nil {
+		return EditNotImplemented(m)
+	}
+	ws.selection.Edit(CREATE_CHILD, nil)
+	err = ws.pushSelection(m)
+	return
+}
+
+func (ws *WriteableSelection) ExitContainer(m yang.MetaList) (err error) {
+	if err = ws.popSelection(); err == nil {
+		err = ws.selection.Edit(POST_CREATE_CHILD, nil)
+	}
+	return nil
+}
+
+func (ws *WriteableSelection) pushSelection(m yang.MetaList) (err error) {
+	if ws.selection, err = ws.selection.Selector(m.GetIdent()); err == nil {
+		if ws.selection == nil {
+			msg := fmt.Sprint("expected selector for property ", m.GetIdent())
+			err = &browseError{Msg:msg}
+		} else {
+			ws.selection.Meta = m
+			ws.stack = append(ws.stack, ws.selection)
+		}
+	}
+	return err
+}
+
+func (ws *WriteableSelection) popSelection() (err error) {
+	if len(ws.stack) == 0 {
+		return &browseError{Msg:"Empty selection stack"}
+	}
+	ws.selection = ws.stack[len(ws.stack) - 1]
+	ws.stack = ws.stack[0:len(ws.stack) - 1]
+	return
+}
+
+func (ws *WriteableSelection) EnterList(m *yang.List) (err error) {
+	ws.selection.Position = m
+	if ws.selection.Edit == nil {
+		return EditNotImplemented(m)
+	}
+	if err = ws.selection.Edit(CREATE_LIST, nil); err != nil {
+		ws.pushSelection(m)
+	}
+	return err
+}
+
+func (ws *WriteableSelection) ExitList(m *yang.List) (err error) {
+	if err = ws.popSelection(); err != nil {
+		ws.selection.Edit(POST_CREATE_LIST, nil)
+	}
+	return err
+}
+
+func (ws *WriteableSelection) EnterListItem(m *yang.List) (err error) {
+	ws.selection.Position = m
+	if ws.selection.Edit == nil {
+		return EditNotImplemented(m)
+	}
+	if err = ws.selection.Edit(CREATE_LIST_ITEM, nil); err != nil {
+		err = ws.pushSelection(m)
+	}
+	return err
+}
+
+func (ws *WriteableSelection) ExitListItem(m *yang.List) (err error) {
+	if err = ws.popSelection(); err == nil {
+		err = ws.selection.Edit(POST_CREATE_LIST_ITEM, nil)
+	}
+	return err
+}
+
+func (ws *WriteableSelection) UpdateValue(m yang.Meta, val *Value) error {
+	ws.selection.Position = m
+	if ws.selection.Edit == nil {
+		return EditNotImplemented(m)
+	}
+	return ws.selection.Edit(UPDATE_VALUE, val)
+}
+
 
 type Operation int
 const (
@@ -195,16 +293,6 @@ func readContainer(from *Selection, to Writer, path *Path, level int) (selection
 	}
 	selection = from
 	var fromChild *Selection
-	metaList, isContainerInList := from.Meta.(*yang.List)
-	if isContainerInList {
-		if err = to.EnterListItem(metaList); err != nil {
-			return
-		}
-	} else {
-		if err = to.EnterContainer(from.Meta); err != nil {
-			return
-		}
-	}
 	i := yang.NewMetaListIterator(from.Meta, true)
 	var isContainer bool
 	for i.HasNextMeta() {
@@ -228,13 +316,27 @@ func readContainer(from *Selection, to Writer, path *Path, level int) (selection
 				return nil, &browseError{Msg:msg}
 			}
 			if yang.IsList(from.Position) {
+
+
 				if selection, err = readList(fromChild, to, path, level + 1); err != nil {
 					return
 				}
+
+
 			} else {
+
+				if err = to.EnterContainer(fromChild.Meta); err != nil {
+					return
+				}
+
 				if selection, err = readContainer(fromChild, to, path, level + 1); err != nil {
 					return
 				}
+
+				if err = to.ExitContainer(fromChild.Meta); err != nil {
+					return
+				}
+
 			}
 		} else {
 			if err = from.Reader(&val); err != nil {
@@ -243,15 +345,6 @@ func readContainer(from *Selection, to Writer, path *Path, level int) (selection
 			if err = to.UpdateValue(from.Position, &val); err != nil {
 				return
 			}
-		}
-	}
-	if isContainerInList {
-		if err = to.ExitListItem(metaList); err != nil {
-			return
-		}
-	} else {
-		if err = to.ExitContainer(from.Meta); err != nil {
-			return
 		}
 	}
 	return
@@ -274,10 +367,19 @@ func readList(from *Selection, to Writer, path *Path, level int) (selection *Sel
 		return
 	}
 	for hasMore {
-		// list in list is illegal AFAIK
+		// list in list is illegal AFAIK so assume container
+		if err = to.EnterListItem(metaList); err != nil {
+			return
+		}
+
 		if selection, err = readContainer(from, to, path, level + 1); err != nil {
 			return
 		}
+
+		if err = to.ExitListItem(metaList); err != nil {
+			return
+		}
+
 		if hasMore, err = from.ListIterator(segment.Keys, false); err != nil {
 			return
 		}
@@ -295,6 +397,10 @@ const (
 	NOT_FOUND
 	MISSING_KEY
 )
+
+func EditNotImplemented(meta yang.Meta) error {
+	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("editing of \"%s\" not implemented", meta.GetIdent())}
+}
 
 func NotImplementedByName(ident string) error {
 	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("browsing of \"%s\" not implemented", ident)}
@@ -342,6 +448,38 @@ func ReadFieldWithFieldName(fieldName string, meta yang.Meta, obj interface{}, v
 			v.Strlist = value.Interface().([]string)
 		}
 	default:
+		return NotImplemented(meta)
+	}
+	return nil
+}
+
+func WriteField(meta yang.Meta, obj interface{}, v *Value) error {
+	return WriteFieldWithFieldName(yang.MetaNameToFieldName(meta.GetIdent()), meta, obj, v)
+}
+
+func WriteFieldWithFieldName(fieldName string, meta yang.Meta, obj interface{}, v *Value) error {
+	objType := reflect.ValueOf(obj).Elem()
+	value := objType.FieldByName(fieldName)
+	switch tmeta := meta.(type) {
+		case *yang.Leaf:
+		switch tmeta.GetDataType().Resolve().Ident {
+		case "boolean":
+			value.SetBool(v.Bool)
+		case "int32":
+			value.SetInt(int64(v.Int))
+		default:
+			value.SetString(v.Str)
+		}
+		case *yang.LeafList:
+		switch tmeta.GetDataType().Resolve().Ident {
+		case "boolean":
+			value.Set(reflect.ValueOf(v.Boollist))
+		case "int32":
+			value.Set(reflect.ValueOf(v.Intlist))
+		default:
+			value.Set(reflect.ValueOf(v.Strlist))
+		}
+		default:
 		return NotImplemented(meta)
 	}
 	return nil
