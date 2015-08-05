@@ -7,7 +7,6 @@ import (
 	"bytes"
 )
 
-
 func LoadSampleModule(t *testing.T) (*yang.Module) {
 	f := &yang.FileDataSource{Root:"../testdata"}
 	m, err:= yang.LoadModule(f, "romancing-the-stone.yang")

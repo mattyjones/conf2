@@ -24,16 +24,16 @@ type Value struct {
 type Selection struct {
 	Meta yang.MetaList
 	Position yang.Meta
-	ListIterator ListIterator
-	Selector Selector
-	Reader Reader
-	Edit Editor
+	Iterate Iterate
+	Select Select
+	Read Read
+	Edit Edit
 }
 
-type ListIterator func(keys []string, first bool) (hasMore bool, err error)
-type Selector func(ident string) (*Selection, error)
-type Reader func(val *Value) (error)
-type Editor func(op Operation, val *Value) (error)
+type Iterate func(keys []string, first bool) (hasMore bool, err error)
+type Select func(ident string) (*Selection, error)
+type Read func(val *Value) (error)
+type Edit func(op Operation, val *Value) (error)
 
 type Writer interface {
 	EnterContainer(yang.MetaList) error
@@ -76,7 +76,7 @@ func (ws *WriteableSelection) ExitContainer(m yang.MetaList) (err error) {
 }
 
 func (ws *WriteableSelection) pushSelection(m yang.MetaList) (err error) {
-	if ws.selection, err = ws.selection.Selector(m.GetIdent()); err == nil {
+	if ws.selection, err = ws.selection.Select(m.GetIdent()); err == nil {
 		if ws.selection == nil {
 			msg := fmt.Sprint("expected selector for property ", m.GetIdent())
 			err = &browseError{Msg:msg}
@@ -118,7 +118,7 @@ func (ws *WriteableSelection) ExitList(m *yang.List) (err error) {
 func (ws *WriteableSelection) UpdateValue(m yang.Meta, val *Value) (err error) {
 	ws.selection.Position = m
 	var unexpected *Selection
-	if unexpected, err = ws.selection.Selector(m.GetIdent()); err == nil {
+	if unexpected, err = ws.selection.Select(m.GetIdent()); err == nil {
 		if ws.selection.Edit == nil {
 			err = EditNotImplemented(m)
 		} else {
@@ -191,13 +191,13 @@ func read(selection *Selection, wtr Writer, controller *readController) (err err
 		if !controller.matches(meta.GetIdent()) {
 			continue
 		}
-		child, err = selection.Selector(meta.GetIdent())
+		child, err = selection.Select(meta.GetIdent())
 		if selection.Position == nil {
 			continue
 		}
 		if child == nil {
 			val := Value{}
-			if err = selection.Reader(&val); err != nil {
+			if err = selection.Read(&val); err != nil {
 				return
 			}
 			if err = wtr.UpdateValue(selection.Position, &val); err != nil {
@@ -205,9 +205,9 @@ func read(selection *Selection, wtr Writer, controller *readController) (err err
 			}
 		} else if ! controller.isMaxLevel() {
 			child.Meta = selection.Position.(yang.MetaList)
-			if (child.ListIterator != nil) {
+			if (child.Iterate != nil) {
 				var more bool
-				if more, err = child.ListIterator(controller.keys(), true); err != nil {
+				if more, err = child.Iterate(controller.keys(), true); err != nil {
 					return
 				} else if (!more) {
 					continue
@@ -222,7 +222,7 @@ func read(selection *Selection, wtr Writer, controller *readController) (err err
 						return
 					}
 
-					if more, err = child.ListIterator(controller.keys(), false); err != nil {
+					if more, err = child.Iterate(controller.keys(), false); err != nil {
 						return
 					}
 				}

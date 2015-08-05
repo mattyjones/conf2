@@ -17,7 +17,7 @@ type MetaTransmitter struct {
 
 func (self *MetaTransmitter) RootSelector() (s *Selection, err error) {
 	s = &Selection{Meta:self.meta}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		switch ident {
 		case "module" :
@@ -30,7 +30,7 @@ func (self *MetaTransmitter) RootSelector() (s *Selection, err error) {
 
 func selectModule(module *yang.Module) (s *Selection, serr error) {
 	s = &Selection{}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		switch ident {
 		case "revision":
@@ -43,7 +43,7 @@ func selectModule(module *yang.Module) (s *Selection, serr error) {
 			return GroupingsTypedefsDefinitions(s.Position, module)
 		}
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, module, val)
 	}
 	return
@@ -51,11 +51,11 @@ func selectModule(module *yang.Module) (s *Selection, serr error) {
 
 func selectRevision(rev *yang.Revision) (s *Selection, serr error) {
 	s = &Selection{}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		return nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		switch s.Position.GetIdent() {
 		case "rev-date":
 			return ReadFieldWithFieldName("Ident", s.Position, rev, val)
@@ -68,11 +68,11 @@ func selectRevision(rev *yang.Revision) (s *Selection, serr error) {
 
 func selectType(typeData *yang.DataType) (s *Selection, err error) {
 	s = &Selection{}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		return  nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, typeData, val)
 	}
 	return
@@ -81,8 +81,8 @@ func selectType(typeData *yang.DataType) (s *Selection, err error) {
 func selectGroupings(groupings yang.MetaList) (s *Selection, err error) {
 	s = &Selection{}
 	i := &defsIterator{dataList:groupings}
-	s.ListIterator = i.ListIterator
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Iterate = i.ListIterator
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		switch ident {
 		case "input":
@@ -93,7 +93,7 @@ func selectGroupings(groupings yang.MetaList) (s *Selection, err error) {
 
 		return nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, i.data, val)
 	}
 	return
@@ -102,8 +102,8 @@ func selectGroupings(groupings yang.MetaList) (s *Selection, err error) {
 func selectRpcs(rpcs yang.MetaList) (s *Selection, err error) {
 	s = &Selection{}
 	i := &defsIterator{dataList:rpcs}
-	s.ListIterator = i.ListIterator
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Iterate = i.ListIterator
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		switch ident {
 		case "input":
@@ -114,7 +114,7 @@ func selectRpcs(rpcs yang.MetaList) (s *Selection, err error) {
 
 		return nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, i.data, val)
 	}
 	return
@@ -123,8 +123,8 @@ func selectRpcs(rpcs yang.MetaList) (s *Selection, err error) {
 func selectTypedefs(typedefs yang.MetaList) (s *Selection, err error) {
 	s = &Selection{}
 	i := &defsIterator{dataList:typedefs}
-	s.ListIterator = i.ListIterator
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Iterate = i.ListIterator
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		switch ident {
 		case "type":
@@ -133,7 +133,7 @@ func selectTypedefs(typedefs yang.MetaList) (s *Selection, err error) {
 
 		return nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, i.data, val)
 	}
 	return
@@ -154,12 +154,12 @@ func GroupingsTypedefsDefinitions(meta yang.Meta, data yang.Meta) (*Selection, e
 func selectNotifications(notifications yang.MetaList) (s *Selection, err error) {
 	s = &Selection{}
 	i := &defsIterator{dataList:notifications}
-	s.ListIterator = i.ListIterator
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Iterate = i.ListIterator
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		return GroupingsTypedefsDefinitions(s.Position, i.data)
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, i.data, val)
 	}
 	return
@@ -167,11 +167,11 @@ func selectNotifications(notifications yang.MetaList) (s *Selection, err error) 
 
 func selectMetaList(data *yang.List) (s *Selection, err error) {
 	s = &Selection{}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		return GroupingsTypedefsDefinitions(s.Position, data)
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, data, val)
 	}
 	return
@@ -179,11 +179,11 @@ func selectMetaList(data *yang.List) (s *Selection, err error) {
 
 func selectMetaContainer(data *yang.Container) (s *Selection, err error) {
 	s = &Selection{}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		return GroupingsTypedefsDefinitions(s.Position, data)
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, data, val)
 	}
 	return
@@ -191,7 +191,7 @@ func selectMetaContainer(data *yang.Container) (s *Selection, err error) {
 
 func selectMetaLeaf(data *yang.Leaf) (s *Selection, err error) {
 	s = &Selection{}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		switch ident {
 		case "type":
@@ -199,7 +199,7 @@ func selectMetaLeaf(data *yang.Leaf) (s *Selection, err error) {
 		}
 		return nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, data, val)
 	}
 	return
@@ -207,7 +207,7 @@ func selectMetaLeaf(data *yang.Leaf) (s *Selection, err error) {
 
 func selectMetaLeafList(data *yang.LeafList) (s *Selection, err error) {
 	s = &Selection{}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		switch ident {
 		case "type":
@@ -215,7 +215,7 @@ func selectMetaLeafList(data *yang.LeafList) (s *Selection, err error) {
 		}
 		return nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, data, val)
 	}
 	return
@@ -223,11 +223,11 @@ func selectMetaLeafList(data *yang.LeafList) (s *Selection, err error) {
 
 func selectMetaUses(data *yang.Uses) (s *Selection, err error) {
 	s = &Selection{}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		return nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, data, val)
 	}
 	return
@@ -235,7 +235,7 @@ func selectMetaUses(data *yang.Uses) (s *Selection, err error) {
 
 func selectMetaCases(data *yang.Choice) (s *Selection, err error) {
 	s = &Selection{}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		switch ident {
 		case "definitions":
@@ -243,7 +243,7 @@ func selectMetaCases(data *yang.Choice) (s *Selection, err error) {
 		}
 		return nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, data, val)
 	}
 	return
@@ -251,7 +251,7 @@ func selectMetaCases(data *yang.Choice) (s *Selection, err error) {
 
 func selectMetaChoice(data *yang.Choice) (s *Selection, err error) {
 	s = &Selection{}
-	s.Selector = func(ident string) (*Selection, error) {
+	s.Select = func(ident string) (*Selection, error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		switch ident {
 		case "cases":
@@ -259,7 +259,7 @@ func selectMetaChoice(data *yang.Choice) (s *Selection, err error) {
 		}
 		return nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, data, val)
 	}
 	return
@@ -295,8 +295,8 @@ func (i *defsIterator) ListIterator(keys []string, first bool) (bool, error)  {
 func selectDefinitionsList(dataList yang.MetaList) (s *Selection, err error) {
 	s = &Selection{}
 	i := &defsIterator{dataList:dataList}
-	s.ListIterator = i.ListIterator
-	s.Selector = func(ident string) (s2 *Selection, e error) {
+	s.Iterate = i.ListIterator
+	s.Select = func(ident string) (s2 *Selection, e error) {
 		choice := s.Meta.GetFirstMeta().(*yang.Choice)
 		if s.Position, e = resolveDefinitionCase(choice, i.data); e != nil {
 			return nil, e
@@ -317,7 +317,7 @@ func selectDefinitionsList(dataList yang.MetaList) (s *Selection, err error) {
 		}
 		return nil, nil
 	}
-	s.Reader = func(val *Value) (err error) {
+	s.Read = func(val *Value) (err error) {
 		return ReadField(s.Position, i.data, val)
 	}
 	return

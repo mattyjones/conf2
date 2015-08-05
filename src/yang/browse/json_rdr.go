@@ -24,7 +24,7 @@ func (self *JsonTransmitter) GetSelector(meta yang.MetaList) (s *Selection, err 
 		singleton := make([]interface{}, 1)
 		singleton[0] = values
 		s, err = selectJsonList(singleton)
-		s.ListIterator([]string{}, true)
+		s.Iterate([]string{}, true)
 	} else {
 		s, err = selectJsonContainer(values)
 	}
@@ -84,7 +84,7 @@ func selectJsonContainer(values map[string]interface{}) (s *Selection, err error
 	s = &Selection{}
 	var found bool
 	var data interface{}
-	s.Selector = func(ident string) (child *Selection, e error) {
+	s.Select = func(ident string) (child *Selection, e error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		data, found = values[ident]
 		if !found {
@@ -94,7 +94,7 @@ func selectJsonContainer(values map[string]interface{}) (s *Selection, err error
 		}
 		return
 	}
-	s.Reader = func (val *Value) (err error) {
+	s.Read = func (val *Value) (err error) {
 		if !found {
 			return
 		}
@@ -109,7 +109,7 @@ func selectJsonList(list []interface{}) (s *Selection, err error) {
 	var values map[string]interface{}
 	var data interface{}
 	var found bool
-	s.ListIterator = func(keys []string, first bool) (bool, error) {
+	s.Iterate = func(keys []string, first bool) (bool, error) {
 		/* ignoring keys, cannot see the use case */
 		if (first) {
 			i = 0
@@ -122,7 +122,7 @@ func selectJsonList(list []interface{}) (s *Selection, err error) {
 		}
 		return false, nil
 	}
-	s.Selector = func(ident string) (child *Selection, e error) {
+	s.Select = func(ident string) (child *Selection, e error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		data, found = values[ident]
 		if !found {
