@@ -1,9 +1,8 @@
-package comm
+package browse
 
 import (
 	"io"
 	"yang"
-	"yang/browse"
 	"bufio"
 	"strconv"
 )
@@ -26,11 +25,17 @@ func NewJsonReceiver(out io.Writer ) *JsonReceiver {
 	return &JsonReceiver{out:bufio.NewWriter(out), firstInDoc:true, firstInContainer: true}
 }
 
-func (json *JsonReceiver) Flush() error {
+func (json *JsonReceiver) Flush() (err error) {
+	if _, err = json.out.WriteRune(CLOSE_OBJ); err != nil {
+		return err
+	}
 	return json.out.Flush()
 }
 
 func (json *JsonReceiver) EnterList(meta *yang.List) (err error) {
+	if err = json.checkDocBeginning(); err != nil {
+		return
+	}
 	if err = json.writeIdent(meta.GetIdent()); err == nil {
 		_, err = json.out.WriteRune(OPEN_ARRAY)
 		json.firstInContainer = true;
@@ -44,15 +49,39 @@ func (json *JsonReceiver) ExitList(meta *yang.List) (err error) {
 	return
 }
 
-func (json *JsonReceiver) EnterContainer(meta yang.MetaList) error {
-	return json.beginObject(meta.GetIdent())
+func (json *JsonReceiver) EnterContainer(meta yang.MetaList) (err error) {
+	if err = json.checkDocBeginning(); err != nil {
+		return
+	}
+	if (yang.IsList(meta.GetParent())) {
+		if err = json.writeDelim(); err != nil {
+			return
+		}
+		if err = json.beginObject(); err != nil {
+			return
+		}
+	}
+	if err = json.writeIdent(meta.GetIdent()); err != nil {
+		return
+	}
+	if err = json.beginObject(); err != nil {
+		return
+	}
+	return
 }
 func (json *JsonReceiver) ExitContainer(meta yang.MetaList) (err error) {
 	_, err = json.out.WriteRune(CLOSE_OBJ)
+
+	if (yang.IsList(meta.GetParent())) {
+		_, err = json.out.WriteRune(CLOSE_OBJ)
+	}
 	return
 }
 
-func (json *JsonReceiver) UpdateValue(meta yang.Meta, v *browse.Value) (err error) {
+func (json *JsonReceiver) UpdateValue(meta yang.Meta, v *Value) (err error) {
+	if err = json.checkDocBeginning(); err != nil {
+		return
+	}
 	json.writeIdent(meta.GetIdent());
 	switch tmeta := meta.(type) {
 	case *yang.Leaf:
@@ -116,13 +145,6 @@ func (json *JsonReceiver) UpdateValue(meta yang.Meta, v *browse.Value) (err erro
 	return
 }
 
-func (json *JsonReceiver) EnterListItem(meta *yang.List) error {
-	return json.beginArrayItem()
-}
-func (json *JsonReceiver) ExitListItem(meta *yang.List) error {
-	return json.endArrayItem()
-}
-
 func (json *JsonReceiver) writeBool(b bool) error {
 	if b {
 		return json.writeString("true")
@@ -155,12 +177,7 @@ func (json *JsonReceiver) endArrayItem() (err error) {
 	return
 }
 // helper functions
-func (json *JsonReceiver) beginObject(ident string) (err error) {
-	if json.firstInDoc {
-		json.firstInDoc = false
-	} else {
-		err = json.writeIdent(ident);
-	}
+func (json *JsonReceiver) beginObject() (err error) {
 	if err == nil {
 		_, err = json.out.WriteRune(OPEN_OBJ);
 		json.firstInContainer = true;
@@ -188,6 +205,16 @@ func (json *JsonReceiver) writeDelim() (err error) {
 		json.firstInContainer = false;
 	} else {
 		_, err = json.out.WriteRune(COMMA);
+	}
+	return
+}
+
+func (json *JsonReceiver) checkDocBeginning() (err error) {
+	if json.firstInDoc {
+		if _, err = json.out.WriteRune(OPEN_OBJ); err != nil {
+			return err
+		}
+		json.firstInDoc = false
 	}
 	return
 }

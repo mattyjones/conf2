@@ -1,8 +1,8 @@
-package comm
+package browse
+
 import (
 	"testing"
 	"yang"
-	"yang/browse"
 	"bytes"
 	"strings"
 )
@@ -32,11 +32,14 @@ module json-test {
 	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr)); err != nil {
 		t.Error("bad module", err)
 	} else {
-		json := "{\"hobbies\":[{\"birding\":{\"favorite-species\":\"towhee\",\"extra\":\"double-mint\"}}]}"
+		json := `{"hobbies":[
+{"birding":{"favorite-species":"towhee","extra":"double-mint"}},
+{"birding":{"favorite-species":"robin"}}
+]}`
 		inIo := strings.NewReader(json)
 		var actualBuff bytes.Buffer
 		out := NewJsonReceiver(&actualBuff)
-		//dbg := &browse.DebuggingWriter{Delegate:out}
+		dbg := &DebuggingWriter{Delegate:out}
 		if err != nil {
 			t.Error(err)
 		}
@@ -44,14 +47,17 @@ module json-test {
 		if err != nil {
 			t.Error(err)
 		}
-		err = browse.Transfer(in, out)
+		err = Walk(in, nil, dbg)
 		if err != nil {
 			t.Error("failed to transmit json", err)
 		} else {
 			out.Flush();
 			actual := string(actualBuff.Bytes())
 			t.Log("Round Trip:", actual)
-			expected := "{\"hobbies\":[{\"birding\":{\"favorite-species\":\"towhee\"}}]}"
+			expected := strings.Replace(`{"hobbies":[
+{"birding":{"favorite-species":"towhee"}},
+{"birding":{"favorite-species":"robin"}}
+]}`, "\n", "", -1)
 			if actual != expected {
 				t.Error(actual, "!=", expected)
 			}

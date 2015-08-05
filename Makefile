@@ -27,7 +27,7 @@ libyangc2j_LDFLAGS = \
 
 GO_ARCH = linux_amd64
 
-PKGS = yang yang/browse yang/comm
+PKGS = yang yang/browse
 
 all : generate driver-java build test install
 

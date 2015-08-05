@@ -1,11 +1,10 @@
-package comm
+package browse
 import (
 	"testing"
 	"yang"
 	"bytes"
 	"os"
 	"fmt"
-	"yang/browse"
 )
 func TestScratch(t *testing.T) {
 	cwd, _ := os.Getwd()
@@ -65,13 +64,13 @@ module json-test {
 		} else {
 			var actual bytes.Buffer
 			out := NewJsonReceiver(&actual)
-			dbg := &browse.DebuggingWriter{Delegate:out}
+			//dbg := &DebuggingWriter{Delegate:out}
 			metaTx := &MetaTransmitter{meta:yangModule, module:module}
 			in, err := metaTx.RootSelector()
 			if err != nil {
 				t.Error(err)
 			}
-			if err = browse.Transfer(in, dbg); err != nil {
+			if err = Walk(in, nil, out); err != nil {
 				t.Error("failed to transmit json", err)
 			} else {
 				out.Flush()

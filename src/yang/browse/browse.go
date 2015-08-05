@@ -2,59 +2,9 @@ package browse
 
 import (
 	"yang"
-	"strings"
 	"fmt"
 	"reflect"
-	"log"
 )
-
-type browseError struct {
-	Code ResponseCode
-	Msg string
-}
-
-func (err *browseError) Error() string {
-	return err.Msg
-}
-
-type Path struct {
-	Segments []PathSegment
-	URL string
-}
-
-type PathSegment struct {
-	Path *Path
-	Index int
-	Ident string
-	Keys []string
-}
-
-func NewPath(path string) (p *Path) {
-	p = &Path{}
-	qmark := strings.Index(path, "?")
-	if qmark >= 0 {
-		p.URL = path[:qmark]
-	} else {
-		p.URL = path
-	}
-	segments := strings.Split(p.URL, "/")
-	p.Segments = make([]PathSegment, len(segments))
-	for i, segment := range segments {
-		p.Segments[i] = PathSegment{Path:p, Index:i}
-		p.Segments[i].parseSegment(segment)
-	}
-	return
-}
-
-func (ps *PathSegment) parseSegment(segment string) {
-	equalsMark := strings.Index(segment, "=")
-	if equalsMark >= 0 {
-		ps.Ident = segment[:equalsMark]
-		ps.Keys = strings.Split(segment[equalsMark + 1:], ",")
-	} else {
-		ps.Ident = segment
-	}
-}
 
 type Browser interface {
 	RootSelector() (*Selection, error)
@@ -91,9 +41,6 @@ type Writer interface {
 
 	EnterList(*yang.List) error
 	ExitList(*yang.List) error
-
-	EnterListItem(*yang.List) error
-	ExitListItem(*yang.List) error
 
 	UpdateValue(meta yang.Meta, val *Value) error
 }
@@ -168,254 +115,136 @@ func (ws *WriteableSelection) ExitList(m *yang.List) (err error) {
 	return err
 }
 
-func (ws *WriteableSelection) EnterListItem(m *yang.List) (err error) {
+func (ws *WriteableSelection) UpdateValue(m yang.Meta, val *Value) (err error) {
 	ws.selection.Position = m
-	if ws.selection.Edit == nil {
-		return EditNotImplemented(m)
+	var unexpected *Selection
+	if unexpected, err = ws.selection.Selector(m.GetIdent()); err == nil {
+		if ws.selection.Edit == nil {
+			err = EditNotImplemented(m)
+		} else {
+			err = ws.selection.Edit(UPDATE_VALUE, val)
+		}
+	} else if (unexpected != nil) {
+		msg := fmt.Sprint("unexpected leaf selector for property ", m.GetIdent())
+		err = &browseError{Msg:msg}
 	}
-	if err = ws.selection.Edit(CREATE_LIST_ITEM, nil); err != nil {
-		err = ws.pushSelection(m)
-	}
-	return err
-}
 
-func (ws *WriteableSelection) ExitListItem(m *yang.List) (err error) {
-	if err = ws.popSelection(); err == nil {
-		err = ws.selection.Edit(POST_CREATE_LIST_ITEM, nil)
-	}
-	return err
+	return
 }
-
-func (ws *WriteableSelection) UpdateValue(m yang.Meta, val *Value) error {
-	ws.selection.Position = m
-	if ws.selection.Edit == nil {
-		return EditNotImplemented(m)
-	}
-	return ws.selection.Edit(UPDATE_VALUE, val)
-}
-
 
 type Operation int
 const (
 	CREATE_CHILD Operation = 1 + iota
-	CREATE_LIST
-	CREATE_LIST_ITEM
 	POST_CREATE_CHILD
+	CREATE_LIST
 	POST_CREATE_LIST
-	POST_CREATE_LIST_ITEM
 	UPDATE_VALUE
 	DELETE_CHILD
 )
 
-type NullWriter struct {
+func Walk(from *Selection, path *Path, to Writer) (err error) {
+	nest := &readController{path:path, maxLevel:100}
+	return read(from, to, nest)
 }
 
-func (NullWriter) EnterContainer(yang.MetaList) error {
-	return nil
+type readController struct {
+	level int
+	maxLevel int
+	path *Path
 }
 
-func (NullWriter) ExitContainer(yang.MetaList) error {
-	return nil
-}
-
-func (NullWriter) EnterList(*yang.List) error {
-	return nil
-}
-
-func (NullWriter) ExitList(*yang.List) error {
-	return nil
-}
-
-func (NullWriter) EnterListItem(*yang.List) error {
-	return nil
-}
-
-func (NullWriter) ExitListItem(*yang.List) error {
-	return nil
-}
-
-func (NullWriter) UpdateValue(meta yang.Meta, val *Value) error {
-	return nil
-}
-
-type DebuggingWriter struct {
-	Delegate Writer
-}
-
-func (w *DebuggingWriter) EnterContainer(m yang.MetaList) error {
-	log.Println("Entering Container", m.GetIdent())
-	return w.Delegate.EnterContainer(m)
-}
-
-func (w *DebuggingWriter) ExitContainer(m yang.MetaList) error {
-	log.Println("Exiting Container", m.GetIdent())
-	return w.Delegate.ExitContainer(m)
-}
-
-func (w *DebuggingWriter) EnterList(m *yang.List) error {
-	log.Println("Entering List", m.GetIdent())
-	return w.Delegate.EnterList(m)
-}
-
-func (w *DebuggingWriter) ExitList(m *yang.List) error {
-	log.Println("Exiting List", m.GetIdent())
-	return w.Delegate.ExitList(m)
-}
-
-func (w *DebuggingWriter) EnterListItem(m *yang.List) error {
-	log.Println("Entering List Item", m.GetIdent())
-	return w.Delegate.EnterListItem(m)
-}
-
-func (w *DebuggingWriter) ExitListItem(m *yang.List) error {
-	log.Println("Existing List Item", m.GetIdent())
-	return w.Delegate.ExitListItem(m)
-}
-
-func (w *DebuggingWriter) UpdateValue(m yang.Meta, v *Value) error {
-	log.Println("Updating Value", m.GetIdent())
-	return w.Delegate.UpdateValue(m, v)
-}
-
-func Advance(selection *Selection, path *Path) (child *Selection, err error) {
-	return readContainer(selection, NullWriter{}, path, 0)
-}
-
-func Transfer(from *Selection, to Writer) (err error) {
-	_, err = readContainer(from, to, nil, 0)
-	return
-}
-
-func readContainer(from *Selection, to Writer, path *Path, level int) (selection *Selection, err error) {
-	var segment PathSegment
-	if path != nil && len(path.Segments) > level {
-		segment = path.Segments[level]
+func (n *readController) isMaxLevel() bool {
+	if n.path != nil {
+		if (n.path.Depth > 0) {
+			calcDepth := len(n.path.Segments) + n.path.Depth
+			if calcDepth < n.maxLevel {
+				return n.level + 1 >= calcDepth
+			}
+		}
 	}
-	selection = from
-	var fromChild *Selection
-	i := yang.NewMetaListIterator(from.Meta, true)
-	var isContainer bool
+	return n.level + 1 >= n.maxLevel
+}
+
+func (n *readController) keys() []string {
+	if n.path == nil || n.level >= len(n.path.Segments) {
+		return []string{}
+	}
+	return n.path.Segments[n.level].Keys
+}
+
+func (n *readController) matches(ident string) bool {
+	if n.path == nil || n.level >= len(n.path.Segments) {
+		return true
+	}
+	return n.path.Segments[n.level].Ident == ident
+}
+
+func (n *readController) recurse() (*readController) {
+	return &readController{path:n.path, level: n.level + 1, maxLevel:n.maxLevel}
+}
+
+func read(selection *Selection, wtr Writer, controller *readController) (err error) {
+	var child *Selection
+	i := yang.NewMetaListIterator(selection.Meta, true)
 	for i.HasNextMeta() {
 		meta := i.NextMeta()
-		if segment.Ident != "" {
-			if meta.GetIdent() != segment.Ident {
-				continue
-			}
-		}
-		val := Value{}
-		if fromChild, err = from.Selector(meta.GetIdent()); err != nil {
-			return
-		}
-		if from.Position == nil {
+		if !controller.matches(meta.GetIdent()) {
 			continue
 		}
-		if fromChild != nil {
-			fromChild.Meta, isContainer = from.Position.(yang.MetaList)
-			if !isContainer {
-				msg := fmt.Sprint("leaf node returned a selector:", from.Position.GetIdent())
-				return nil, &browseError{Msg:msg}
+		child, err = selection.Selector(meta.GetIdent())
+		if selection.Position == nil {
+			continue
+		}
+		if child == nil {
+			val := Value{}
+			if err = selection.Reader(&val); err != nil {
+				return
 			}
-			if yang.IsList(from.Position) {
-
-
-				if selection, err = readList(fromChild, to, path, level + 1); err != nil {
+			if err = wtr.UpdateValue(selection.Position, &val); err != nil {
+				return
+			}
+		} else if ! controller.isMaxLevel() {
+			child.Meta = selection.Position.(yang.MetaList)
+			if (child.ListIterator != nil) {
+				var more bool
+				if more, err = child.ListIterator(controller.keys(), true); err != nil {
+					return
+				} else if (!more) {
+					continue
+				}
+				list := child.Meta.(*yang.List)
+				if err = wtr.EnterList(list); err != nil {
 					return
 				}
 
+				for more {
+					if err = read(child, wtr, controller.recurse()); err != nil {
+						return
+					}
+
+					if more, err = child.ListIterator(controller.keys(), false); err != nil {
+						return
+					}
+				}
+
+				if err = wtr.ExitList(list); err != nil {
+					return
+				}
 
 			} else {
-
-				if err = to.EnterContainer(fromChild.Meta); err != nil {
+				if err = wtr.EnterContainer(child.Meta); err != nil {
 					return
 				}
-
-				if selection, err = readContainer(fromChild, to, path, level + 1); err != nil {
+				if err = read(child, wtr, controller.recurse()); err != nil {
 					return
 				}
-
-				if err = to.ExitContainer(fromChild.Meta); err != nil {
+				if err = wtr.ExitContainer(child.Meta); err != nil {
 					return
 				}
-
-			}
-		} else {
-			if err = from.Reader(&val); err != nil {
-				return
-			}
-			if err = to.UpdateValue(from.Position, &val); err != nil {
-				return
 			}
 		}
 	}
 	return
-}
-
-func readList(from *Selection, to Writer, path *Path, level int) (selection *Selection, err error) {
-	var segment PathSegment
-	if path != nil && len(path.Segments) > level {
-		segment = path.Segments[level]
-	}
-	selection = from
-	metaList := from.Meta.(*yang.List)
-	var hasMore bool
-	if hasMore, err = from.ListIterator(segment.Keys, true); err != nil {
-		return
-	} else if (!hasMore) {
-		return
-	}
-	if err = to.EnterList(metaList); err != nil {
-		return
-	}
-	for hasMore {
-		// list in list is illegal AFAIK so assume container
-		if err = to.EnterListItem(metaList); err != nil {
-			return
-		}
-
-		if selection, err = readContainer(from, to, path, level + 1); err != nil {
-			return
-		}
-
-		if err = to.ExitListItem(metaList); err != nil {
-			return
-		}
-
-		if hasMore, err = from.ListIterator(segment.Keys, false); err != nil {
-			return
-		}
-	}
-	if err = to.ExitList(metaList); err != nil {
-		return
-	}
-	return
-}
-
-type ResponseCode int
-const (
-	UNSPECIFIED ResponseCode = iota
-	NOT_IMPLEMENTED
-	NOT_FOUND
-	MISSING_KEY
-)
-
-func EditNotImplemented(meta yang.Meta) error {
-	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("editing of \"%s\" not implemented", meta.GetIdent())}
-}
-
-func NotImplementedByName(ident string) error {
-	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("browsing of \"%s\" not implemented", ident)}
-}
-
-func NotImplemented(meta yang.Meta) error {
-	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("browsing of \"%s\" not implemented", meta.GetIdent())}
-}
-
-func NotFound(key string) error {
-	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("item identified with key \"%s\" not found", key)}
-}
-
-func ListKeyRequired() error {
-	return &browseError{Code:MISSING_KEY, Msg:fmt.Sprintf("List key required")}
 }
 
 func ReadField(meta yang.Meta, obj interface{}, v *Value) error {

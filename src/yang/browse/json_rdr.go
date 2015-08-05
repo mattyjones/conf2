@@ -1,11 +1,9 @@
-package comm
+package browse
 
 import (
 	"io"
 	"yang"
-	"yang/browse"
 	"encoding/json"
-	"strconv"
 )
 
 type JsonTransmitter struct {
@@ -16,24 +14,25 @@ func NewJsonTransmitter(in io.Reader) *JsonTransmitter {
 	return &JsonTransmitter{in:in}
 }
 
-func (self *JsonTransmitter) GetSelector(meta yang.MetaList) (s *browse.Selection, err error) {
+func (self *JsonTransmitter) GetSelector(meta yang.MetaList) (s *Selection, err error) {
 	var values map[string]interface{}
 	d := json.NewDecoder(self.in)
 	if err = d.Decode(&values); err != nil {
 		return
 	}
-	s, err = selectJsonContainer(values)
+	if yang.IsList(meta) {
+		singleton := make([]interface{}, 1)
+		singleton[0] = values
+		s, err = selectJsonList(singleton)
+		s.ListIterator([]string{}, true)
+	} else {
+		s, err = selectJsonContainer(values)
+	}
 	s.Meta = meta
 	return
 }
 
-type JsonNode struct {
-	s *browse.Selection
-	data interface{}
-	found bool
-}
-
-func readLeafOrLeafList(meta yang.Meta, data interface{}, val *browse.Value) (err error) {
+func readLeafOrLeafList(meta yang.Meta, data interface{}, val *Value) (err error) {
 	switch tmeta := meta.(type) {
 	case *yang.Leaf:
 		switch tmeta.DataType.Resolve().Ident {
@@ -47,18 +46,18 @@ func readLeafOrLeafList(meta yang.Meta, data interface{}, val *browse.Value) (er
 			val.Bool = ("true" == s)
 		}
 	case *yang.LeafList:
-		a := data.([]string)
 		switch tmeta.DataType.Resolve().Ident {
 		case "int32":
+			a := data.([]float64)
 			val.Intlist = make([]int, len(a))
-			for i, s := range a {
-				if val.Intlist[i], err = strconv.Atoi(s); err != nil {
-					return err
-				}
+			for i, f := range a {
+				val.Intlist[i] = int(f)
 			}
 		case "string":
+			a := data.([]string)
 			val.Strlist = a
 		case "boolean":
+			a := data.([]string)
 			val.Boollist = make([]bool, len(a))
 			for i, s := range a {
 				val.Boollist[i] = ("true" == s)
@@ -69,9 +68,11 @@ func readLeafOrLeafList(meta yang.Meta, data interface{}, val *browse.Value) (er
 	return
 }
 
-func defaultSelector(meta yang.Meta, data interface{}) (s *browse.Selection, err error) {
+func defaultSelector(meta yang.Meta, data interface{}) (s *Selection, err error) {
 	switch meta.(type) {
 	case *yang.List:
+		// This doesn't compile event though it's true.  must be go reflection limitation
+		//   return selectJsonList(data.([]map[string]interface{}))
 		return selectJsonList(data.([]interface{}))
 	case *yang.Container:
 		return selectJsonContainer(data.(map[string]interface{}))
@@ -79,11 +80,11 @@ func defaultSelector(meta yang.Meta, data interface{}) (s *browse.Selection, err
 	return
 }
 
-func selectJsonContainer(values map[string]interface{}) (s *browse.Selection, err error) {
-	s = &browse.Selection{}
+func selectJsonContainer(values map[string]interface{}) (s *Selection, err error) {
+	s = &Selection{}
 	var found bool
 	var data interface{}
-	s.Selector = func(ident string) (child *browse.Selection, e error) {
+	s.Selector = func(ident string) (child *Selection, e error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
 		data, found = values[ident]
 		if !found {
@@ -93,7 +94,7 @@ func selectJsonContainer(values map[string]interface{}) (s *browse.Selection, er
 		}
 		return
 	}
-	s.Reader = func (val *browse.Value) (err error) {
+	s.Reader = func (val *Value) (err error) {
 		if !found {
 			return
 		}
@@ -102,10 +103,12 @@ func selectJsonContainer(values map[string]interface{}) (s *browse.Selection, er
 	return
 }
 
-func selectJsonList(list []interface{}) (s *browse.Selection, err error) {
+func selectJsonList(list []interface{}) (s *Selection, err error) {
 	var i int
-	s = &browse.Selection{}
-	node := JsonNode{s:s}
+	s = &Selection{}
+	var values map[string]interface{}
+	var data interface{}
+	var found bool
 	s.ListIterator = func(keys []string, first bool) (bool, error) {
 		/* ignoring keys, cannot see the use case */
 		if (first) {
@@ -114,14 +117,20 @@ func selectJsonList(list []interface{}) (s *browse.Selection, err error) {
 			i += 1
 		}
 		if i < len(list) {
-			node.data = list[i]
+			values = list[i].(map[string]interface{})
 			return true, nil
 		}
 		return false, nil
 	}
-	s.Selector = func(ident string) (*browse.Selection, error) {
+	s.Selector = func(ident string) (child *Selection, e error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
-		return selectJsonContainer(node.data.(map[string]interface{}))
+		data, found = values[ident]
+		if !found {
+			s.Position = nil
+		} else if !yang.IsLeaf(s.Position) {
+			return selectJsonContainer(data.(map[string]interface{}))
+		}
+		return
 	}
 	return
 }

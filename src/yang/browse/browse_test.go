@@ -2,56 +2,103 @@ package browse
 
 import (
 	"testing"
-	"fmt"
+	"yang"
+	"strings"
+	"bytes"
 )
 
-func TestPath(t *testing.T) {
+
+func LoadSampleModule(t *testing.T) (*yang.Module) {
+	f := &yang.FileDataSource{Root:"../testdata"}
+	m, err:= yang.LoadModule(f, "romancing-the-stone.yang")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	return m
+}
+
+func LoadYangModule(t *testing.T) (*yang.Module) {
+	f := &yang.FileDataSource{Root:"../../../etc"}
+	m, err:= yang.LoadModule(f, "yang-1.0.yang")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	return m
+}
+
+func TestReadControllerDepth(t *testing.T) {
+	var p *Path
+	var rc *readController
 	tests := []struct {
 		in string
-		expected []string
+		maxLevel int
+		expected int
 	}{
-		{"a/b", []string{"a", "b"}},
-		{"a/b=c", []string{"a", "b"}},
-		{"a/b=c,q,aaa/d", []string{"a", "b", "d"}},
+		{"a", 					5, 5},
+		{"a?", 					5, 5},
+		{"a/b?depth=1",			5, 3},
+		{"a/b?depth=2", 		10, 4},
 	}
 	for _, test := range tests {
-		p := NewPath(test.in)
-		if len(test.expected) != len(p.Segments) {
-			t.Error("wrong number of expected segments for", test.in)
-		}
-		for i, e := range test.expected {
-			if e != p.Segments[i].Ident {
-				msg := "expected to find \"%s\" as segment number %d in \"%s\" but got \"%s\""
-				t.Error(fmt.Sprintf(msg, e, i, test.in, p.Segments[i].Ident))
+		p ,_ = NewPath(test.in)
+		rc = &readController{path:p, maxLevel:test.maxLevel}
+
+		for i := 0; i < test.expected - 1; i++ {
+			if rc.isMaxLevel() {
+				t.Error(test.in, "unexpectedly max-depth'ed at level", i)
 			}
+			rc = rc.recurse()
+		}
+		if !rc.isMaxLevel() {
+			t.Error(test.in, "expected to max-depth but didn't")
 		}
 	}
 }
 
-func TestPathKeys(t *testing.T) {
-	none := []string{}
-	tests := []struct {
-		in string
-		expected [][]string
-	}{
-		{"a/b/c", 			[][]string{none, none, none}},
-		{"a/b=c/d", 		[][]string{none, []string{"c"}, none}},
-		{"a=c,q,aaa/b/d", 	[][]string{[]string{"c", "q", "aaa"}, none, none}},
-		{"a/b/d=x", 		[][]string{none, none, []string{"x"}}},
+
+func TestWalkJson(t *testing.T) {
+	config := `{
+	"game" : {
+		"base-radius" : 14,
+		"teams" : [{
+		  "team" : {
+		  	"color" : "red"
+		  }
+		}]
 	}
-	for _, test := range tests {
-		p := NewPath(test.in)
-		if len(test.expected) != len(p.Segments) {
-			t.Error("wrong number of expected segments for", test.in)
+}`
+	module := LoadSampleModule(t)
+	json := JsonTransmitter{strings.NewReader(config)}
+	var actualBuff bytes.Buffer
+	out := NewJsonReceiver(&actualBuff)
+	if root, err := json.GetSelector(module); err != nil {
+		t.Error(err)
+	} else {
+		var err error
+		if err = Walk(root, nil, out); err != nil {
+			t.Error(err)
 		}
-		for i, segment := range test.expected {
-			for j, key := range segment {
-				if p.Segments[i].Keys[j] != key {
-					desc := fmt.Sprintf("\"%s\" segment \"%s\" - expected \"%s\" - got \"%s\"",
-						test.in, p.Segments[i].Ident, key, p.Segments[i].Keys[j])
-					t.Error(desc)
-				}
-			}
-		}
+		out.Flush()
+		t.Log(string(actualBuff.Bytes()))
 	}
 }
+
+func TestWalkYang(t *testing.T) {
+	module := LoadSampleModule(t)
+	yang := LoadYangModule(t)
+	var actualBuff bytes.Buffer
+	out := NewJsonReceiver(&actualBuff)
+	browser := MetaTransmitter{meta:yang, module:module}
+	if root, err := browser.RootSelector(); err != nil {
+		t.Error(err)
+	} else {
+		var p *Path
+		p, _ = NewPath("module/definitions=game?depth=2")
+		if err = Walk(root, p, out); err != nil {
+			t.Error(err)
+		}
+		out.Flush()
+		t.Log(string(actualBuff.Bytes()))
+	}
+}
+
