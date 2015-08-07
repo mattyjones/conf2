@@ -27,7 +27,7 @@ func LoadYangModule(t *testing.T) (*yang.Module) {
 
 func TestReadControllerDepth(t *testing.T) {
 	var p *Path
-	var rc *readController
+	var rc *walkController
 	tests := []struct {
 		in string
 		maxLevel int
@@ -40,7 +40,7 @@ func TestReadControllerDepth(t *testing.T) {
 	}
 	for _, test := range tests {
 		p ,_ = NewPath(test.in)
-		rc = &readController{path:p, maxLevel:test.maxLevel}
+		rc = &walkController{path:p, maxLevel:test.maxLevel}
 
 		for i := 0; i < test.expected - 1; i++ {
 			if rc.isMaxLevel() {
@@ -67,17 +67,17 @@ func TestWalkJson(t *testing.T) {
 	}
 }`
 	module := LoadSampleModule(t)
-	json := JsonTransmitter{strings.NewReader(config)}
+	json := JsonReader{strings.NewReader(config)}
 	var actualBuff bytes.Buffer
-	out := NewJsonReceiver(&actualBuff)
+	outJson := NewJsonWriter(&actualBuff)
+	out, _ := outJson.GetSelector()
 	if root, err := json.GetSelector(module); err != nil {
 		t.Error(err)
 	} else {
 		var err error
-		if err = Walk(root, nil, out); err != nil {
+		if err = Insert(root, out); err != nil {
 			t.Error(err)
 		}
-		out.Flush()
 		t.Log(string(actualBuff.Bytes()))
 	}
 }
@@ -86,18 +86,24 @@ func TestWalkYang(t *testing.T) {
 	module := LoadSampleModule(t)
 	yang := LoadYangModule(t)
 	var actualBuff bytes.Buffer
-	out := NewJsonReceiver(&actualBuff)
-	browser := MetaTransmitter{meta:yang, module:module}
+	outJson := NewJsonWriter(&actualBuff)
+	out, _ := outJson.GetSelector()
+	browser := YangBrowser{meta:yang, module:module}
 	if root, err := browser.RootSelector(); err != nil {
 		t.Error(err)
 	} else {
-		var p *Path
-		p, _ = NewPath("module/definitions=game?depth=2")
-		if err = Walk(root, p, out); err != nil {
+		if err = Insert(root, out); err != nil {
 			t.Error(err)
 		}
-		out.Flush()
 		t.Log(string(actualBuff.Bytes()))
+//		actualBuff.Reset()
+//
+//		var p *Path
+//		p, _ = NewPath("module/definitions=game?depth=2")
+//		if err = InsertIntoPath(root, out, p); err != nil {
+//			t.Error(err)
+//		}
+//		t.Log(string(actualBuff.Bytes()))
 	}
 }
 

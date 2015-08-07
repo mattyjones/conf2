@@ -6,15 +6,29 @@ import (
 	"encoding/json"
 )
 
-type JsonTransmitter struct {
+type JsonReader struct {
 	in  io.Reader
 }
 
-func NewJsonTransmitter(in io.Reader) *JsonTransmitter {
-	return &JsonTransmitter{in:in}
+func NewJsonReader(in io.Reader) *JsonReader {
+	return &JsonReader{in:in}
 }
 
-func (self *JsonTransmitter) GetSelector(meta yang.MetaList) (s *Selection, err error) {
+func NewJsonReaderWithDepthControl(in io.Reader) *JsonReader {
+	r := NewJsonReader(in)
+	return r
+}
+
+func (self *JsonReader) RootSelector() (s *Selection, err error) {
+	var values map[string]interface{}
+	d := json.NewDecoder(self.in)
+	if err = d.Decode(&values); err != nil {
+		return
+	}
+	return selectJsonContainer(values)
+}
+
+func (self *JsonReader) GetSelector(meta yang.MetaList) (s *Selection, err error) {
 	var values map[string]interface{}
 	d := json.NewDecoder(self.in)
 	if err = d.Decode(&values); err != nil {
@@ -82,23 +96,20 @@ func defaultSelector(meta yang.Meta, data interface{}) (s *Selection, err error)
 
 func selectJsonContainer(values map[string]interface{}) (s *Selection, err error) {
 	s = &Selection{}
-	var found bool
 	var data interface{}
 	s.Select = func(ident string) (child *Selection, e error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
-		data, found = values[ident]
-		if !found {
-			s.Position = nil
-		} else if !yang.IsLeaf(s.Position) {
+		data, s.Found = values[ident]
+		if s.Found && !yang.IsLeaf(s.Position) {
 			return defaultSelector(s.Position, data)
 		}
 		return
 	}
 	s.Read = func (val *Value) (err error) {
-		if !found {
-			return
+		if s.Found {
+			return readLeafOrLeafList(s.Position, data, val)
 		}
-		return readLeafOrLeafList(s.Position, data, val)
+		return
 	}
 	return
 }
@@ -108,7 +119,6 @@ func selectJsonList(list []interface{}) (s *Selection, err error) {
 	s = &Selection{}
 	var values map[string]interface{}
 	var data interface{}
-	var found bool
 	s.Iterate = func(keys []string, first bool) (bool, error) {
 		/* ignoring keys, cannot see the use case */
 		if (first) {
@@ -124,10 +134,8 @@ func selectJsonList(list []interface{}) (s *Selection, err error) {
 	}
 	s.Select = func(ident string) (child *Selection, e error) {
 		s.Position = yang.FindByIdent2(s.Meta, ident)
-		data, found = values[ident]
-		if !found {
-			s.Position = nil
-		} else if !yang.IsLeaf(s.Position) {
+		data, s.Found = values[ident]
+		if s.Found && !yang.IsLeaf(s.Position) {
 			return selectJsonContainer(data.(map[string]interface{}))
 		}
 		return

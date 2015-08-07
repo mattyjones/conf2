@@ -15,27 +15,73 @@ const OPEN_ARRAY = '[';
 const CLOSE_ARRAY = ']';
 const COMMA = ',';
 
-type JsonReceiver struct {
+type JsonWriter struct {
 	out *bufio.Writer
 	firstInContainer bool
-	firstInDoc bool
 }
 
-func NewJsonReceiver(out io.Writer ) *JsonReceiver {
-	return &JsonReceiver{out:bufio.NewWriter(out), firstInDoc:true, firstInContainer: true}
-}
-
-func (json *JsonReceiver) Flush() (err error) {
-	if _, err = json.out.WriteRune(CLOSE_OBJ); err != nil {
-		return err
+func NewJsonWriter(out io.Writer) *JsonWriter {
+	return &JsonWriter{
+		out:bufio.NewWriter(out),
+		firstInContainer: true,
 	}
-	return json.out.Flush()
 }
 
-func (json *JsonReceiver) EnterList(meta *yang.List) (err error) {
-	if err = json.checkDocBeginning(); err != nil {
+func (json *JsonWriter) GetSelector() (*Selection, error) {
+	return json.selectJson(false)
+}
+
+func (json *JsonWriter) selectJson(isList bool) (*Selection, error) {
+	s := &Selection{}
+	s.Select = func(ident string) (child *Selection, err error) {
+		s.Position = yang.FindByIdent2(s.Meta, ident)
+		if yang.IsList(s.Position) {
+			return json.selectJson(true)
+		} else if yang.IsContainer(s.Position) {
+			return json.selectJson(false)
+		}
+		return nil, nil
+	}
+	s.Edit = func(op Operation, v *Value) (err error) {
+		switch op {
+		case BEGIN_EDIT:
+			_, err = json.out.WriteRune(OPEN_OBJ)
+		case END_EDIT:
+			if _, err = json.out.WriteRune(CLOSE_OBJ); err != nil {
+				return err
+			}
+			return json.out.Flush()
+		case CREATE_CHILD:
+			if isList {
+				err = json.beginArrayItem()
+			}
+			err = json.beginContainer(s.Position)
+		case POST_CREATE_CHILD:
+			err = json.endContainer()
+			if isList {
+				err = json.endArrayItem()
+			}
+		case CREATE_LIST:
+			return json.beginList(s.Position)
+		case POST_CREATE_LIST:
+			return json.endList()
+		case UPDATE_VALUE:
+			return json.writeValue(s.Position, v)
+		default:
+			return &browseError{Msg:"Operation not supported"}
+		}
 		return
 	}
+	if isList {
+		s.Iterate = func(keys []string, hasMore bool) (bool, error) {
+			// never finds values because always INSERT mode
+			return false, nil
+		}
+	}
+	return s, nil
+}
+
+func (json *JsonWriter) beginList(meta yang.Meta) (err error) {
 	if err = json.writeIdent(meta.GetIdent()); err == nil {
 		_, err = json.out.WriteRune(OPEN_ARRAY)
 		json.firstInContainer = true;
@@ -43,24 +89,13 @@ func (json *JsonReceiver) EnterList(meta *yang.List) (err error) {
 	return
 }
 
-func (json *JsonReceiver) ExitList(meta *yang.List) (err error) {
+func (json *JsonWriter) endList() (err error) {
 	_, err = json.out.WriteRune(CLOSE_ARRAY);
 	json.firstInContainer = false
 	return
 }
 
-func (json *JsonReceiver) EnterContainer(meta yang.MetaList) (err error) {
-	if err = json.checkDocBeginning(); err != nil {
-		return
-	}
-	if (yang.IsList(meta.GetParent())) {
-		if err = json.writeDelim(); err != nil {
-			return
-		}
-		if err = json.beginObject(); err != nil {
-			return
-		}
-	}
+func (json *JsonWriter) beginContainer(meta yang.Meta) (err error) {
 	if err = json.writeIdent(meta.GetIdent()); err != nil {
 		return
 	}
@@ -69,19 +104,12 @@ func (json *JsonReceiver) EnterContainer(meta yang.MetaList) (err error) {
 	}
 	return
 }
-func (json *JsonReceiver) ExitContainer(meta yang.MetaList) (err error) {
+func (json *JsonWriter) endContainer() (err error) {
 	_, err = json.out.WriteRune(CLOSE_OBJ)
-
-	if (yang.IsList(meta.GetParent())) {
-		_, err = json.out.WriteRune(CLOSE_OBJ)
-	}
 	return
 }
 
-func (json *JsonReceiver) UpdateValue(meta yang.Meta, v *Value) (err error) {
-	if err = json.checkDocBeginning(); err != nil {
-		return
-	}
+func (json *JsonWriter) writeValue(meta yang.Meta, v *Value) (err error) {
 	json.writeIdent(meta.GetIdent());
 	switch tmeta := meta.(type) {
 	case *yang.Leaf:
@@ -145,7 +173,7 @@ func (json *JsonReceiver) UpdateValue(meta yang.Meta, v *Value) (err error) {
 	return
 }
 
-func (json *JsonReceiver) writeBool(b bool) error {
+func (json *JsonWriter) writeBool(b bool) error {
 	if b {
 		return json.writeString("true")
 	} else {
@@ -153,12 +181,12 @@ func (json *JsonReceiver) writeBool(b bool) error {
 	}
 }
 
-func (json *JsonReceiver) writeInt(i int) (err error) {
+func (json *JsonWriter) writeInt(i int) (err error) {
 	_, err = json.out.WriteString(strconv.Itoa(i))
 	return
 }
 
-func (json *JsonReceiver) writeString(s string) (err error) {
+func (json *JsonWriter) writeString(s string) (err error) {
 	if _, err = json.out.WriteRune(QUOTE); err == nil {
 		if _, err = json.out.WriteString(s); err == nil {
 			_, err = json.out.WriteRune(QUOTE);
@@ -167,24 +195,30 @@ func (json *JsonReceiver) writeString(s string) (err error) {
 	return
 }
 
-func (json *JsonReceiver) beginArrayItem() (err error) {
-	_, err = json.out.WriteRune(OPEN_OBJ)
-	json.firstInContainer = true
+func (json *JsonWriter) beginArrayItem() (err error) {
+	if err = json.writeDelim(); err != nil {
+		return
+	}
+	if err = json.beginObject(); err != nil {
+		return
+	}
 	return
 }
-func (json *JsonReceiver) endArrayItem() (err error) {
+
+func (json *JsonWriter) endArrayItem() (err error) {
 	_, err = json.out.WriteRune(CLOSE_OBJ);
 	return
 }
-// helper functions
-func (json *JsonReceiver) beginObject() (err error) {
+
+func (json *JsonWriter) beginObject() (err error) {
 	if err == nil {
 		_, err = json.out.WriteRune(OPEN_OBJ);
 		json.firstInContainer = true;
 	}
 	return
 }
-func (json *JsonReceiver) writeIdent(ident string) (err error) {
+
+func (json *JsonWriter) writeIdent(ident string) (err error) {
 	if err = json.writeDelim(); err != nil {
 		return
 	}
@@ -200,7 +234,8 @@ func (json *JsonReceiver) writeIdent(ident string) (err error) {
 	_, err = json.out.WriteRune(COLON)
 	return
 }
-func (json *JsonReceiver) writeDelim() (err error) {
+
+func (json *JsonWriter) writeDelim() (err error) {
 	if json.firstInContainer {
 		json.firstInContainer = false;
 	} else {
@@ -208,14 +243,3 @@ func (json *JsonReceiver) writeDelim() (err error) {
 	}
 	return
 }
-
-func (json *JsonReceiver) checkDocBeginning() (err error) {
-	if json.firstInDoc {
-		if _, err = json.out.WriteRune(OPEN_OBJ); err != nil {
-			return err
-		}
-		json.firstInDoc = false
-	}
-	return
-}
-

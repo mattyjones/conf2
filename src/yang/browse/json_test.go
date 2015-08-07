@@ -38,20 +38,19 @@ module json-test {
 ]}`
 		inIo := strings.NewReader(json)
 		var actualBuff bytes.Buffer
-		out := NewJsonReceiver(&actualBuff)
-		dbg := &DebuggingWriter{Delegate:out}
+		out := NewJsonWriter(&actualBuff)
+		to, _ := out.GetSelector()
 		if err != nil {
 			t.Error(err)
 		}
-		in, err := NewJsonTransmitter(inIo).GetSelector(module)
+		in, err := NewJsonReader(inIo).GetSelector(module)
 		if err != nil {
 			t.Error(err)
 		}
-		err = Walk(in, nil, dbg)
+		err = Insert(in, to)
 		if err != nil {
 			t.Error("failed to transmit json", err)
 		} else {
-			out.Flush();
 			actual := string(actualBuff.Bytes())
 			t.Log("Round Trip:", actual)
 			expected := strings.Replace(`{"hobbies":[

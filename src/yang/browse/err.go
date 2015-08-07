@@ -30,7 +30,9 @@ func NotImplementedByName(ident string) error {
 }
 
 func NotImplemented(meta yang.Meta) error {
-	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("browsing of \"%s\" not implemented", meta.GetIdent())}
+	panic("STOP")
+	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("browsing of \"%s.%s\" not implemented",
+		meta.GetParent().GetIdent(), meta.GetIdent())}
 }
 
 func NotFound(key string) error {

@@ -29,6 +29,15 @@ func IsLeaf(m Meta) bool {
 	return false
 }
 
+func ListLen(parent MetaList) (len int) {
+	i := NewMetaListIterator(parent, true)
+	for i.HasNextMeta() {
+		len++
+		i.NextMeta()
+	}
+	return
+}
+
 func IsList(m Meta) bool {
 	_, isList := m.(*List)
 	return isList

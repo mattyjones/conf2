@@ -33,7 +33,7 @@ func TestYangMeta(t *testing.T) {
 	}
 }
 
-func TestMetaTransmission(t *testing.T) {
+func TestYangBrowse(t *testing.T) {
 	moduleStr := `
 module json-test {
 	prefix "t";
@@ -63,17 +63,16 @@ module json-test {
 			t.Error("yang module", err)
 		} else {
 			var actual bytes.Buffer
-			out := NewJsonReceiver(&actual)
-			//dbg := &DebuggingWriter{Delegate:out}
-			metaTx := &MetaTransmitter{meta:yangModule, module:module}
+			json := NewJsonWriter(&actual)
+			out, _ := json.GetSelector()
+			metaTx := &YangBrowser{meta:yangModule, module:module}
 			in, err := metaTx.RootSelector()
 			if err != nil {
 				t.Error(err)
 			}
-			if err = Walk(in, nil, out); err != nil {
+			if err = Insert(in, out); err != nil {
 				t.Error("failed to transmit json", err)
 			} else {
-				out.Flush()
 				t.Log("Round Trip:", string(actual.Bytes()))
 			}
 		}

@@ -2,7 +2,6 @@ package browse
 
 import (
 	"yang"
-	"fmt"
 	"reflect"
 )
 
@@ -28,132 +27,90 @@ type Selection struct {
 	Select Select
 	Read Read
 	Edit Edit
+	Exit Exit
+	Found bool
+}
+
+func (s *Selection) CreateChild() error {
+	if s.Edit == nil {
+		return &browseError{Msg:"Not editable"}
+	}
+	return s.Edit(CREATE_CHILD, nil)
+}
+
+func (s *Selection) FinishCreateChild() error {
+	if s.Edit == nil {
+		return &browseError{Msg:"Not editable"}
+	}
+	if yang.IsList(s.Position) {
+		return s.Edit(POST_CREATE_LIST, nil)
+	}
+	return s.Edit(POST_CREATE_CHILD, nil)
+}
+
+func (s *Selection) DeleteChild() error {
+	if s.Edit == nil {
+		return &browseError{Msg:"Not editable"}
+	}
+	return s.Edit(DELETE_CHILD, nil)
+}
+
+func (s *Selection) DeleteList() error {
+	if s.Edit == nil {
+		return &browseError{Msg:"Not editable"}
+	}
+	return s.Edit(DELETE_LIST, nil)
+}
+
+func (s *Selection) SetValue(val *Value) error {
+	if s.Edit == nil {
+		return &browseError{Msg:"Not editable"}
+	}
+	return s.Edit(UPDATE_VALUE, val)
+}
+
+func (s *Selection) CreateList() error {
+	if s.Edit == nil {
+		return &browseError{Msg:"Not editable"}
+	}
+	return s.Edit(CREATE_LIST, nil)
+}
+
+func (s *Selection) FinishCreateList() error {
+	if s.Edit == nil {
+		return &browseError{Msg:"Not editable"}
+	}
+	return s.Edit(POST_CREATE_LIST, nil)
 }
 
 type Iterate func(keys []string, first bool) (hasMore bool, err error)
 type Select func(ident string) (*Selection, error)
 type Read func(val *Value) (error)
 type Edit func(op Operation, val *Value) (error)
+type Exit func() (error)
 
-type Writer interface {
-	EnterContainer(yang.MetaList) error
-	ExitContainer(yang.MetaList) error
-
-	EnterList(*yang.List) error
-	ExitList(*yang.List) error
-
-	UpdateValue(meta yang.Meta, val *Value) error
+func Walk(from *Selection, path *Path) (err error) {
+	nest := &walkController{path:path, maxLevel:100}
+	return walk(from, nest)
 }
 
-type WriteableSelection struct {
-	stack []*Selection
-	selection *Selection
+type Visitor interface {
+	StartVisit(s *Selection) error
+	VisitLeaf(s *Selection) error
+	EnterContainer(s *Selection) error
+	ExitContainer(s *Selection) error
+	EnterList(s *Selection) error
+	ExitList(s *Selection) error
+	FinishVisit(s *Selection) error
 }
 
-func NewWriteableSelection(root *Selection) (ws *WriteableSelection) {
-	ws = &WriteableSelection{}
-	ws.stack = make([]*Selection, 10)
-	ws.selection = root
-	ws.stack[0] = ws.selection
-	return ws
-}
-
-func (ws *WriteableSelection) EnterContainer(m yang.MetaList) (err error) {
-	ws.selection.Position = m
-	if ws.selection.Edit == nil {
-		return EditNotImplemented(m)
-	}
-	ws.selection.Edit(CREATE_CHILD, nil)
-	err = ws.pushSelection(m)
-	return
-}
-
-func (ws *WriteableSelection) ExitContainer(m yang.MetaList) (err error) {
-	if err = ws.popSelection(); err == nil {
-		err = ws.selection.Edit(POST_CREATE_CHILD, nil)
-	}
-	return nil
-}
-
-func (ws *WriteableSelection) pushSelection(m yang.MetaList) (err error) {
-	if ws.selection, err = ws.selection.Select(m.GetIdent()); err == nil {
-		if ws.selection == nil {
-			msg := fmt.Sprint("expected selector for property ", m.GetIdent())
-			err = &browseError{Msg:msg}
-		} else {
-			ws.selection.Meta = m
-			ws.stack = append(ws.stack, ws.selection)
-		}
-	}
-	return err
-}
-
-func (ws *WriteableSelection) popSelection() (err error) {
-	if len(ws.stack) == 0 {
-		return &browseError{Msg:"Empty selection stack"}
-	}
-	ws.selection = ws.stack[len(ws.stack) - 1]
-	ws.stack = ws.stack[0:len(ws.stack) - 1]
-	return
-}
-
-func (ws *WriteableSelection) EnterList(m *yang.List) (err error) {
-	ws.selection.Position = m
-	if ws.selection.Edit == nil {
-		return EditNotImplemented(m)
-	}
-	if err = ws.selection.Edit(CREATE_LIST, nil); err != nil {
-		ws.pushSelection(m)
-	}
-	return err
-}
-
-func (ws *WriteableSelection) ExitList(m *yang.List) (err error) {
-	if err = ws.popSelection(); err != nil {
-		ws.selection.Edit(POST_CREATE_LIST, nil)
-	}
-	return err
-}
-
-func (ws *WriteableSelection) UpdateValue(m yang.Meta, val *Value) (err error) {
-	ws.selection.Position = m
-	var unexpected *Selection
-	if unexpected, err = ws.selection.Select(m.GetIdent()); err == nil {
-		if ws.selection.Edit == nil {
-			err = EditNotImplemented(m)
-		} else {
-			err = ws.selection.Edit(UPDATE_VALUE, val)
-		}
-	} else if (unexpected != nil) {
-		msg := fmt.Sprint("unexpected leaf selector for property ", m.GetIdent())
-		err = &browseError{Msg:msg}
-	}
-
-	return
-}
-
-type Operation int
-const (
-	CREATE_CHILD Operation = 1 + iota
-	POST_CREATE_CHILD
-	CREATE_LIST
-	POST_CREATE_LIST
-	UPDATE_VALUE
-	DELETE_CHILD
-)
-
-func Walk(from *Selection, path *Path, to Writer) (err error) {
-	nest := &readController{path:path, maxLevel:100}
-	return read(from, to, nest)
-}
-
-type readController struct {
+type walkController struct {
 	level int
 	maxLevel int
 	path *Path
 }
 
-func (n *readController) isMaxLevel() bool {
+func (n *walkController) isMaxLevel() bool {
 	if n.path != nil {
 		if (n.path.Depth > 0) {
 			calcDepth := len(n.path.Segments) + n.path.Depth
@@ -165,25 +122,25 @@ func (n *readController) isMaxLevel() bool {
 	return n.level + 1 >= n.maxLevel
 }
 
-func (n *readController) keys() []string {
+func (n *walkController) keys() []string {
 	if n.path == nil || n.level >= len(n.path.Segments) {
 		return []string{}
 	}
 	return n.path.Segments[n.level].Keys
 }
 
-func (n *readController) matches(ident string) bool {
+func (n *walkController) matches(ident string) bool {
 	if n.path == nil || n.level >= len(n.path.Segments) {
 		return true
 	}
 	return n.path.Segments[n.level].Ident == ident
 }
 
-func (n *readController) recurse() (*readController) {
-	return &readController{path:n.path, level: n.level + 1, maxLevel:n.maxLevel}
+func (n *walkController) recurse() (*walkController) {
+	return &walkController{path:n.path, level: n.level + 1, maxLevel:n.maxLevel}
 }
 
-func read(selection *Selection, wtr Writer, controller *readController) (err error) {
+func walk(selection *Selection, controller *walkController) (err error) {
 	var child *Selection
 	i := yang.NewMetaListIterator(selection.Meta, true)
 	for i.HasNextMeta() {
@@ -196,12 +153,9 @@ func read(selection *Selection, wtr Writer, controller *readController) (err err
 			continue
 		}
 		if child == nil {
-			val := Value{}
-			if err = selection.Read(&val); err != nil {
-				return
-			}
-			if err = wtr.UpdateValue(selection.Position, &val); err != nil {
-				return
+			val := &Value{}
+			if err = selection.Read(val); err != nil {
+				return err
 			}
 		} else if ! controller.isMaxLevel() {
 			child.Meta = selection.Position.(yang.MetaList)
@@ -212,13 +166,8 @@ func read(selection *Selection, wtr Writer, controller *readController) (err err
 				} else if (!more) {
 					continue
 				}
-				list := child.Meta.(*yang.List)
-				if err = wtr.EnterList(list); err != nil {
-					return
-				}
-
 				for more {
-					if err = read(child, wtr, controller.recurse()); err != nil {
+					if err = walk(child, controller.recurse()); err != nil {
 						return
 					}
 
@@ -226,19 +175,13 @@ func read(selection *Selection, wtr Writer, controller *readController) (err err
 						return
 					}
 				}
-
-				if err = wtr.ExitList(list); err != nil {
-					return
-				}
-
 			} else {
-				if err = wtr.EnterContainer(child.Meta); err != nil {
+				if err = walk(child, controller.recurse()); err != nil {
 					return
 				}
-				if err = read(child, wtr, controller.recurse()); err != nil {
-					return
-				}
-				if err = wtr.ExitContainer(child.Meta); err != nil {
+			}
+			if selection.Exit != nil {
+				if err = selection.Exit(); err != nil {
 					return
 				}
 			}
