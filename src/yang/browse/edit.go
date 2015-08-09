@@ -1,7 +1,6 @@
 package browse
 import (
 	"yang"
-	"fmt"
 )
 
 type Operation int
@@ -138,7 +137,6 @@ func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (
 
 		s.Found = from.Found
 		nextStrategy := strategy
-fmt.Println("edit:select - ", ident, "first", from.Found, "fromMore", to.Found)
 		if from.Found && to.Found {
 			switch strategy {
 			case INSERT:

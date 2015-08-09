@@ -94,16 +94,6 @@ func Walk(from *Selection, path *Path) (err error) {
 	return walk(from, nest)
 }
 
-type Visitor interface {
-	StartVisit(s *Selection) error
-	VisitLeaf(s *Selection) error
-	EnterContainer(s *Selection) error
-	ExitContainer(s *Selection) error
-	EnterList(s *Selection) error
-	ExitList(s *Selection) error
-	FinishVisit(s *Selection) error
-}
-
 type walkController struct {
 	level int
 	maxLevel int
