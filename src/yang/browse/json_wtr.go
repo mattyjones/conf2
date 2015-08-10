@@ -23,44 +23,46 @@ type JsonWriter struct {
 func NewJsonWriter(out io.Writer) *JsonWriter {
 	return &JsonWriter{
 		out:bufio.NewWriter(out),
-		firstInContainer: true,
+		firstInContainer:true,
 	}
 }
 
 func (json *JsonWriter) GetSelector() (*Selection, error) {
-	return json.selectJson(false)
+	return json.selectJson()
 }
 
-func (json *JsonWriter) selectJson(isList bool) (*Selection, error) {
+func (json *JsonWriter) selectJson() (*Selection, error) {
 	s := &Selection{}
-	s.Select = func(ident string) (child *Selection, err error) {
-		s.Position = yang.FindByIdent2(s.Meta, ident)
-		if yang.IsList(s.Position) {
-			return json.selectJson(true)
-		} else if yang.IsContainer(s.Position) {
-			return json.selectJson(false)
-		}
-		return nil, nil
+	s.Enter = func() (child *Selection, err error) {
+		return json.selectJson()
 	}
 	s.Edit = func(op Operation, v *Value) (err error) {
 		switch op {
 		case BEGIN_EDIT:
 			_, err = json.out.WriteRune(OPEN_OBJ)
+			if yang.IsList(s.Meta) {
+				json.beginList(s.Meta)
+			} else {
+				json.beginContainer(s.Meta)
+			}
 		case END_EDIT:
+			if yang.IsList(s.Meta) {
+				json.endList()
+			} else {
+				json.endContainer()
+			}
 			if _, err = json.out.WriteRune(CLOSE_OBJ); err != nil {
 				return err
 			}
 			return json.out.Flush()
 		case CREATE_CHILD:
-			if isList {
-				err = json.beginArrayItem()
-			}
 			err = json.beginContainer(s.Position)
 		case POST_CREATE_CHILD:
 			err = json.endContainer()
-			if isList {
-				err = json.endArrayItem()
-			}
+		case CREATE_LIST_ITEM:
+			err = json.beginArrayItem()
+		case POST_CREATE_LIST_ITEM:
+			err = json.endArrayItem()
 		case CREATE_LIST:
 			return json.beginList(s.Position)
 		case POST_CREATE_LIST:
@@ -72,11 +74,8 @@ func (json *JsonWriter) selectJson(isList bool) (*Selection, error) {
 		}
 		return
 	}
-	if isList {
-		s.Iterate = func(keys []string, hasMore bool) (bool, error) {
-			// never finds values because always INSERT mode
-			return false, nil
-		}
+	s.Iterate = func(keys []string, first bool) (hasMore bool, err error) {
+		return false, nil
 	}
 	return s, nil
 }
@@ -104,6 +103,7 @@ func (json *JsonWriter) beginContainer(meta yang.Meta) (err error) {
 	}
 	return
 }
+
 func (json *JsonWriter) endContainer() (err error) {
 	_, err = json.out.WriteRune(CLOSE_OBJ)
 	return

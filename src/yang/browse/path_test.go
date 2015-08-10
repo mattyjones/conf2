@@ -3,6 +3,7 @@ package browse
 import (
 	"testing"
 	"fmt"
+	"yang"
 )
 
 func TestNullPath(t  *testing.T) {
@@ -13,7 +14,7 @@ func TestNullPath(t  *testing.T) {
 }
 
 
-func TestPath(t *testing.T) {
+func TestPathSegment(t *testing.T) {
 	tests := []struct {
 		in string
 		expected []string
@@ -37,7 +38,7 @@ func TestPath(t *testing.T) {
 	}
 }
 
-func TestPathKeys(t *testing.T) {
+func TestPathSegmentKeys(t *testing.T) {
 	none := []string{}
 	tests := []struct {
 		in string
@@ -84,3 +85,86 @@ func TestPathParams(t *testing.T) {
 		}
 	}
 }
+
+func TestPathControllerContainerIterator(t *testing.T) {
+	var p *Path
+	tests := []struct {
+		in string
+		expected int
+	}{
+		{"a", 					1},
+		{"a?", 					1},
+		{"a/b?depth=1",			2},
+		{"a/b=key",     		2},
+		{"a=key/b",		        2},
+	}
+	selection := &Selection{}
+	selection.Meta = &yang.Container{Ident:"root"}
+	selection.Meta.AddMeta(&yang.Container{Ident:"a"})
+	selection.Meta.AddMeta(&yang.Container{Ident:"b"})
+	for _, test := range tests {
+		p ,_ = NewPath(test.in)
+		rc := newPathController(p)
+
+		for i := 0; i < test.expected; i++ {
+			if ! rc.ContainerIterator(selection, i).HasNextMeta() {
+				t.Error(test.in, "- unexpectedly max-depth'ed at level", i)
+			}
+		}
+		if rc.ContainerIterator(selection, test.expected).HasNextMeta() {
+			t.Error(test.in, "- expected to max-depth but didn't")
+		} else if rc.target != selection {
+			t.Error(test.in, "- target incorrect")
+		}
+	}
+}
+
+func TestPathControllerListIterator(t *testing.T) {
+	var p *Path
+	tests := []struct {
+		in string
+		expected int
+		last bool
+	}{
+		{"a", 					1, false},
+		{"a?", 					1, false},
+		{"a/b?depth=1",			2, false},
+		{"a/b=key",     		2, true},
+		{"a=key/b",		        2, false},
+	}
+	selection := &Selection{}
+	selection.Iterate = func([]string, bool) (bool, error) {
+		return true, nil
+	}
+	var more bool
+	for _, test := range tests {
+		p ,_ = NewPath(test.in)
+		rc := newPathController(p)
+
+		for i := 1; i < test.expected; i++ {
+			more, _ = rc.ListIterator(selection, i, true)
+			if ! more {
+				t.Error(test.in, "- unexpectedly max-depth'ed at level", i)
+			}
+			more, _ = rc.ListIterator(selection, i, false)
+			if more {
+				t.Error(test.in, "- unexpectedly found 2nd item", i)
+			}
+		}
+		more, _ = rc.ListIterator(selection, test.expected, true)
+		if more != test.last {
+			t.Error(test.in, "- expected to max-depth but didn't")
+		} else {
+			more, _ = rc.ListIterator(selection, test.expected, false)
+		    if rc.target != selection {
+				t.Error(test.in, "- target incorrect")
+			}
+			more, _ = rc.ListIterator(selection, test.expected + 1, true)
+			if more {
+				t.Error(test.in, "- expected to max-depth but didn't")
+			}
+		}
+	}
+}
+
+

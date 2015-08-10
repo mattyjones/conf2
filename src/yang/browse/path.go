@@ -2,6 +2,7 @@ package browse
 import (
 	"strings"
 	"strconv"
+	"yang"
 )
 
 type Path struct {
@@ -66,3 +67,38 @@ func (ps *PathSegment) parseSegment(segment string) {
 	}
 }
 
+type pathWalkController struct {
+	path *Path
+	target *Selection
+}
+
+func newPathController(p *Path) *pathWalkController {
+	return &pathWalkController{path:p}
+}
+
+func (n *pathWalkController) ListIterator(s *Selection, level int, first bool) (hasMore bool, err error) {
+	if level == len(n.path.Segments) {
+		if len(n.path.Segments[level - 1].Keys) == 0 {
+			n.target = s
+			return false, nil
+		}
+		if !first {
+			n.target = s
+			return false, nil
+		}
+	}
+	if first && level > 0 && level <= len(n.path.Segments) {
+		return s.Iterate(n.path.Segments[level - 1].Keys, first)
+	} else {
+		return false, nil
+	}
+}
+
+func (n *pathWalkController) ContainerIterator(s *Selection, level int) yang.MetaIterator {
+	if level >= len(n.path.Segments) {
+		n.target = s
+		return yang.EmptyInterator(0)
+	}
+	position := yang.FindByIdent2(s.Meta, n.path.Segments[level].Ident)
+	return &yang.SingletonIterator{Meta:position}
+}

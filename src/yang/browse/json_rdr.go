@@ -4,6 +4,7 @@ import (
 	"io"
 	"yang"
 	"encoding/json"
+	"fmt"
 )
 
 type JsonReader struct {
@@ -14,20 +15,6 @@ func NewJsonReader(in io.Reader) *JsonReader {
 	return &JsonReader{in:in}
 }
 
-func NewJsonReaderWithDepthControl(in io.Reader) *JsonReader {
-	r := NewJsonReader(in)
-	return r
-}
-
-func (self *JsonReader) RootSelector() (s *Selection, err error) {
-	var values map[string]interface{}
-	d := json.NewDecoder(self.in)
-	if err = d.Decode(&values); err != nil {
-		return
-	}
-	return selectJsonContainer(values)
-}
-
 func (self *JsonReader) GetSelector(meta yang.MetaList) (s *Selection, err error) {
 	var values map[string]interface{}
 	d := json.NewDecoder(self.in)
@@ -35,12 +22,10 @@ func (self *JsonReader) GetSelector(meta yang.MetaList) (s *Selection, err error
 		return
 	}
 	if yang.IsList(meta) {
-		singleton := make([]interface{}, 1)
-		singleton[0] = values
-		s, err = selectJsonList(singleton)
-		s.Iterate([]string{}, true)
+		list := values[meta.GetIdent()]
+		s, err = enterJson(nil, list.([]interface{}))
 	} else {
-		s, err = selectJsonContainer(values)
+		s, err = enterJson(values, nil)
 	}
 	s.Meta = meta
 	return
@@ -82,63 +67,64 @@ func readLeafOrLeafList(meta yang.Meta, data interface{}, val *Value) (err error
 	return
 }
 
-func defaultSelector(meta yang.Meta, data interface{}) (s *Selection, err error) {
-	switch meta.(type) {
-	case *yang.List:
-		// This doesn't compile event though it's true.  must be go reflection limitation
-		//   return selectJsonList(data.([]map[string]interface{}))
-		return selectJsonList(data.([]interface{}))
-	case *yang.Container:
-		return selectJsonContainer(data.(map[string]interface{}))
-	}
-	return
-}
-
-func selectJsonContainer(values map[string]interface{}) (s *Selection, err error) {
+func enterJson(values map[string]interface{}, list []interface{}) (s *Selection, err error) {
 	s = &Selection{}
-	var data interface{}
-	s.Select = func(ident string) (child *Selection, e error) {
-		s.Position = yang.FindByIdent2(s.Meta, ident)
-		data, s.Found = values[ident]
-		if s.Found && !yang.IsLeaf(s.Position) {
-			return defaultSelector(s.Position, data)
-		}
-		return
-	}
-	s.Read = func (val *Value) (err error) {
-		if s.Found {
-			return readLeafOrLeafList(s.Position, data, val)
-		}
-		return
-	}
-	return
-}
-
-func selectJsonList(list []interface{}) (s *Selection, err error) {
+	var value interface{}
+	var container = values
 	var i int
-	s = &Selection{}
-	var values map[string]interface{}
-	var data interface{}
-	s.Iterate = func(keys []string, first bool) (bool, error) {
-		/* ignoring keys, cannot see the use case */
-		if (first) {
-			i = 0
-		} else {
-			i += 1
-		}
-		if i < len(list) {
-			values = list[i].(map[string]interface{})
-			return true, nil
-		}
-		return false, nil
-	}
-	s.Select = func(ident string) (child *Selection, e error) {
-		s.Position = yang.FindByIdent2(s.Meta, ident)
-		data, s.Found = values[ident]
-		if s.Found && !yang.IsLeaf(s.Position) {
-			return selectJsonContainer(data.(map[string]interface{}))
+	s.Enter = func() (child *Selection, e error) {
+		value, s.Found = container[s.Position.GetIdent()]
+fmt.Println("json_rdr: found container", s.Position.GetIdent(), s.Found)
+		if s.Found {
+			if yang.IsList(s.Position) {
+				return enterJson(nil, value.([]interface{}))
+			} else {
+				return enterJson(value.(map[string]interface{}), nil)
+			}
 		}
 		return
 	}
+	s.ReadValue = func (val *Value) (err error) {
+		value, s.Found = container[s.Position.GetIdent()]
+		if s.Found {
+			return readLeafOrLeafList(s.Position, value, val)
+		}
+		return
+	}
+	s.Iterate = func(keys []string, first bool) (hasMore bool, err error) {
+		container = nil
+		if len(keys) > 0 {
+			if first {
+				keyFields := s.Meta.(*yang.List).Keys
+				for ; i < len(list); i++ {
+					candidate := list[i].(map[string]interface{})
+					if jsonKeyMatches(keyFields, candidate, keys) {
+						container = candidate
+						break
+					}
+				}
+			}
+		} else {
+			if first {
+				i = 0
+			} else {
+				i++
+			}
+			if i < len(list) {
+				container = list[i].(map[string]interface{})
+			}
+		}
+fmt.Println("json_rdr: found list", s.Meta.GetIdent(), container != nil, list)
+		return container != nil, nil
+	}
 	return
+}
+
+func jsonKeyMatches(keyFields []string, candidate map[string]interface{}, target []string) bool {
+	for i, field := range keyFields {
+		if candidate[field] != target[i] {
+			return false
+		}
+	}
+	return true
 }

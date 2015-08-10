@@ -24,11 +24,13 @@ type Selection struct {
 	Meta yang.MetaList
 	Position yang.Meta
 	Iterate Iterate
-	Select Select
-	Read Read
+	Enter Enter
+	ReadValue ReadValue
 	Edit Edit
 	Exit Exit
+	Choose ResolveChoice
 	Found bool
+	insideList bool
 }
 
 func (s *Selection) CreateChild() error {
@@ -38,15 +40,6 @@ func (s *Selection) CreateChild() error {
 	return s.Edit(CREATE_CHILD, nil)
 }
 
-func (s *Selection) FinishCreateChild() error {
-	if s.Edit == nil {
-		return &browseError{Msg:"Not editable"}
-	}
-	if yang.IsList(s.Position) {
-		return s.Edit(POST_CREATE_LIST, nil)
-	}
-	return s.Edit(POST_CREATE_CHILD, nil)
-}
 
 func (s *Selection) DeleteChild() error {
 	if s.Edit == nil {
@@ -76,103 +69,81 @@ func (s *Selection) CreateList() error {
 	return s.Edit(CREATE_LIST, nil)
 }
 
-func (s *Selection) FinishCreateList() error {
-	if s.Edit == nil {
-		return &browseError{Msg:"Not editable"}
-	}
-	return s.Edit(POST_CREATE_LIST, nil)
-}
-
 type Iterate func(keys []string, first bool) (hasMore bool, err error)
-type Select func(ident string) (*Selection, error)
-type Read func(val *Value) (error)
+type Enter func() (child *Selection, err error)
+type ReadValue func(val *Value) (error)
 type Edit func(op Operation, val *Value) (error)
 type Exit func() (error)
+type ResolveChoice func(choice *yang.Choice) (m yang.Meta, err error)
 
-func Walk(from *Selection, path *Path) (err error) {
-	nest := &walkController{path:path, maxLevel:100}
-	return walk(from, nest)
+func WalkPath(from *Selection, path *Path) (s *Selection, err error) {
+	nest := newPathController(path)
+	err = walk(from, nest, 0)
+	return nest.target, err
 }
 
-type walkController struct {
-	level int
-	maxLevel int
-	path *Path
+type WalkController interface {
+	ListIterator(s *Selection, level int, first bool) (hasMore bool, err error)
+	ContainerIterator(s *Selection, level int) yang.MetaIterator
 }
 
-func (n *walkController) isMaxLevel() bool {
-	if n.path != nil {
-		if (n.path.Depth > 0) {
-			calcDepth := len(n.path.Segments) + n.path.Depth
-			if calcDepth < n.maxLevel {
-				return n.level + 1 >= calcDepth
+type exhaustiveController struct {}
+
+func (e exhaustiveController) ListIterator(s *Selection, level int, first bool) (hasMore bool, err error) {
+	return s.Iterate([]string{}, first)
+}
+func (e exhaustiveController) ContainerIterator(s *Selection, level int) yang.MetaIterator {
+	return yang.NewMetaListIterator(s.Meta, true)
+}
+
+func WalkExhaustive(selection *Selection) (err error) {
+	return walk(selection, exhaustiveController{}, 0)
+}
+
+func walk(selection *Selection, controller WalkController, level int) (err error) {
+	if yang.IsList(selection.Meta) && !selection.insideList {
+		var hasMore bool
+		hasMore, err = controller.ListIterator(selection, level, true)
+		for i := 0; hasMore; i++ {
+
+			// important flag, otherwise we recurse indefinitely
+			selection.insideList = true
+
+			if err = walk(selection, controller, level); err != nil {
+				return
 			}
+			hasMore, err = controller.ListIterator(selection, level, false)
 		}
-	}
-	return n.level + 1 >= n.maxLevel
-}
-
-func (n *walkController) keys() []string {
-	if n.path == nil || n.level >= len(n.path.Segments) {
-		return []string{}
-	}
-	return n.path.Segments[n.level].Keys
-}
-
-func (n *walkController) matches(ident string) bool {
-	if n.path == nil || n.level >= len(n.path.Segments) {
-		return true
-	}
-	return n.path.Segments[n.level].Ident == ident
-}
-
-func (n *walkController) recurse() (*walkController) {
-	return &walkController{path:n.path, level: n.level + 1, maxLevel:n.maxLevel}
-}
-
-func walk(selection *Selection, controller *walkController) (err error) {
-	var child *Selection
-	i := yang.NewMetaListIterator(selection.Meta, true)
-	for i.HasNextMeta() {
-		meta := i.NextMeta()
-		if !controller.matches(meta.GetIdent()) {
-			continue
-		}
-		child, err = selection.Select(meta.GetIdent())
-		if selection.Position == nil {
-			continue
-		}
-		if child == nil {
-			val := &Value{}
-			if err = selection.Read(val); err != nil {
-				return err
-			}
-		} else if ! controller.isMaxLevel() {
-			child.Meta = selection.Position.(yang.MetaList)
-			if (child.Iterate != nil) {
-				var more bool
-				if more, err = child.Iterate(controller.keys(), true); err != nil {
+	} else {
+		var child *Selection
+		i := controller.ContainerIterator(selection, level)
+		for i.HasNextMeta() {
+			selection.Position = i.NextMeta()
+			if choice, isChoice := selection.Position.(*yang.Choice); isChoice {
+				if selection.Position, err = selection.Choose(choice); err != nil {
 					return
-				} else if (!more) {
-					continue
 				}
-				for more {
-					if err = walk(child, controller.recurse()); err != nil {
-						return
-					}
-
-					if more, err = child.Iterate(controller.keys(), false); err != nil {
-						return
-					}
+			}
+			if yang.IsLeaf(selection.Position) {
+				val := &Value{}
+				if err = selection.ReadValue(val); err != nil {
+					return err
 				}
 			} else {
-				if err = walk(child, controller.recurse()); err != nil {
+				child, err = selection.Enter()
+				if !selection.Found {
+					continue
+				}
+				child.Meta = selection.Position.(yang.MetaList)
+
+				if err = walk(child, controller, level + 1); err != nil {
 					return
 				}
-			}
-			if selection.Exit != nil {
-				if err = selection.Exit(); err != nil {
-					return
+
+				if selection.Exit != nil {
+					if err = selection.Exit(); err != nil {
+						return
+					}
 				}
 			}
 		}

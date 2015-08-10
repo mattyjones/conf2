@@ -25,36 +25,6 @@ func LoadYangModule(t *testing.T) (*yang.Module) {
 	return m
 }
 
-func TestReadControllerDepth(t *testing.T) {
-	var p *Path
-	var rc *walkController
-	tests := []struct {
-		in string
-		maxLevel int
-		expected int
-	}{
-		{"a", 					5, 5},
-		{"a?", 					5, 5},
-		{"a/b?depth=1",			5, 3},
-		{"a/b?depth=2", 		10, 4},
-	}
-	for _, test := range tests {
-		p ,_ = NewPath(test.in)
-		rc = &walkController{path:p, maxLevel:test.maxLevel}
-
-		for i := 0; i < test.expected - 1; i++ {
-			if rc.isMaxLevel() {
-				t.Error(test.in, "unexpectedly max-depth'ed at level", i)
-			}
-			rc = rc.recurse()
-		}
-		if !rc.isMaxLevel() {
-			t.Error(test.in, "expected to max-depth but didn't")
-		}
-	}
-}
-
-
 func TestWalkJson(t *testing.T) {
 	config := `{
 	"game" : {
@@ -88,7 +58,7 @@ func TestWalkYang(t *testing.T) {
 	var actualBuff bytes.Buffer
 	outJson := NewJsonWriter(&actualBuff)
 	out, _ := outJson.GetSelector()
-	browser := YangBrowser{meta:yang, module:module}
+	browser := YangBrowser{Meta:yang, Module:module}
 	if root, err := browser.RootSelector(); err != nil {
 		t.Error(err)
 	} else {

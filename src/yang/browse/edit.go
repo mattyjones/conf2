@@ -1,6 +1,7 @@
 package browse
 import (
 	"yang"
+	"fmt"
 )
 
 type Operation int
@@ -14,6 +15,8 @@ const (
 	DELETE_LIST                       // 7
 	BEGIN_EDIT                        // 8
 	END_EDIT                          // 9
+	CREATE_LIST_ITEM                  // 10
+	POST_CREATE_LIST_ITEM             // 11
 )
 
 type strategy int
@@ -26,108 +29,75 @@ const (
 )
 
 type editor struct {
-	target *Path
-	strategy strategy
-	from *Selection
-}
-
-func InsertIntoPath(from *Selection, to *Selection, p *Path) error {
-	return edit(from, to, p, to.Meta, INSERT)
 }
 
 func Insert(from *Selection, to *Selection) error {
-	return edit(from, to, nil, from.Meta, INSERT)
+	return edit(from, to, INSERT)
 }
 
 func Upsert(from *Selection, to *Selection) error {
-	return edit(from, to, nil, from.Meta, UPSERT)
-}
-
-func UpsertIntoPath(from *Selection, to *Selection, p *Path) error {
-	return edit(from, to, p, to.Meta, UPSERT)
+	return edit(from, to, UPSERT)
 }
 
 func Delete(from *Selection, to *Selection, p *Path) error {
-	return edit(from, to, p, to.Meta, DELETE)
+	return edit(from, to, DELETE)
 }
 
 func Update(from *Selection, to *Selection) error {
-	return edit(from, to, nil, from.Meta, UPDATE)
+	return edit(from, to, UPDATE)
 }
 
-func UpdateIntoPath(from *Selection, to *Selection, p *Path) error {
-	return edit(from, to, p, to.Meta, UPDATE)
-}
-
-func edit(from *Selection, dest *Selection, p *Path, meta yang.MetaList, strategy strategy) (err error) {
-	e := editor{target:p, strategy:strategy, from:from}
+func edit(from *Selection, dest *Selection, strategy strategy) (err error) {
+	e := editor{}
 	var s *Selection
-	s, err = e.findTarget(dest, []string{})
+	s, err = e.editTarget(from, dest, strategy)
 	if err == nil {
-		s.Meta = meta
+		s.Meta = from.Meta
+		dest.Meta = s.Meta
 		if err = dest.Edit(BEGIN_EDIT, nil); err == nil {
-			if err = Walk(s, p); err == nil {
+			if err = WalkExhaustive(s); err == nil {
 				err = dest.Edit(END_EDIT, nil)
-			} else {
 			}
 		}
 	}
 	return
 }
 
-func isEditTarget(target *Path, candidate []string) bool {
-	if target == nil {
-		return true
-	}
-	if len(target.Segments) != len(candidate) {
-		return false
-	}
-	for i, _ := range target.Segments {
-		if target.Segments[i].Ident != candidate[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func (e *editor) findTarget(dest *Selection, path []string) (*Selection, error) {
-	if isEditTarget(e.target, path) {
-		return e.editTarget(e.from, dest, e.strategy)
-	}
-	s := &Selection{}
-	s.Select = func(ident string) (bSelection *Selection, err error) {
-		dest.Meta = s.Meta
-		bSelection, err = dest.Select(ident)
-		s.Position = dest.Position
-		if err == nil && bSelection != nil {
-			return e.findTarget(dest, append(path, ident))
-		}
-		return
-	}
-	s.Read = dest.Read
-	s.Iterate = dest.Iterate
-	return s, nil
-}
-
 func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (*Selection, error) {
 	var createdChild bool
 	var createdList bool
 	s := &Selection{}
-	s.Select = func(ident string) (c *Selection, err error) {
+	s.insideList = from.insideList
+	s.Choose = func(choice *yang.Choice) (yang.Meta, error) {
+		return from.Choose(choice)
+	}
+	s.Enter = func() (c *Selection, err error) {
 		from.Meta = s.Meta
-		to.Meta = s.Meta
-
-		fromChild, err := from.Select(ident)
-		s.Position = from.Position
+		from.Position = s.Position
+		var fromChild *Selection
+		fromChild, err = from.Enter()
 		if err != nil {
 			return
 		}
+		if !from.Found {
+			s.Found = false
+			return
+		}
+		if fromChild.Meta == nil {
+			fromChild.Meta = s.Position.(yang.MetaList)
+		}
 
-		toChild, err := to.Select(ident)
+		var toChild *Selection
+		to.Meta = s.Meta
+		to.Position = from.Position
+		toChild, err = to.Enter()
 		if err != nil {
 			return
 		} else if toChild == nil {
 			return nil, &browseError{Msg:"source could not be selected"}
+		}
+		if toChild.Meta == nil {
+			toChild.Meta = fromChild.Meta
 		}
 
 		if fromChild == nil || (!from.Found && !to.Found) {
@@ -160,7 +130,7 @@ func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (
 				} else {
 					if err = to.CreateChild(); err == nil {
 						createdChild = true
-						toChild, err = to.Select(ident)
+						toChild, err = to.Enter()
 						if toChild == nil {
 							err = &browseError{Msg:"Could not select object that was just created"}
 						}
@@ -189,13 +159,13 @@ func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (
 	}
 	s.Exit = func() (err error) {
 		if createdChild {
-			if err = to.FinishCreateChild(); err != nil {
+			if err = to.Edit(POST_CREATE_CHILD, nil); err != nil {
 				return
 			}
 			createdChild = false
 		}
 		if createdList {
-			if err = to.FinishCreateList(); err != nil {
+			if err = to.Edit(POST_CREATE_LIST, nil); err != nil {
 				return
 			}
 			createdList = false
@@ -212,47 +182,72 @@ func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (
 		}
 		return
 	}
-	s.Read = func(v *Value) (err error) {
-		var copy bool
-		var clear bool
-		if from.Found && to.Found {
-			switch strategy {
-			case UPSERT, UPDATE, CLEAR:
-				copy = true
-			}
-		} else if from.Found && !to.Found {
-			switch strategy {
-			case INSERT, UPSERT, CLEAR:
-				copy = true
-			}
-		} else if !from.Found && to.Found {
-			switch strategy {
-			case UPDATE, CLEAR:
-				clear = true
-			}
+	s.ReadValue = func(v *Value) (err error) {
+		from.Position = s.Position
+		to.Position = s.Position
+if from.ReadValue == nil {
+fmt.Println("edit:NIL for ReadValue in", from.Meta.GetIdent() ,"when reading", from.Position.GetIdent())
+}
+		if err = from.ReadValue(v); err != nil {
+			return
 		}
-		if copy {
-			if err = from.Read(v); err != nil {
-				return
-			}
+		if err = to.SetValue(v); err != nil {
+			return
 		}
-		if copy || clear {
-			if err = to.SetValue(v); err != nil {
-				return
-			}
-		}
+
+// TODO: support strategies
+//		var copy bool
+//		var clear bool
+//		if from.Found && to.Found {
+//			switch strategy {
+//			case UPSERT, UPDATE, CLEAR:
+//				copy = true
+//			}
+//		} else if from.Found && !to.Found {
+//			switch strategy {
+//			case INSERT, UPSERT, CLEAR:
+//				copy = true
+//			}
+//		} else if !from.Found && to.Found {
+//			switch strategy {
+//			case UPDATE, CLEAR:
+//				clear = true
+//			}
+//		}
+//		if copy || clear {
+//			if err = to.SetValue(v); err != nil {
+//				return
+//			}
+//		}
 		return
 	}
-	if from.Iterate != nil {
-		s.Iterate = func(fromKeys []string, first bool) (fromMore bool, err error) {
-			from.Meta = s.Meta
-			to.Meta = s.Meta
-			fromMore, err = from.Iterate(fromKeys, first)
-			if err != nil || !fromMore {
-				return
-			}
+	s.Iterate = func(fromKeys []string, first bool) (hasMore bool, err error) {
+		from.Meta = s.Meta
+		to.Meta = s.Meta
+		hasMore, err = from.Iterate(fromKeys, first)
 
-// TODO
+		if err != nil {
+			return
+		}
+
+		if hasMore {
+			_, err = to.Iterate(fromKeys, first)
+		}
+
+		// TODO: Consider to.hasMore results on LIST_ITEM calls
+
+		if first && hasMore {
+			to.Edit(CREATE_LIST_ITEM, nil)
+		} else if !first && hasMore {
+			to.Edit(POST_CREATE_LIST_ITEM, nil)
+			to.Edit(CREATE_LIST_ITEM, nil)
+		} else if !first && !hasMore {
+			to.Edit(POST_CREATE_LIST_ITEM, nil)
+		}
+
+		return
+
+// TODO assumption for now
 //			toKeys := fromKeys
 //			if len(toKeys) == 0 {
 //				keyIdents := s.Meta.(*yang.List).Keys
@@ -276,8 +271,7 @@ func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (
 //			if err != nil {
 //				return
 //			}
-			return fromMore, err
-		}
 	}
+
 	return s, nil
 }

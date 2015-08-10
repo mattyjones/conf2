@@ -128,7 +128,7 @@ func (y *ListBase) linkMeta(impl MetaList, meta Meta) error {
 }
 func (y *ListBase) swapMeta(oldChild Meta, newChild Meta) error {
 	previousSibling := y.FirstMeta
-	for previousSibling != nil && previousSibling != oldChild {
+	for previousSibling != nil && previousSibling.GetSibling() != oldChild {
 		previousSibling = previousSibling.GetSibling()
 	}
 	if previousSibling == nil {
