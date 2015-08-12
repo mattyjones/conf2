@@ -93,63 +93,65 @@ func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (
 		toChild, err = to.Enter()
 		if err != nil {
 			return
-		} else if toChild == nil {
-			return nil, &browseError{Msg:"source could not be selected"}
-		}
-		if toChild.Meta == nil {
-			toChild.Meta = fromChild.Meta
-		}
-
-		if fromChild == nil || (!from.Found && !to.Found) {
-			s.Found = from.Found
-			return
 		}
 
 		s.Found = from.Found
+		if fromChild == nil || (!from.Found && !to.Found) {
+			return
+		}
+
+fmt.Println("edit: BEFORE from.Found", from.Found, "fromChild == nil", fromChild == nil, "to.Found", to.Found, "toChild == nil", toChild == nil)
+
 		nextStrategy := strategy
-		if from.Found && to.Found {
-			switch strategy {
-			case INSERT:
-				err = &browseError{Msg:"Duplicate object found"}
-			case UPDATE:
-				strategy = CLEAR
-			case DELETE:
-				if yang.IsList(s.Position) {
-					err = to.DeleteList()
-				} else {
-					err = to.DeleteChild()
-				}
-				s.Found = false
-			}
-		} else if from.Found && !to.Found {
+//		if from.Found && to.Found {
+//			switch strategy {
+//			case INSERT:
+//				err = &browseError{Msg:"Duplicate object found"}
+//			case UPDATE:
+//				strategy = CLEAR
+//			case DELETE:
+//				if yang.IsList(s.Position) {
+//					err = to.DeleteList()
+//				} else {
+//					err = to.DeleteChild()
+//				}
+//				s.Found = false
+//			}
+//		} else if from.Found && !to.Found {
 			switch strategy {
 			case UPSERT, INSERT, CLEAR:
 				if yang.IsList(s.Position) {
+fmt.Println("edit: HERE list")
 					err = to.CreateList()
 					createdList = true
 				} else {
-					if err = to.CreateChild(); err == nil {
-						createdChild = true
-						toChild, err = to.Enter()
-						if toChild == nil {
-							err = &browseError{Msg:"Could not select object that was just created"}
-						}
+fmt.Println("edit: HERE container")
+					err = to.CreateChild()
+					createdChild = true
+				}
+
+				if err == nil {
+					toChild, err = to.Enter()
+					if err == nil && toChild == nil {
+						err = &browseError{Msg:"Could not select object that was just created"}
 					}
 				}
 			case UPDATE, DELETE:
 				err = &browseError{Msg:"No such object"}
 			}
-		} else if !from.Found && to.Found {
-			switch strategy {
-			case DELETE, CLEAR:
-				if yang.IsList(s.Position) {
-					err = to.DeleteList()
-				} else {
-					err = to.DeleteChild()
-				}
-				s.Found = false
-			}
-		}
+//		} else if !from.Found && to.Found {
+//			switch strategy {
+//			case DELETE, CLEAR:
+//				if yang.IsList(s.Position) {
+//					err = to.DeleteList()
+//				} else {
+//					err = to.DeleteChild()
+//				}
+//				s.Found = false
+//			}
+//		}
+
+fmt.Println("edit: AFTER from.Found", from.Found, "fromChild == nil", fromChild == nil, "to.Found", to.Found, "toChild == nil", toChild == nil, "err", err)
 
 		if err == nil && s.Found {
 			return e.editTarget(fromChild, toChild, nextStrategy)

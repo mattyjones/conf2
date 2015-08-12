@@ -31,8 +31,6 @@ type FileDataSource struct {
 // ResourceSource
 func (src *FileDataSource) OpenResource(resourceId string) (Resource, error) {
 	path := fmt.Sprint(src.Root, "/", resourceId)
-	cwd, _ := os.Getwd()
-fmt.Println("opening", path, "current dir", cwd)
 	return os.Open(path)
 }
 

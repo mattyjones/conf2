@@ -4,7 +4,6 @@ import (
 	"io"
 	"yang"
 	"encoding/json"
-	"fmt"
 )
 
 type JsonReader struct {
@@ -74,7 +73,6 @@ func enterJson(values map[string]interface{}, list []interface{}) (s *Selection,
 	var i int
 	s.Enter = func() (child *Selection, e error) {
 		value, s.Found = container[s.Position.GetIdent()]
-fmt.Println("json_rdr: found container", s.Position.GetIdent(), s.Found)
 		if s.Found {
 			if yang.IsList(s.Position) {
 				return enterJson(nil, value.([]interface{}))
@@ -114,7 +112,6 @@ fmt.Println("json_rdr: found container", s.Position.GetIdent(), s.Found)
 				container = list[i].(map[string]interface{})
 			}
 		}
-fmt.Println("json_rdr: found list", s.Meta.GetIdent(), container != nil, list)
 		return container != nil, nil
 	}
 	return

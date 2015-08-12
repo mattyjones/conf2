@@ -131,6 +131,9 @@ func walk(selection *Selection, controller WalkController, level int) (err error
 				}
 			} else {
 				child, err = selection.Enter()
+				if err != nil {
+					return
+				}
 				if !selection.Found {
 					continue
 				}
