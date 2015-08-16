@@ -54,8 +54,8 @@ JAVA_SRC = $(shell find drivers/java/src \( \
 	-not -name '*Test.java' \) -type f)
 
 JNI_SRCS = \
-	org.conf2.yang.comm.Driver \
-	org.conf2.yang.Loader \
+	org.conf2.yang.driver.Driver \
+	org.conf2.yang.driver.DriverLoader
 
 driver-java :
 	javac -d drivers/java/classes $(JAVA_SRC)

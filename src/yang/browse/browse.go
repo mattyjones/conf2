@@ -40,7 +40,6 @@ func (s *Selection) CreateChild() error {
 	return s.Edit(CREATE_CHILD, nil)
 }
 
-
 func (s *Selection) DeleteChild() error {
 	if s.Edit == nil {
 		return &browseError{Msg:"Not editable"}

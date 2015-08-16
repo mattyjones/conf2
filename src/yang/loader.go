@@ -1,7 +1,5 @@
 package yang
 
-import "C"
-
 import (
 	"io/ioutil"
 	"fmt"
@@ -35,11 +33,4 @@ func LoadModule(source ResourceSource, yangfile string) (*Module, error) {
 			return LoadModuleFromByteArray(data)
 		}
 	}
-}
-
-//export yangc2_load_module_from_resource_source
-func yangc2_load_module_from_resource_source(source ResourceSource, resourceStr *C.char) error {
-	resourceId := C.GoString(resourceStr)
-	_, err := LoadModule(source, resourceId)
-	return err
 }

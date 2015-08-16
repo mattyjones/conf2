@@ -1,8 +1,7 @@
 package main // import "libyangc2"
 
 import "C"
-import _ "yang"
-import _ "yang/comm"
+import _ "yang/driver"
 
 func main() { // ignored
 }
