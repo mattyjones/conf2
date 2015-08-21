@@ -14,7 +14,7 @@ import (
 
 //export ResourceHandle
 type ResourceHandle interface {
-	yang.ResourceSource
+     yang.ResourceSource
 }
 
 type DriverResourceSource struct {
@@ -39,11 +39,6 @@ func yangc2_new_driver_resource_source(open_impl C.yangc2_open_stream_impl, read
 		read_impl: read_impl,
 		close_impl: close_impl,
 	}
-}
-
-//export yangc2_new_fs_error
-func yangc2_new_fs_error(err *C.char) error {
-	return &driverError{Msg:C.GoString(err)}
 }
 
 func (source *DriverResourceSource) OpenResource(resourceId string) (res yang.Resource, err error) {

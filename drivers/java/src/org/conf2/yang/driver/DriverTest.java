@@ -24,7 +24,8 @@ public class DriverTest {
             }
         };
         String expectedResourceId = "resourceIdHere";
-        String actualResource = Driver.echoTest(r, expectedResourceId);
+        Driver d = new Driver();
+        String actualResource = d.echoTest(r, expectedResourceId);
 
         assertEquals(expectedResourceId, actualResourceId[0]);
         assertEquals(expectedResourceContent, actualResource);

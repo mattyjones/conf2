@@ -1,4 +1,4 @@
-#include "libyangc2j.h"
+#include "java_yang.h"
 
 JavaVM* jvm = NULL;
 
@@ -13,6 +13,18 @@ RcError checkError(JNIEnv *env) {
     return RC_BAD;
   }
   return RC_OK;
+}
+
+bool checkDriverError(JNIEnv *env, GoInterface *err) {
+  if ((*env)->ExceptionCheck(env)) {
+    jthrowable exception = (*env)->ExceptionOccurred(env);
+    char *msg = get_exception_message(env, exception);
+    *err = yangc2_new_driver_error(msg);
+    (*env)->ExceptionClear(env);
+    return true;
+  }
+
+  return false;
 }
 
 char *get_exception_message(JNIEnv *env, jthrowable err) {
@@ -68,18 +80,8 @@ JNIEnv *getCurrentJniEnv() {
   return env;
 }
 
-JNIEXPORT void JNICALL Java_org_conf2_yang_comm_Driver_initializeDriver
+JNIEXPORT void JNICALL Java_org_conf2_yang_driver_Driver_initializeDriver
   (JNIEnv *env, jobject jobj) {
   initJvmReference(env);
-}
-
-
-JNIEXPORT jobject JNICALL Java_org_conf2_yang_Loader_loadModule
-  (JNIEnv *env, jclass loaderClass, jobject dataSourceHandle, jstring resource) {
-  GoInterface dsIface;
-  resolveDriverHandle(env, dataSourceHandle, &dsIface);
-  char *resourceStr = (char *)(*env)->GetStringUTFChars(env, resource, 0);
-  GoInterface err = yangc2_load_module_from_resource_source(dsIface, resourceStr);
-  return NULL;
 }
 

@@ -12,9 +12,9 @@ import "C"
 
 import (
 	"yang"
-	"yang/browse"
 	"unsafe"
 	"strings"
+	"yang/browse"
 )
 
 //export
@@ -50,7 +50,7 @@ func yangc2_load_module(
 		browser_hnd unsafe.Pointer,
         rs ResourceHandle,
         resourceId *C.char,
-    ) (ModuleHandle, error) {
+    ) ModuleHandle {
 
 	var yang_module *yang.Module
 	var module *yang.Module
@@ -58,7 +58,7 @@ func yangc2_load_module(
 
 	module, err = yang.LoadModule(rs, C.GoString(resourceId))
 	if (err != nil) {
-		return nil, err
+		return nil
 	}
 	local_browser := browse.YangBrowser{Module:module, Meta:yang_module}
 
@@ -79,12 +79,14 @@ func yangc2_load_module(
 		from, err := local_browser.RootSelector()
 		if err == nil {
 			err = browse.Insert(from, to)
+			if err != nil {
+				// TODO: add module reference to driver so GC doesn't claim it
+				return module
+			}
 		}
 	}
 
-	// TODO: add module reference to driver so GC doesn't claim it
-
-	return module, err
+	return nil
 }
 
 //export yangc2_new_browser
@@ -187,7 +189,7 @@ func (cb *c_browser) c_read(s *browse.Selection, selection_hnd unsafe.Pointer, v
 	case C.enum_yangc2_browse_value_type(C.INT32):
 		val.Int = int(c_val.int32)
 	case C.enum_yangc2_browse_value_type(C.BOOLEAN):
-		if c_val.bool > C_FALSE {
+		if c_val.boolean > C_FALSE {
 			val.Bool = true
 		} else {
 			// nop
@@ -218,9 +220,9 @@ func (cb *c_browser) c_edit(s *browse.Selection, selection_hnd unsafe.Pointer, o
 	case "boolean":
 		c_val.val_type = C.enum_yangc2_browse_value_type(C.BOOLEAN)
 		if val.Bool {
-			c_val.bool = C_TRUE
+			c_val.boolean = C_TRUE
 		} else {
-			c_val.bool = C_FALSE
+			c_val.boolean = C_FALSE
 		}
 	default:
 		return &driverError{"Unsupported type"}

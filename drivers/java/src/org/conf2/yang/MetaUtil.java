@@ -1,8 +1,5 @@
 package org.conf2.yang;
 
-import com.sun.org.apache.xalan.internal.xsltc.dom.SimpleResultTreeImpl;
-
-import java.util.Collections;
 import java.util.Iterator;
 
 /**

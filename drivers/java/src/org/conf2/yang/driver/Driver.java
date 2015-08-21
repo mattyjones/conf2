@@ -17,7 +17,7 @@ public class Driver {
 
     private native void initializeDriver();
 
-    public native static String echoTest(DataSource loader, String resourceId);
+    public native String echoTest(DataSource loader, String resourceId);
 
     public native DriverHandle newDataSource(DataSource source);
 }
