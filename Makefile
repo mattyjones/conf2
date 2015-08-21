@@ -60,6 +60,7 @@ JNI_SRCS = \
 	org.conf2.yang.driver.DriverLoader
 
 driver-java :
+	test -d drivers/java/classes || mkdir drivers/java/classes
 	@javac -d drivers/java/classes $(JAVA_SRC)
 	javah -cp drivers/java/classes -d drivers/java/include $(JNI_SRCS)
 	jar -cf yangc2.jar -C drivers/java/classes .
@@ -88,6 +89,8 @@ driver-java-test :
 	  java $(JAVA_TEST_RUNNER) $(JAVA_TESTS)
 
 libyangc2j:
+	cd pkg/$(GO_ARCH)_shared; \
+	  ln -snf libyangc2j.a libyangc2j.so
 	LD_LIBRARY_PATH=$(JDK_LIBRARY_PATH) \
 	  CGO_CFLAGS="$($@_CFLAGS)" \
 	  CGO_LDFLAGS="$($@_LDFLAGS)" \
