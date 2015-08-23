@@ -271,20 +271,22 @@ JNIEXPORT jobject JNICALL Java_org_conf2_yang_driver_DriverLoader_loadModule
   (JNIEnv *env, jclass dloader_class, jobject datasource_hnd, jstring resource, jobject module_browser) {
 
   GoInterface rs_source;
+printf("C loadModule - before resolve driver handle, %p\n", datasource_hnd);
   resolveDriverHandle(env, datasource_hnd, &rs_source);
   const char *resourceStr = (*env)->GetStringUTFChars(env, resource, 0);
-
+printf("C loadModule - after resolve driver\n");
   GoInterface module = yangc2_load_module(
-        java_browse_enter,
-        java_browse_iterate,
-        java_browse_read,
-        java_browse_edit,
-        java_browse_choose,
-        java_browse_exit,
-        java_browse_root_selector,
+        &java_browse_enter,
+        &java_browse_iterate,
+        &java_browse_read,
+        &java_browse_edit,
+        &java_browse_choose,
+        &java_browse_exit,
+        &java_browse_root_selector,
         module_browser,
         rs_source,
         (char *)resourceStr);
+printf("C loadModule - after yangc2_load_module\n");
   (*env)->ReleaseStringUTFChars(env, resource, resourceStr);
   if (module.v != NULL) {
     // throw proper error

@@ -10,6 +10,7 @@ import (
 	"unsafe"
 	"io"
 	"yang"
+	"fmt"
 )
 
 //export ResourceHandle
@@ -45,8 +46,10 @@ func (source *DriverResourceSource) OpenResource(resourceId string) (res yang.Re
 	errPtr := unsafe.Pointer(&err)
 	stream_handle := C.yangc2_open_stream(source.open_impl, source.source_handle, C.CString(resourceId), errPtr)
 	if err != nil {
+fmt.Println("ERR OpenResource", resourceId);
 		return nil, err
 	}
+fmt.Println("NO ERR OpenResource", resourceId);
 	res = &DriverResource{
 		stream_handle: stream_handle,
 		read_impl: source.read_impl,

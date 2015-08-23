@@ -18,6 +18,7 @@ public class DriverLoader implements Loader {
 
     public Module loadModule(DataSource source, String resource) {
         DriverHandle ds = driver.newDataSource(source);
+System.out.println("ds.hnd", ds.reference);
         ModuleBrowser moduleBrowser = new ModuleBrowser(null);
         DriverHandle moduleBrowserHnd = loadModule(ds, resource, moduleBrowser);
         return moduleBrowser.module;

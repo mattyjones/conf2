@@ -9,7 +9,7 @@
 void *java_open_stream(void *source_handle, char *resId, void *errPtr) {
   GoInterface *err = (GoInterface *) errPtr;
   JNIEnv* env = getCurrentJniEnv();
-  jclass loaderIface = (*env)->FindClass(env, "org/conf2/yang/comm/DataSource");
+  jclass loaderIface = (*env)->FindClass(env, "org/conf2/yang/DataSource");
   if (checkDriverError(env, err)) {
     return NULL;
   }

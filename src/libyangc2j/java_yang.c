@@ -43,7 +43,7 @@ void initJvmReference(JNIEnv* env) {
 
 jobject makeDriverHandle(JNIEnv *env, GoInterface iface) {
   GoInt err;
-  jclass driverHandleCls = (*env)->FindClass(env, "org/conf2/yang/comm/DriverHandle");
+  jclass driverHandleCls = (*env)->FindClass(env, "org/conf2/yang/driver/DriverHandle");
   if (!(err = checkError(env))) {
     jmethodID driverHandleCtor = (*env)->GetMethodID(env, driverHandleCls, "<init>", "([B)V");
     if (!(err = checkError(env))) {
@@ -61,14 +61,19 @@ jobject makeDriverHandle(JNIEnv *env, GoInterface iface) {
 
 RcError resolveDriverHandle(JNIEnv *env, jobject driverHandle, GoInterface *iface) {
   GoInt err;
-  jclass driverHandleCls = (*env)->FindClass(env, "org/conf2/yang/comm/DriverHandle");
+  jclass driverHandleCls = (*env)->FindClass(env, "org/conf2/yang/driver/DriverHandle");
   if (!(err = checkError(env))) {
     jfieldID ifaceField = (*env)->GetFieldID(env, driverHandleCls, "reference", "[B");
     if (!(err = checkError(env))) {
       jbyteArray ref = (jbyteArray) (*env)->GetObjectField(env, driverHandle, ifaceField);
       if (!(err = checkError(env))) {
         void *ifaceBytes = (*env)->GetDirectBufferAddress(env, ref);
-        memcpy(iface, ifaceBytes, sizeof(*iface));
+	if (ifaceBytes != NULL) {
+	  memcpy(iface, ifaceBytes, sizeof(*iface));	  
+	} else {
+printf("java_yang.c:BAD\n");
+	  err = RC_BAD;
+	}
       }
     }
   }

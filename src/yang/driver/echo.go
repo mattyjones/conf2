@@ -3,6 +3,7 @@ package driver
 import (
 	"C"
 	"io/ioutil"
+	"fmt"
 )
 
 // For API testing purposes
@@ -14,6 +15,7 @@ import (
 func yangc2_echo_test(source ResourceHandle, resourceIdStr *C.char) *C.char {
 	resourceId := C.GoString(resourceIdStr)
 	if res, err := source.OpenResource(resourceId); err != nil {
+	   	fmt.Println("Error opening resource", err.Error())
 		return C.CString(err.Error())
 	} else {
 		if data, err := ioutil.ReadAll(res); err != nil {

@@ -76,7 +76,11 @@ JAVA_TEST_CP = drivers/java/classes:$(subst $(SPACE),:,$(JAVA_TEST_JARS))
 JAVA_TEST_RUNNER = org.junit.runner.JUnitCore
 
 JAVA_TESTS = \
-	org.conf2.yang.driver.DriverTest
+	org.conf2.yang.driver.DriverTest \
+	org.conf2.yang.driver.DriverLoaderTest
+
+JAVA_TESTS = \
+	org.conf2.yang.driver.DriverLoaderTest
 
 JAVA_TEST_SRC = \
 	$(shell find drivers/java/src -name '*Test.java')
