@@ -18,7 +18,21 @@ RcError checkError(JNIEnv *env) {
 bool checkDriverError(JNIEnv *env, GoInterface *err) {
   if ((*env)->ExceptionCheck(env)) {
     jthrowable exception = (*env)->ExceptionOccurred(env);
-    char *msg = get_exception_message(env, exception);
+    (*env)->ExceptionClear(env);
+
+    char *msg = NULL;
+    jclass driver_class = (*env)->FindClass(env, "org/conf2/yang/driver/Driver");
+    jmethodID print_err = (*env)->GetStaticMethodID(env, driver_class, "printException", "(Ljava/lang/Throwable;)Ljava/lang/String;");
+    if (!(*env)->ExceptionCheck(env)) {
+      jobject err_message = (*env)->CallStaticObjectMethod(env, driver_class, print_err, exception);
+      if (!(*env)->ExceptionCheck(env)) {
+        msg = (char *)(*env)->GetStringUTFChars(env, err_message, 0);
+      }
+    }
+    if (msg == NULL) {
+      msg = get_exception_message(env, exception);
+    }
+
     *err = yangc2_new_driver_error(msg);
     (*env)->ExceptionClear(env);
     return true;
@@ -28,10 +42,15 @@ bool checkDriverError(JNIEnv *env, GoInterface *err) {
 }
 
 char *get_exception_message(JNIEnv *env, jthrowable err) {
-  jclass throwable_class = (*env)->FindClass(env, "java/lang/Throwable");
+  jclass throwable_class = (*env)->GetObjectClass(env, err);
+  jmethodID get_message = (*env)->GetMethodID(env, throwable_class, "getMessage", "()Ljava/lang/String;");
+  jstring msg = (*env)->CallObjectMethod(env, err, get_message);
+  if (msg != NULL) {
+    return (char *)(*env)->GetStringUTFChars(env, msg, 0);
+  }
   jmethodID to_string = (*env)->GetMethodID(env, throwable_class, "toString", "()Ljava/lang/String;");
-  jstring msg = (*env)->CallObjectMethod(env, throwable_class, to_string);
-  return (char *)(*env)->GetStringUTFChars(env, msg, 0);
+  jstring as_string = (*env)->CallObjectMethod(env, err, to_string);
+  return (char *)(*env)->GetStringUTFChars(env, as_string, 0);
 }
 
 void initJvmReference(JNIEnv* env) {
@@ -50,6 +69,7 @@ jobject makeDriverHandle(JNIEnv *env, GoInterface iface) {
       jobject jbuffer = (*env)->NewByteArray(env, sizeof(iface));
       void* cbuffer = (*env)->GetByteArrayElements(env, jbuffer, 0);
       memcpy(cbuffer, &iface, sizeof(iface));
+      (*env)->SetByteArrayRegion(env, jbuffer, 0, sizeof(iface), cbuffer);
       jobject handle = (*env)->NewObject(env, driverHandleCls, driverHandleCtor, jbuffer);
       (*env)->ReleaseByteArrayElements(env, jbuffer, cbuffer, JNI_ABORT);
       (*env)->DeleteLocalRef(env, jbuffer);
@@ -63,17 +83,16 @@ RcError resolveDriverHandle(JNIEnv *env, jobject driverHandle, GoInterface *ifac
   GoInt err;
   jclass driverHandleCls = (*env)->FindClass(env, "org/conf2/yang/driver/DriverHandle");
   if (!(err = checkError(env))) {
-    jfieldID ifaceField = (*env)->GetFieldID(env, driverHandleCls, "reference", "[B");
+    jfieldID ifaceField = (*env)->GetFieldID(env, driverHandleCls, "reference", "Ljava/nio/ByteBuffer;");
     if (!(err = checkError(env))) {
       jbyteArray ref = (jbyteArray) (*env)->GetObjectField(env, driverHandle, ifaceField);
       if (!(err = checkError(env))) {
         void *ifaceBytes = (*env)->GetDirectBufferAddress(env, ref);
-	if (ifaceBytes != NULL) {
-	  memcpy(iface, ifaceBytes, sizeof(*iface));	  
-	} else {
-printf("java_yang.c:BAD\n");
-	  err = RC_BAD;
-	}
+        if (ifaceBytes != NULL) {
+          memcpy(iface, ifaceBytes, sizeof(*iface));
+        } else {
+          err = RC_BAD;
+        }
       }
     }
   }

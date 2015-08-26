@@ -106,9 +106,6 @@ module yang {
                             leaf ident {
                                 type string;
                             }
-                            /*
-                             !! CIRCULAR
-                            */
                             uses containers-lists-leafs-uses-choice;
                         }
                     }

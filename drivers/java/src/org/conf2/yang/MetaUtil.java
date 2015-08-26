@@ -20,6 +20,16 @@ public class MetaUtil {
         return findByIdent(new MetaCollectionIterator(c), ident);
     }
 
+    public static int collectionLength(MetaCollection c) {
+        int len = 0;
+        Iterator<Meta> i = new MetaCollectionIterator(c);
+        while (i.hasNext()) {
+            len++;
+            i.next();
+        }
+        return len;
+    }
+
     public static boolean isLeaf(Meta m) {
         return m instanceof Leaf || m instanceof LeafList;
     }

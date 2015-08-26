@@ -3,7 +3,8 @@ package org.conf2.yang;
 /**
  *
  */
-public class RpcInput extends CollectionBase {
+public class RpcInput extends RpcBase {
+
     public RpcInput() {
         super("input");
     }

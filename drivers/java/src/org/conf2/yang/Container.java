@@ -3,10 +3,11 @@ package org.conf2.yang;
 /**
  *
  */
-public class Container extends CollectionBase implements Describable {
-    private LinkedList groupings = new LinkedListCollection("groupings", this);
-    private LinkedList typedefs = new LinkedListCollection("typedefs", this);
-    private LinkedList choices = new LinkedListCollection("choices", this);
+public class Container extends CollectionBase implements Describable, HasTypedefs, HasGroupings {
+    private LinkedListCollection groupings = new LinkedListCollection("groupings", this);
+    private LinkedListCollection typedefs = new LinkedListCollection("typedefs", this);
+    private boolean config;
+    private boolean mandatory;
 
     public Container(String ident) {
         super(ident);
@@ -16,12 +17,28 @@ public class Container extends CollectionBase implements Describable {
     public void addMeta(Meta m) {
         if (m instanceof Grouping) {
             groupings.addMeta(m);
-        } else if (m instanceof Choice) {
-            choices.addMeta(m);
         } else if (m instanceof Typedef) {
             typedefs.addMeta(m);
         } else {
             super.addMeta(m);
         }
+    }
+
+    @Override
+    public MetaCollection getGroupings() {
+        return groupings;
+    }
+
+    @Override
+    public MetaCollection getTypedefs() {
+        return typedefs;
+    }
+
+    public void setConfig(boolean config) {
+        this.config = config;
+    }
+
+    public void setMandatory(boolean mandatory) {
+        this.mandatory = mandatory;
     }
 }

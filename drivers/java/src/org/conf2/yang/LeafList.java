@@ -3,9 +3,11 @@ package org.conf2.yang;
 /**
  *
  */
-public class LeafList extends MetaBase implements Describable {
+public class LeafList extends MetaBase implements Describable, HasDataType {
     private String description;
-    private String type;
+    private DataType type;
+    private boolean config;
+    private boolean mandatory;
 
     public LeafList(String ident) {
         super(ident);
@@ -20,11 +22,19 @@ public class LeafList extends MetaBase implements Describable {
         return description;
     }
 
-    public void setType(String type) {
+    public void setDataType(DataType type) {
         this.type = type;
     }
 
-    public String getType() {
+    public DataType getDataType() {
         return type;
+    }
+
+    public void setConfig(boolean config) {
+        this.config = config;
+    }
+
+    public void setMandatory(boolean mandatory) {
+        this.mandatory = mandatory;
     }
 }

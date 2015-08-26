@@ -3,7 +3,7 @@ package driver
 // #include "yang/driver/yangc2_browse.h"
 // extern void* yangc2_browse_root_selector(yangc2_browse_root_selector_impl impl_func, void *browser_handle, void *browse_err);
 // extern void* yangc2_browse_enter(yangc2_browse_enter_impl impl_func, void *selection_handle, char *ident, short *found, void *browse_err);
-// extern short yangc2_browse_iterate(yangc2_browse_iterate_impl impl_func, void *selection_handle, char *ident, char *encodedKeys, short first, void *browse_err);
+// extern short yangc2_browse_iterate(yangc2_browse_iterate_impl impl_func, void *selection_handle, char *encodedKeys, short first, void *browse_err);
 // extern void yangc2_browse_read(yangc2_browse_read_impl impl_func, void *selection_handle, char *ident, struct yangc2_browse_value *val, void *browse_err);
 // extern void yangc2_browse_edit(yangc2_browse_edit_impl impl_func, void *selection_handle, char *ident, int op, struct yangc2_browse_value *val, void *browse_err);
 // extern char *yangc2_browse_choose(yangc2_browse_choose_impl impl_func, void *selection_handle, char *ident, void *browse_err);
@@ -15,6 +15,7 @@ import (
 	"unsafe"
 	"strings"
 	"yang/browse"
+	"fmt"
 )
 
 //export
@@ -52,15 +53,15 @@ func yangc2_load_module(
         resourceId *C.char,
     ) ModuleHandle {
 
-	var yang_module *yang.Module
 	var module *yang.Module
 	var err error
 
 	module, err = yang.LoadModule(rs, C.GoString(resourceId))
 	if (err != nil) {
+		fmt.Println("Error loading module", err.Error())
 		return nil
 	}
-	local_browser := browse.YangBrowser{Module:module, Meta:yang_module}
+	local_browser := browse.NewYangBrowser(module)
 
 	remote_browser := yangc2_new_browser(
 		enter_impl,
@@ -74,18 +75,25 @@ func yangc2_load_module(
 		browser_hnd,
 	)
 
-	to, err := remote_browser.RootSelector()
+	var to *browse.Selection
+	to, err = remote_browser.RootSelector()
 	if err == nil {
-		from, err := local_browser.RootSelector()
+		var from *browse.Selection
+		from, err = local_browser.RootSelector()
 		if err == nil {
 			err = browse.Insert(from, to)
-			if err != nil {
+			if err == nil {
 				// TODO: add module reference to driver so GC doesn't claim it
 				return module
 			}
 		}
 	}
+	if (err != nil) {
+		fmt.Println("Error sending module", err.Error())
+		return nil
+	}
 
+	// TODO: Find a way to return an error and not just nil
 	return nil
 }
 
@@ -147,7 +155,6 @@ func (cb *c_browser) c_selection(selection_hnd unsafe.Pointer) (*browse.Selectio
 
 func (cb *c_browser) c_iterate(s *browse.Selection, selection_hnd unsafe.Pointer, keys []string, first bool) (hasMore bool, err error) {
 	errPtr := unsafe.Pointer(&err)
-	ident := C.CString(s.Position.GetIdent())
 	var c_encoded_keys *C.char
 	if len(keys) > 0 {
 		c_encoded_keys = C.CString(strings.Join(keys, " "))
@@ -159,7 +166,7 @@ func (cb *c_browser) c_iterate(s *browse.Selection, selection_hnd unsafe.Pointer
 		c_first = C.short(0)
 
 	}
-	has_more := C.yangc2_browse_iterate(cb.enter_impl, selection_hnd, ident, c_encoded_keys, c_first, errPtr)
+	has_more := C.yangc2_browse_iterate(cb.iterate_impl, selection_hnd, c_encoded_keys, c_first, errPtr)
 
 	return has_more > 0, err
 }
@@ -167,7 +174,7 @@ func (cb *c_browser) c_iterate(s *browse.Selection, selection_hnd unsafe.Pointer
 func (cb *c_browser) c_enter(s *browse.Selection, selection_hnd unsafe.Pointer) (child *browse.Selection, err error) {
 	errPtr := unsafe.Pointer(&err)
 	c_found := C.short(0)
-	ident := C.CString(s.Position.GetIdent())
+	ident := encodeIdent(s.Position)
 	child_hnd := C.yangc2_browse_enter(cb.enter_impl, selection_hnd, ident, &c_found, errPtr)
 	if c_found > 0 {
 		s.Found = true
@@ -178,9 +185,17 @@ func (cb *c_browser) c_enter(s *browse.Selection, selection_hnd unsafe.Pointer) 
 	return
 }
 
+func encodeIdent(position yang.Meta) *C.char {
+	if ccase, isCase := position.GetParent().(*yang.ChoiceCase); isCase {
+		path := fmt.Sprintf("%s/%s/%s", ccase.GetParent().GetIdent(), ccase.GetIdent(), position.GetIdent())
+		return C.CString(path)
+	}
+	return C.CString(position.GetIdent())
+}
+
 func (cb *c_browser) c_read(s *browse.Selection, selection_hnd unsafe.Pointer, val *browse.Value) (err error) {
 	errPtr := unsafe.Pointer(&err)
-	ident := C.CString(s.Position.GetIdent())
+	ident := encodeIdent(s.Position)
 	var c_val C.struct_yangc2_browse_value
 	C.yangc2_browse_read(cb.read_impl, selection_hnd, ident, &c_val, errPtr)
 	switch c_val.val_type {
@@ -205,12 +220,58 @@ const (
 	C_FALSE = C.short(0)
 )
 
-func (cb *c_browser) c_edit(s *browse.Selection, selection_hnd unsafe.Pointer, op browse.Operation, val *browse.Value) (err error) {
-	errPtr := unsafe.Pointer(&err)
-	ident := C.CString(s.Position.GetIdent())
+func leafListValue(val *browse.Value) (*C.struct_yangc2_browse_value, error) {
 	var c_val C.struct_yangc2_browse_value
-	dt := s.Position.(yang.HasDataType).GetDataType()
-	switch dt.Ident {
+	c_val.islist = C_TRUE
+	switch val.Type.Ident {
+	case "string":
+		var datalen int
+		for _, s := range val.Strlist {
+			datalen += len(s) + 1
+		}
+		data := make([]byte, datalen)
+		var pos int
+		for _, s := range val.Strlist {
+			copy(data[pos:], []byte(s))
+			// +1 to make C string terminator
+			pos += len(s) + 1
+		}
+		c_val.listlen = C.int(len(val.Strlist))
+		c_val.datalen = C.int(datalen)
+		c_val.val_type = C.enum_yangc2_browse_value_type(C.STRING)
+		c_val.data = unsafe.Pointer(&data)
+
+	case "int32":
+		data := make([]C.int, len(val.Intlist))
+		for i, ival := range val.Intlist {
+			data[i] = C.int(ival)
+		}
+		c_val.listlen = C.int(len(val.Intlist))
+		c_val.datalen = C.int(4 * len(val.Intlist))
+		c_val.val_type = C.enum_yangc2_browse_value_type(C.INT32)
+		c_val.data = unsafe.Pointer(&data)
+	case "boolean":
+		data := make([]C.short, len(val.Boollist))
+		for i, bval := range val.Boollist {
+			if bval {
+				data[i] = C_TRUE
+			} else {
+				data[i] = C_FALSE
+			}
+		}
+		c_val.listlen = C.int(len(val.Boollist))
+		c_val.datalen = C.int(2 * len(val.Intlist))
+		c_val.val_type = C.enum_yangc2_browse_value_type(C.BOOLEAN)
+		c_val.data = unsafe.Pointer(&data)
+	default:
+		return nil, &driverError{"Unsupported type"}
+	}
+	return &c_val, nil
+}
+
+func leafValue(val *browse.Value) (*C.struct_yangc2_browse_value, error) {
+	var c_val C.struct_yangc2_browse_value
+	switch val.Type.Ident {
 	case "string":
 		c_val.val_type = C.enum_yangc2_browse_value_type(C.STRING)
 		c_val.str = C.CString(val.Str)
@@ -225,9 +286,26 @@ func (cb *c_browser) c_edit(s *browse.Selection, selection_hnd unsafe.Pointer, o
 			c_val.boolean = C_FALSE
 		}
 	default:
-		return &driverError{"Unsupported type"}
+		return nil, &driverError{"Unsupported type"}
 	}
-	C.yangc2_browse_edit(cb.read_impl, selection_hnd, ident, C.int(op), &c_val, errPtr)
+	return &c_val, nil
+}
+
+func (cb *c_browser) c_edit(s *browse.Selection, selection_hnd unsafe.Pointer, op browse.Operation, val *browse.Value) (err error) {
+	errPtr := unsafe.Pointer(&err)
+	var ident *C.char;
+	var c_val *C.struct_yangc2_browse_value
+	if s.Position != nil {
+		ident = encodeIdent(s.Position)
+	}
+	if val != nil {
+		if val.IsList {
+			c_val, err = leafListValue(val)
+		} else {
+			c_val, err = leafValue(val)
+		}
+	}
+	C.yangc2_browse_edit(cb.edit_impl, selection_hnd, ident, C.int(op), c_val, errPtr)
 	return
 }
 
@@ -244,7 +322,7 @@ func (cb *c_browser) c_choose(s *browse.Selection, selection_hnd unsafe.Pointer,
 
 func (cb *c_browser) c_exit(s *browse.Selection, selection_hnd unsafe.Pointer) (err error) {
 	errPtr := unsafe.Pointer(&err)
-	ident := C.CString(s.Position.GetIdent())
-	C.yangc2_browse_exit(cb.choose_impl, selection_hnd, ident, errPtr)
+	ident := encodeIdent(s.Position)
+	C.yangc2_browse_exit(cb.exit_impl, selection_hnd, ident, errPtr)
 	return
 }

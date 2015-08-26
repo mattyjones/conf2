@@ -100,8 +100,6 @@ func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (
 			return
 		}
 
-fmt.Println("edit: BEFORE from.Found", from.Found, "fromChild == nil", fromChild == nil, "to.Found", to.Found, "toChild == nil", toChild == nil)
-
 		nextStrategy := strategy
 //		if from.Found && to.Found {
 //			switch strategy {
@@ -121,11 +119,9 @@ fmt.Println("edit: BEFORE from.Found", from.Found, "fromChild == nil", fromChild
 			switch strategy {
 			case UPSERT, INSERT, CLEAR:
 				if yang.IsList(s.Position) {
-fmt.Println("edit: HERE list")
 					err = to.CreateList()
 					createdList = true
 				} else {
-fmt.Println("edit: HERE container")
 					err = to.CreateChild()
 					createdChild = true
 				}
@@ -150,8 +146,6 @@ fmt.Println("edit: HERE container")
 //				s.Found = false
 //			}
 //		}
-
-fmt.Println("edit: AFTER from.Found", from.Found, "fromChild == nil", fromChild == nil, "to.Found", to.Found, "toChild == nil", toChild == nil, "err", err)
 
 		if err == nil && s.Found {
 			return e.editTarget(fromChild, toChild, nextStrategy)
@@ -187,9 +181,6 @@ fmt.Println("edit: AFTER from.Found", from.Found, "fromChild == nil", fromChild 
 	s.ReadValue = func(v *Value) (err error) {
 		from.Position = s.Position
 		to.Position = s.Position
-if from.ReadValue == nil {
-fmt.Println("edit:NIL for ReadValue in", from.Meta.GetIdent() ,"when reading", from.Position.GetIdent())
-}
 		if err = from.ReadValue(v); err != nil {
 			return
 		}
@@ -227,24 +218,35 @@ fmt.Println("edit:NIL for ReadValue in", from.Meta.GetIdent() ,"when reading", f
 		from.Meta = s.Meta
 		to.Meta = s.Meta
 		hasMore, err = from.Iterate(fromKeys, first)
+fmt.Println("edit.go:s.Iterate s.meta=", to.Meta.GetIdent(), "hasMore", hasMore)
 
 		if err != nil {
+fmt.Println("edit.go:s.Iterate ERR")
 			return
 		}
 
 		if hasMore {
+fmt.Println("edit.go:Before to.Iterate")
 			_, err = to.Iterate(fromKeys, first)
+			if err != nil {
+fmt.Println("edit.go:s. to.Iterate ERROR")
+				return
+			}
 		}
 
 		// TODO: Consider to.hasMore results on LIST_ITEM calls
+fmt.Println("edit.go:Before first && hasMore")
 
 		if first && hasMore {
-			to.Edit(CREATE_LIST_ITEM, nil)
+fmt.Println("edit.go - Sending CREATE_LIST_ITEM")
+			err = to.Edit(CREATE_LIST_ITEM, nil)
 		} else if !first && hasMore {
-			to.Edit(POST_CREATE_LIST_ITEM, nil)
-			to.Edit(CREATE_LIST_ITEM, nil)
+			err = to.Edit(POST_CREATE_LIST_ITEM, nil)
+			if err == nil {
+				err = to.Edit(CREATE_LIST_ITEM, nil)
+			}
 		} else if !first && !hasMore {
-			to.Edit(POST_CREATE_LIST_ITEM, nil)
+			err = to.Edit(POST_CREATE_LIST_ITEM, nil)
 		}
 
 		return

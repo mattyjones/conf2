@@ -27,8 +27,11 @@ struct yangc2_browse_value {
     enum yangc2_browse_value_type val_type;
     // PERFORMANCE TODO: See if you can use a union.  Unclear of Go's integration level.
     int int32;
+    short islist;
+    int listlen;
     short boolean;
     char  *str;
+    int datalen;
     void *data;
 };
 
@@ -36,13 +39,11 @@ struct yangc2_browse_value {
 // pointers to convert data streams.  You will pass your function pointer when calling
 // yangc2_browse_new_browser
 typedef void* (*yangc2_browse_enter_impl)(void *selection_handle, char *ident, short *found, void *browse_err);
-typedef short (*yangc2_browse_iterate_impl)(void *selection_handle, char *ident, char *keys, short first, void *browse_err);
+typedef short (*yangc2_browse_iterate_impl)(void *selection_handle, char *keys, short first, void *browse_err);
 typedef void (*yangc2_browse_read_impl)(void *selection_handle, char *ident, struct yangc2_browse_value* val, void *browse_err);
 typedef void (*yangc2_browse_edit_impl)(void *selection_handle, char *ident, int op, struct yangc2_browse_value* val, void *browse_err);
 typedef char* (*yangc2_browse_choose_impl)(void *selection_handle, char *ident, void *browse_err);
 typedef void (*yangc2_browse_exit_impl)(void *selection_handle, char *ident, void *browse_err);
 typedef void* (*yangc2_browse_root_selector_impl)(void *browser_handle, void *browse_err);
-
-
 
 #endif

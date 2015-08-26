@@ -22,9 +22,7 @@ type Describable interface {
 
 // Examples: Things that have more than one.
 type Meta interface {
-	// Identifiable
-	GetIdent() string
-	// Meta
+	Identifiable
 	GetParent() MetaList
 	SetParent(MetaList)
 	GetSibling() Meta
@@ -33,70 +31,29 @@ type Meta interface {
 
 // Examples: Module, Container but not Leaf or LeafList
 type MetaList interface {
-	// Identifiable
-	GetIdent() string
-	// Meta
-	GetParent() MetaList
-	SetParent(MetaList)
-	GetSibling() Meta
-	SetSibling(Meta)
-	// MetaList
+	Meta
 	AddMeta(Meta) error
 	GetFirstMeta() Meta
 	ReplaceMeta(oldChild Meta, newChild Meta) error
 }
 
 type DataDef interface {
-	// Identifiable
-	GetIdent() string
-	// Meta
-	GetParent() MetaList
-	SetParent(MetaList)
-	GetSibling() Meta
-	SetSibling(Meta)
-	// DataDef
+	Meta
 	NextDataDef() DataDef
 }
 
 type HasGroupings interface {
-	// Identifiable
-	GetIdent() string
-	// Meta
-	GetParent() MetaList
-	SetParent(MetaList)
-	GetSibling() Meta
-	SetSibling(Meta)
-	// MetaList
-	AddMeta(Meta) error
-	GetFirstMeta() Meta
-	// HasGroupings
+	MetaList
 	GetGroupings() MetaList
 }
 
 type HasTypedefs interface {
-	// Identifiable
-	GetIdent() string
-	// Meta
-	GetParent() MetaList
-	SetParent(MetaList)
-	GetSibling() Meta
-	SetSibling(Meta)
-	// MetaList
-	AddMeta(Meta) error
-	GetFirstMeta() Meta
-	// HasTypedefs
+	MetaList
 	GetTypedefs() MetaList
 }
 
 type HasDataType interface {
-	// Identifiable
-	GetIdent() string
-	// Meta
-	GetParent() MetaList
-	SetParent(MetaList)
-	GetSibling() Meta
-	SetSibling(Meta)
-	// HasType
+	Meta
 	GetDataType() *DataType
 	SetDataType(dataType *DataType)
 }

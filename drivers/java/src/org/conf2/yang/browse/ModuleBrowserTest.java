@@ -12,7 +12,7 @@ public class ModuleBrowserTest {
 
     @Test
     public void testGetterMethodNameFromMeta() {
-        assertEquals("getFoo", ModuleBrowser.getterMethodNameFromMeta("foo"));
+        assertEquals("xFoo", ModuleBrowser.accessorMethodNameFromMeta("x", "foo"));
     }
 
     @Test

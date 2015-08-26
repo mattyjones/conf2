@@ -1,51 +1,81 @@
 package org.conf2.yang.driver;
 
+import org.conf2.yang.*;
 import org.conf2.yang.browse.BrowseValue;
 import org.conf2.yang.browse.EditOperation;
 import org.conf2.yang.browse.Selection;
-import org.conf2.yang.Choice;
-import org.conf2.yang.MetaCollection;
-import org.conf2.yang.MetaUtil;
 
 /**
  *
  */
 public class BrowserAdaptor {
+    private final static String[] NO_KEYS = new String[0];
 
-    static Selection enter(Selection s, String ident) {
-        s.position = MetaUtil.findByIdent(s.meta, ident);
+    public static Selection enter(Selection s, String ident) {
+        s.position = updatePosition(s.meta, ident);
         Selection child = s.Enter.Enter();
-        if (child.found) {
+        if (child != null) {
             child.meta = (MetaCollection) s.position;
         }
         return child;
     }
 
-    static boolean iterate(Selection s, String ident, String encodedKeys, boolean first) {
-        s.position = MetaUtil.findByIdent(s.meta, ident);
-        String[] keys = encodedKeys.split(" ");
+    public static boolean iterate(Selection s, String encodedKeys, boolean first) {
+        String[] keys;
+        if (encodedKeys != null) {
+            keys = encodedKeys.split(" ");
+        } else {
+            keys = NO_KEYS;
+        }
         return s.Iterate.Iterate(keys, first);
     }
 
-    static BrowseValue read(Selection s, String ident) {
-        s.position = MetaUtil.findByIdent(s.meta, ident);
+    public static BrowseValue read(Selection s, String ident) {
+        s.position = updatePosition(s.meta, ident);
         BrowseValue val = new BrowseValue();
         s.Read.Read(val);
         return val;
     }
 
-    static void edit(Selection s, String ident, int opCode, BrowseValue val) {
-        s.position = MetaUtil.findByIdent(s.meta, ident);
+    static Meta updatePosition(MetaCollection meta, String ident) {
+        Meta position = null;
+        if (ident != null) {
+            int choiceSep = ident.indexOf('/');
+            if (choiceSep >= 0) {
+                String choiceIdent = ident.substring(0, choiceSep);
+                Choice c = (Choice) MetaUtil.findByIdent(meta, choiceIdent);
+                if (c != null) {
+                    int caseSep = ident.indexOf('/', choiceSep + 1);
+                    String caseIdent = ident.substring(choiceSep + 1, caseSep);
+                    ChoiceCase ccase = c.getCase(caseIdent);
+                    if (ccase != null) {
+                        position = new MetaCollectionIterator(ccase).next();
+                    }
+                }
+            } else {
+                position = MetaUtil.findByIdent(meta, ident);
+            }
+            if (position == null) {
+                throw new DriverError("Could not find meta " + ident + " in " + meta.getIdent());
+            }
+        }
+        return position;
+    }
+
+    public static void edit(Selection s, String ident, int opCode, BrowseValue val) {
+        s.position = updatePosition(s.meta, ident);
         EditOperation op = EditOperation.values()[opCode];
         s.Edit.Edit(op, val);
     }
 
-    static void exit(Selection s, String ident) {
-        s.position = MetaUtil.findByIdent(s.meta, ident);
-        s.Exit.Exit();
+    public static void exit(Selection s, String ident) {
+        s.position = updatePosition(s.meta, ident);
+        if (s.Exit != null) {
+            s.Exit.Exit();
+        }
     }
 
-    static String choose(Selection s, String choiceIdent) {
+    public static String choose(Selection s, String choiceIdent) {
         Choice choice = (Choice) MetaUtil.findByIdent(s.meta, choiceIdent);
         s.position = s.Choose.Choose(choice);
         return s.position.getIdent();

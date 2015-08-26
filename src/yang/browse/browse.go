@@ -10,6 +10,8 @@ type Browser interface {
 }
 
 type Value struct {
+	Type *yang.DataType
+	IsList bool
 	Bool bool
 	Int int
 	Str string
@@ -102,7 +104,9 @@ func WalkExhaustive(selection *Selection) (err error) {
 func walk(selection *Selection, controller WalkController, level int) (err error) {
 	if yang.IsList(selection.Meta) && !selection.insideList {
 		var hasMore bool
-		hasMore, err = controller.ListIterator(selection, level, true)
+		if hasMore, err = controller.ListIterator(selection, level, true); err != nil {
+			return
+		}
 		for i := 0; hasMore; i++ {
 
 			// important flag, otherwise we recurse indefinitely
@@ -111,7 +115,9 @@ func walk(selection *Selection, controller WalkController, level int) (err error
 			if err = walk(selection, controller, level); err != nil {
 				return
 			}
-			hasMore, err = controller.ListIterator(selection, level, false)
+			if hasMore, err = controller.ListIterator(selection, level, false); err != nil {
+				return
+			}
 		}
 	} else {
 		var child *Selection
@@ -153,13 +159,14 @@ func walk(selection *Selection, controller WalkController, level int) (err error
 	return
 }
 
-func ReadField(meta yang.Meta, obj interface{}, v *Value) error {
+func ReadField(meta yang.HasDataType, obj interface{}, v *Value) error {
 	return ReadFieldWithFieldName(yang.MetaNameToFieldName(meta.GetIdent()), meta, obj, v)
 }
 
-func ReadFieldWithFieldName(fieldName string, meta yang.Meta, obj interface{}, v *Value) error {
+func ReadFieldWithFieldName(fieldName string, meta yang.HasDataType, obj interface{}, v *Value) error {
 	objType := reflect.ValueOf(obj).Elem()
 	value := objType.FieldByName(fieldName)
+	v.Type = meta.GetDataType()
 	switch tmeta := meta.(type) {
 	case *yang.Leaf:
 		switch tmeta.GetDataType().Resolve().Ident {
@@ -174,6 +181,7 @@ func ReadFieldWithFieldName(fieldName string, meta yang.Meta, obj interface{}, v
 			v.Str = value.String()
 		}
 	case *yang.LeafList:
+		v.IsList = true
 		switch tmeta.GetDataType().Resolve().Ident {
 		case "boolean":
 			v.Boollist = value.Interface().([]bool)

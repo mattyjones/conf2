@@ -4,8 +4,8 @@ package org.conf2.yang;
  *
  */
 public class Rpc extends MetaBase implements MetaCollection, Describable {
-    private RpcInput input;
-    private RpcOutput output;
+    public RpcInput input;
+    public RpcOutput output;
 
     public Rpc(String ident) {
         super(ident);

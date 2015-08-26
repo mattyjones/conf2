@@ -10,7 +10,7 @@ public abstract class MetaBase implements Meta {
     private Meta sibling;
 
     MetaBase(String ident) {
-        this.ident = ident;
+        setIdent(ident);
     }
 
     @Override
@@ -36,6 +36,10 @@ public abstract class MetaBase implements Meta {
     @Override
     public String getIdent() {
         return ident;
+    }
+
+    public void setIdent(String ident) {
+        this.ident = ident;
     }
 
     // subclass must declared "implements Describable" for this to be properly exposed

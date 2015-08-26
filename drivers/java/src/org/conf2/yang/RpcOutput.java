@@ -3,7 +3,7 @@ package org.conf2.yang;
 /**
  *
  */
-public class RpcOutput extends CollectionBase {
+public class RpcOutput extends RpcBase {
 
     public RpcOutput() {
         super("output");

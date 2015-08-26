@@ -5,8 +5,8 @@ package org.conf2.yang.browse;
  */
 public enum EditOperation {
     UNKNOWN,
-    CREATE_CHILD,
-    POST_CREATE_CHILD,
+    CREATE_CHILD,                      // 1
+    POST_CREATE_CHILD,                 // 2
     CREATE_LIST,                       // 3
     POST_CREATE_LIST,                  // 4
     UPDATE_VALUE,                      // 5

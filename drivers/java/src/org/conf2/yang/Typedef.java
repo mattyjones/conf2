@@ -3,7 +3,7 @@ package org.conf2.yang;
 /**
  *
  */
-public class Typedef extends MetaBase implements Describable {
+public class Typedef extends MetaBase implements Describable, HasDataType {
     private DataType dataType;
 
     public Typedef(String ident) {

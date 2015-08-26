@@ -1,7 +1,5 @@
 package org.conf2.yang;
 
-import org.conf2.yang.DataSource;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -29,8 +27,12 @@ public class SimpleDataSource implements DataSource {
 
     @Override
     public InputStream getResource(String resourceId) throws IOException {
+System.out.println("SimpleDataSource.getResource");
         if (rootClass != null) {
-            return rootClass.getResourceAsStream(resourceId);
+System.out.println("SimpleDataSource - rootClass");
+            InputStream is = rootClass.getResourceAsStream(resourceId);
+System.out.println("SimpleDataSource - GOT IS");
+            return is;
         } else if (this.baseDir != null) {
             return new FileInputStream(new File(baseDir, resourceId));
         }

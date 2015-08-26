@@ -3,11 +3,11 @@ package org.conf2.yang;
 /**
  *
  */
-public class Module extends CollectionBase implements HasChoices, HasGroupings, HasTypedefs, Describable {
+public class Module extends CollectionBase implements HasGroupings, HasTypedefs, Describable {
     private String namespace;
     private String prefix;
+    public Revision revision;
     private LinkedListCollection groupings = new LinkedListCollection("groupings", this);
-    private LinkedListCollection choices = new LinkedListCollection("choices", this);
     private LinkedListCollection typedefs = new LinkedListCollection("typedefs", this);
     private LinkedListCollection notifications = new LinkedListCollection("notifications", this);
     private LinkedListCollection rpcs = new LinkedListCollection("rpcs", this);
@@ -48,10 +48,6 @@ public class Module extends CollectionBase implements HasChoices, HasGroupings, 
 
     public MetaCollection getNotifications() {
         return notifications;
-    }
-
-    public MetaCollection getChoices() {
-        return choices;
     }
 
     public MetaCollection getTypedefs() {

@@ -23,5 +23,5 @@ public enum ValueType {
     UINT16,
     UINT32,
     UINT64,
-    UNION
+    UNION;
 }

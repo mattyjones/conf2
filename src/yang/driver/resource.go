@@ -44,12 +44,13 @@ func yangc2_new_driver_resource_source(open_impl C.yangc2_open_stream_impl, read
 
 func (source *DriverResourceSource) OpenResource(resourceId string) (res yang.Resource, err error) {
 	errPtr := unsafe.Pointer(&err)
+fmt.Println("resource.go: OpenResource, source_handle=", source.source_handle);
 	stream_handle := C.yangc2_open_stream(source.open_impl, source.source_handle, C.CString(resourceId), errPtr)
 	if err != nil {
-fmt.Println("ERR OpenResource", resourceId);
+fmt.Println("resource.go: ERR OpenResource", resourceId, err.Error());
 		return nil, err
 	}
-fmt.Println("NO ERR OpenResource", resourceId);
+fmt.Println("resource.go: GOOD OpenResource", resourceId);
 	res = &DriverResource{
 		stream_handle: stream_handle,
 		read_impl: source.read_impl,

@@ -17,10 +17,7 @@ void *java_open_stream(void *source_handle, char *resId, void *errPtr) {
   if (checkDriverError(env, err)) {
     return NULL;
   }
-  jclass inputStreamCls = (*env)->FindClass(env, "java/io/InputStream");
-  if (checkDriverError(env, err)) {
-    return NULL;
-  }
+
   jobject resourceIdStr = (*env)->NewStringUTF(env, resId);
   jobject inputStream = (*env)->CallObjectMethod(env, source_handle, getResourceMethod, resourceIdStr);
   if (checkDriverError(env, err)) {
@@ -77,10 +74,9 @@ void java_close_stream(void *stream_handle, void *errPtr) {
 
 JNIEXPORT jstring JNICALL Java_org_conf2_yang_driver_Driver_echoTest
   (JNIEnv *env, jobject driver, jobject resourceLoader, jstring resourceId) {
-printf("before new driver resource source\n");
-    GoInterface source = yangc2_new_driver_resource_source(&java_open_stream, &java_read_stream, &java_close_stream, resourceLoader);
+    GoInterface source = yangc2_new_driver_resource_source(&java_open_stream, &java_read_stream, &java_close_stream,
+      resourceLoader);
     const char *cResourceId = (*env)->GetStringUTFChars(env, resourceId, 0);
-printf("before echo test\n");
     char *results = yangc2_echo_test(source, (char *)cResourceId);
     (*env)->ReleaseStringUTFChars(env, resourceId, cResourceId);
     return (*env)->NewStringUTF(env, results);
@@ -88,7 +84,9 @@ printf("before echo test\n");
 
 JNIEXPORT jobject JNICALL Java_org_conf2_yang_driver_Driver_newDataSource
   (JNIEnv *env, jobject driver, jobject dataSource) {
-  GoInterface ds = yangc2_new_driver_resource_source(&java_open_stream, &java_read_stream, &java_close_stream, dataSource);
+printf("java_stream.c:newDataSource source_handle=%p\n", dataSource);
+  GoInterface ds = yangc2_new_driver_resource_source(&java_open_stream, &java_read_stream, &java_close_stream,
+    dataSource);
   jobject dsHandle = makeDriverHandle(env, ds);
   return dsHandle;
 }

@@ -10,8 +10,8 @@ void *yangc2_browse_enter(yangc2_browse_enter_impl impl_func, void *selection_ha
     return (*impl_func)(selection_handle, ident, found, browse_err);
 }
 
-short yangc2_browse_iterate(yangc2_browse_iterate_impl impl_func, void *selection_handle, char *ident, char *encodedKeys, short first, void *browse_err) {
-    return (*impl_func)(selection_handle, ident, encodedKeys, first, browse_err);
+short yangc2_browse_iterate(yangc2_browse_iterate_impl impl_func, void *selection_handle, char *encodedKeys, short first, void *browse_err) {
+    return (*impl_func)(selection_handle, encodedKeys, first, browse_err);
 }
 
 void yangc2_browse_read(yangc2_browse_read_impl impl_func, void *selection_handle, char *ident, struct yangc2_browse_value *val, void *browse_err) {

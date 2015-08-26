@@ -89,7 +89,7 @@ driver-java-test :
 	test -d drivers/java/test || mkdir drivers/java/test
 	javac -d drivers/java/test -cp $(JAVA_TEST_CP) $(JAVA_TEST_SRC)
 	LD_LIBRARY_PATH=$(JDK_LIBRARY_PATH):pkg/$(GO_ARCH)_shared \
-	  CLASSPATH=drivers/java/test:$(JAVA_TEST_CP) \
+	  CLASSPATH=drivers/java/src:drivers/java/test:$(JAVA_TEST_CP) \
 	  java $(JAVA_TEST_RUNNER) $(JAVA_TESTS)
 
 libyangc2j:

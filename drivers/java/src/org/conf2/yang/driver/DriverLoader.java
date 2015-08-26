@@ -17,12 +17,12 @@ public class DriverLoader implements Loader {
     }
 
     public Module loadModule(DataSource source, String resource) {
-        DriverHandle ds = driver.newDataSource(source);
-System.out.println("ds.hnd", ds.reference);
+        //DriverHandle ds = driver.newDataSource(source);
+//System.out.printf("ds.reference.length=%d\n", ds.reference.array().length);
         ModuleBrowser moduleBrowser = new ModuleBrowser(null);
-        DriverHandle moduleBrowserHnd = loadModule(ds, resource, moduleBrowser);
+        DriverHandle moduleBrowserHnd = loadModule(source, resource, moduleBrowser);
         return moduleBrowser.module;
     }
 
-    native static DriverHandle loadModule(DriverHandle datasource_hnd, String resource, Browser yang_browser);
+    native static DriverHandle loadModule(DataSource datasource, String resource, Browser yang_browser);
 }
