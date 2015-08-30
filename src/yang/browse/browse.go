@@ -6,6 +6,7 @@ import (
 )
 
 type Browser interface {
+	yang.Resource
 	RootSelector() (*Selection, error)
 }
 
@@ -33,6 +34,15 @@ type Selection struct {
 	Choose ResolveChoice
 	Found bool
 	insideList bool
+	Resource yang.Resource
+}
+
+func (s *Selection) Close() (err error){
+	if s.Resource != nil {
+		err = s.Resource.Close()
+		s.Resource = nil
+	}
+	return
 }
 
 func (s *Selection) CreateChild() error {
@@ -80,6 +90,7 @@ type ResolveChoice func(choice *yang.Choice) (m yang.Meta, err error)
 func WalkPath(from *Selection, path *Path) (s *Selection, err error) {
 	nest := newPathController(path)
 	err = walk(from, nest, 0)
+	s.Resource = nest.resource
 	return nest.target, err
 }
 
@@ -136,6 +147,9 @@ func walk(selection *Selection, controller WalkController, level int) (err error
 				}
 			} else {
 				child, err = selection.Enter()
+				if child != nil {
+					defer child.Close()
+				}
 				if err != nil {
 					return
 				}

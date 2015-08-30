@@ -6,6 +6,6 @@ import java.io.InputStream;
 /**
  * API to load chunked content from Java into Go
  */
-public interface DataSource {
-    public InputStream getResource(String resourceId) throws IOException;
+public interface StreamSource {
+    public InputStream getStream(String resourceId) throws IOException;
 }

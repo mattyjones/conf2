@@ -14,4 +14,3 @@ func (e *driverError) Error() string {
 func yangc2_new_driver_error(err *C.char) error {
 	return &driverError{Msg:C.GoString(err)}
 }
-

@@ -1,47 +1,11 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "libyangc2j/java_yang.h"
+#include "yang-c2/java.h"
 #include "org_conf2_yang_driver_DriverLoader.h"
-#include "yang/driver/yangc2_browse.h"
-#include "yang/driver.h"
+#include "yang-c2/browse.h"
+#include "yang-c2/driver.h"
 
-void* java_browse_root_selector(void *browser_handle, void *browse_err) {
-  GoInterface *err = (GoInterface *) browse_err;
-  JNIEnv* env = getCurrentJniEnv();
-
-  // get java browser instance
-  jobject j_browser = browser_handle;
-
-  // call rootSelector method
-  jclass j_browser_cls = (*env)->FindClass(env, "org/conf2/yang/browse/Browser");
-  if (checkDriverError(env, err)) {
-    return NULL;
-  }
-  jmethodID selector_method = (*env)->GetMethodID(env, j_browser_cls, "getRootSelector", "()Lorg/conf2/yang/browse/Selection;");
-  if (checkDriverError(env, err)) {
-    return NULL;
-  }
-
-  jobject j_selector = (*env)->CallObjectMethod(env, j_browser, selector_method);
-  if (checkDriverError(env, err)) {
-    return NULL;
-  }
-
-  return j_selector;
-}
-
-//typedef struct _java_string_release {
-//  JEnv *env;
-//  jobject j_str;
-//  const char *c_str;
-//} java_string_release;
-//
-//void java_release_string(void *data) {
-//   java_string_release *release = (java_string_release *)data;
-//  (*(release->env))->ReleaseStringUTFChars(release->env, release->j_str, release->c_str);
-//  free(release);
-//}
 
 yangc2j_method get_adapter_method(JNIEnv *env, GoInterface *err, char *method_name, char *signature) {
   yangc2j_method m;
@@ -58,12 +22,35 @@ yangc2j_method get_adapter_method(JNIEnv *env, GoInterface *err, char *method_na
   return m;
 }
 
+void* java_browse_root_selector(void *browser_handle, void *browse_err) {
+printf("java_browse.c:root HERE\n");
+  GoInterface *err = (GoInterface *) browse_err;
+  JNIEnv* env = getCurrentJniEnv();
+
+  // get java browser instance
+  jobject j_browser = browser_handle;
+
+  yangc2j_method root_selector = get_adapter_method(env, err, "getRootSelector",
+    "(Lorg/conf2/yang/browse/Browser;)Lorg/conf2/yang/browse/Selection;");
+  if (root_selector.methodId == NULL) {
+printf("java_browse.c:root ERR\n");
+    return NULL;
+  }
+
+  jobject j_selector = (*env)->CallStaticObjectMethod(env, root_selector.cls, root_selector.methodId, j_browser);
+  jobject j_g_selector = (*env)->NewGlobalRef(env, j_selector);
+  void *root_selector_hnd_id = yangc2_handle_new(j_g_selector, &java_release_global_ref);
+printf("java_browse.c:root j_g_selector=%p, root_selector_hnd_id=%p\n", j_g_selector, root_selector_hnd_id);
+  return root_selector_hnd_id;
+}
+
 void* java_browse_enter(void *selection_handle, char *ident, short *found, void *browse_err) {
 printf("java_browse.c:enter selection_handle=%p, ident=%s\n", selection_handle, ident);
   GoInterface *err = (GoInterface *) browse_err;
   JNIEnv* env = getCurrentJniEnv();
   jobject j_selection = selection_handle;
   jobject j_ident = (*env)->NewStringUTF(env, ident);
+  void *child_selector_hnd_id = NULL;
 
   yangc2j_method enter = get_adapter_method(env, err, "enter", "(Lorg/conf2/yang/browse/Selection;Ljava/lang/String;)Lorg/conf2/yang/browse/Selection;");
   if (enter.methodId == NULL) {
@@ -73,6 +60,11 @@ printf("java_browse.c:enter selection_handle=%p, ident=%s\n", selection_handle, 
   // null is valid
   jobject j_child_selector = (*env)->CallStaticObjectMethod(env, enter.cls, enter.methodId,
     j_selection, j_ident);
+
+  if (j_child_selector != NULL) {
+    jobject j_g_child_selector = (*env)->NewGlobalRef(env, j_child_selector);
+    child_selector_hnd_id = yangc2_handle_new(j_g_child_selector, java_release_global_ref);
+  }
 
   jclass selection_cls = (*env)->FindClass(env, "org/conf2/yang/browse/Selection");
   if (checkDriverError(env, err)) {
@@ -87,7 +79,7 @@ printf("java_browse.c:enter selection_handle=%p, ident=%s\n", selection_handle, 
   *found = (short)j_found;
 printf("java_browse.c:enter FOUND=%d\n", j_found);
 
-  return j_child_selector;
+  return child_selector_hnd_id;
 }
 
 short java_browse_iterate(void *selection_handle, char *encodedKeys, short first, void *browse_err) {
@@ -147,10 +139,11 @@ printf("java_browse.c:read selection_handle=%p, ident=%s\n", selection_handle, i
         return;
       }
       jobject j_str = (*env)->GetObjectField(env, j_value, s_val_field);
-      const char* str = (*env)->GetStringUTFChars(env, j_str, 0);
-      val->data = malloc((size_t)strlen(str));
-      val->str = (char *)val->data;
-      strcpy(val->str, str);
+      if (j_str != NULL) {
+          java_string_chars* chars = java_new_string_chars(j_str);
+          val->handle = chars->handle;
+          val->str = (char *)chars->chars;
+      }
       break;
     }
     case INT32: {
@@ -323,21 +316,20 @@ printf("java_browse.c:exit selection_handle=%p, ident=%s\n", selection_handle, i
     }
 }
 
-void java_close_stream(void *stream_handle, void *errPtr);
-int java_read_stream(void *stream_handle, void *buffSlicePtr, int maxAmount, void *errPtr);
-void *java_open_stream(void *source_handle, char *resId, void *errPtr);
+JNIEXPORT jlong JNICALL Java_org_conf2_yang_driver_Driver_loadModule
+  (JNIEnv *env, jclass dloader_class, jobject j_streamsource, jstring resource,
+   jobject j_module_browser) {
 
-JNIEXPORT jobject JNICALL Java_org_conf2_yang_driver_DriverLoader_loadModule
-  (JNIEnv *env, jclass dloader_class, jobject datasource, jstring resource, jobject module_browser) {
+  void* stream_source_hnd_id = yangc2_handle_new(j_streamsource, NULL);
+printf("java_stream.c:newStreamSource stream_source_hnd_id=%p\n", stream_source_hnd_id);
+  void *go_stream_source_hnd_id = yangc2_new_driver_resource_source(stream_source_hnd_id, &java_open_stream,
+    &java_read_stream);
 
-//  GoInterface rs_source;
-//  resolveDriverHandle(env, datasource_hnd, &rs_source);
-
-  GoInterface rs_source = yangc2_new_driver_resource_source(&java_open_stream, &java_read_stream, &java_close_stream,
-    datasource);
+  jobject j_g_module_browser = (*env)->NewGlobalRef(env, j_module_browser);
+  void *module_browser_hnd_id = yangc2_handle_new(j_g_module_browser, &java_release_global_ref);
 
   const char *resourceStr = (*env)->GetStringUTFChars(env, resource, 0);
-  GoInterface module = yangc2_load_module(
+  void *module = yangc2_load_module(
         &java_browse_enter,
         &java_browse_iterate,
         &java_browse_read,
@@ -345,16 +337,9 @@ JNIEXPORT jobject JNICALL Java_org_conf2_yang_driver_DriverLoader_loadModule
         &java_browse_choose,
         &java_browse_exit,
         &java_browse_root_selector,
-        module_browser,
-        rs_source,
+        module_browser_hnd_id,
+        go_stream_source_hnd_id,
         (char *)resourceStr);
   (*env)->ReleaseStringUTFChars(env, resource, resourceStr);
-  if (module.v == NULL) {
-    // throw proper error
-    return NULL;
-  }
-
-  // TODO: Determine if GC could collect browser instance during process?
-  jobject module_hnd = makeDriverHandle(env, module);
-  return module_hnd;
+  return (jlong) module;
 }

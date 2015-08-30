@@ -1,29 +1,48 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "libyangc2j/java_yang.h"
+#include "yang-c2/java.h"
 #include "org_conf2_yang_driver_Driver.h"
-#include "yang/driver/yangc2_stream.h"
-#include "yang/driver.h"
+#include "yang-c2/stream.h"
+#include "yang-c2/driver.h"
 
-void *java_open_stream(void *source_handle, char *resId, void *errPtr) {
+void java_close_stream(void *stream_handle, void *errPtr) {
   GoInterface *err = (GoInterface *) errPtr;
   JNIEnv* env = getCurrentJniEnv();
-  jclass loaderIface = (*env)->FindClass(env, "org/conf2/yang/DataSource");
+  jobject inputStream = stream_handle;
+  jclass inputStreamCls = (*env)->FindClass(env, "java/io/InputStream");
+  if (checkDriverError(env, err)) {
+    return;
+  }
+  jmethodID closeMethod = (*env)->GetMethodID(env, inputStreamCls, "close", "()V");
+  (*env)->CallObjectMethod(env, inputStream, closeMethod);
+  checkDriverError(env, err);
+  java_release_global_ref(stream_handle, errPtr);
+}
+
+void *java_open_stream(void *source_handle, char *resId, void *errPtr) {
+printf("java_stream.c:java_open_stream source_handle=%p\n", source_handle);
+  GoInterface *err = (GoInterface *) errPtr;
+  JNIEnv* env = getCurrentJniEnv();
+
+  jobject dataSource = (jobject)source_handle;
+  jclass loaderIface = (*env)->GetObjectClass(env, dataSource);
   if (checkDriverError(env, err)) {
     return NULL;
   }
-  jmethodID getResourceMethod = (*env)->GetMethodID(env, loaderIface, "getResource", "(Ljava/lang/String;)Ljava/io/InputStream;");
+  jmethodID getResourceMethod = (*env)->GetMethodID(env, loaderIface, "getStream", "(Ljava/lang/String;)Ljava/io/InputStream;");
   if (checkDriverError(env, err)) {
     return NULL;
   }
 
   jobject resourceIdStr = (*env)->NewStringUTF(env, resId);
-  jobject inputStream = (*env)->CallObjectMethod(env, source_handle, getResourceMethod, resourceIdStr);
+  jobject j_inputstream = (*env)->CallObjectMethod(env, source_handle, getResourceMethod, resourceIdStr);
   if (checkDriverError(env, err)) {
     return NULL;
   }
-  return inputStream;
+  jobject j_g_inputstream = (*env)->NewGlobalRef(env, j_inputstream);
+  void *handle = yangc2_handle_new(j_g_inputstream, &java_close_stream);
+  return handle;
 }
 
 int java_read_stream(void *stream_handle, void *buffSlicePtr, int maxAmount, void *errPtr) {
@@ -31,7 +50,7 @@ int java_read_stream(void *stream_handle, void *buffSlicePtr, int maxAmount, voi
   JNIEnv* env = getCurrentJniEnv();
   GoSlice buff = *((GoSlice *)buffSlicePtr);
   jobject inputStream = stream_handle;
-  jclass inputStreamCls = (*env)->FindClass(env, "java/io/InputStream");
+  jclass inputStreamCls = (*env)->GetObjectClass(env, inputStream);
   if (checkDriverError(env, err)) {
     return 0;
   }
@@ -59,34 +78,3 @@ int java_read_stream(void *stream_handle, void *buffSlicePtr, int maxAmount, voi
   return amountRead;
 }
 
-void java_close_stream(void *stream_handle, void *errPtr) {
-  GoInterface *err = (GoInterface *) errPtr;
-  JNIEnv* env = getCurrentJniEnv();
-  jobject inputStream = stream_handle;
-  jclass inputStreamCls = (*env)->FindClass(env, "java/io/InputStream");
-  if (checkDriverError(env, err)) {
-    return;
-  }
-  jmethodID closeMethod = (*env)->GetMethodID(env, inputStreamCls, "close", "()V");
-  (*env)->CallObjectMethod(env, inputStream, closeMethod);
-  checkDriverError(env, err);
-}
-
-JNIEXPORT jstring JNICALL Java_org_conf2_yang_driver_Driver_echoTest
-  (JNIEnv *env, jobject driver, jobject resourceLoader, jstring resourceId) {
-    GoInterface source = yangc2_new_driver_resource_source(&java_open_stream, &java_read_stream, &java_close_stream,
-      resourceLoader);
-    const char *cResourceId = (*env)->GetStringUTFChars(env, resourceId, 0);
-    char *results = yangc2_echo_test(source, (char *)cResourceId);
-    (*env)->ReleaseStringUTFChars(env, resourceId, cResourceId);
-    return (*env)->NewStringUTF(env, results);
-}
-
-JNIEXPORT jobject JNICALL Java_org_conf2_yang_driver_Driver_newDataSource
-  (JNIEnv *env, jobject driver, jobject dataSource) {
-printf("java_stream.c:newDataSource source_handle=%p\n", dataSource);
-  GoInterface ds = yangc2_new_driver_resource_source(&java_open_stream, &java_read_stream, &java_close_stream,
-    dataSource);
-  jobject dsHandle = makeDriverHandle(env, ds);
-  return dsHandle;
-}

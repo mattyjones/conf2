@@ -8,25 +8,25 @@ import java.io.InputStream;
 /**
  * Read encoding from class path
  */
-public class SimpleDataSource implements DataSource {
+public class SimpleStreamSource implements StreamSource {
     private Class rootClass;
     private String baseClassPath;
     private File baseDir;
 
-    public SimpleDataSource(File dir) {
+    public SimpleStreamSource(File dir) {
         this.baseDir = dir;
     }
 
-    public SimpleDataSource(String baseClassPath) {
+    public SimpleStreamSource(String baseClassPath) {
         this.baseClassPath = baseClassPath;
     }
 
-    public SimpleDataSource(Class root) {
+    public SimpleStreamSource(Class root) {
         this.rootClass = root;
     }
 
     @Override
-    public InputStream getResource(String resourceId) throws IOException {
+    public InputStream getStream(String resourceId) throws IOException {
 System.out.println("SimpleDataSource.getResource");
         if (rootClass != null) {
 System.out.println("SimpleDataSource - rootClass");

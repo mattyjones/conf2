@@ -7,6 +7,5 @@
 //
 typedef void *(*yangc2_open_stream_impl)(void *source_handle, char *resId, void *fsErr);
 typedef int (*yangc2_read_stream_impl)(void *stream_handle, void *buffPtr, int maxAmout, void *fs_err);
-typedef void (*yangc2_close_stream_impl)(void *stream_handle, void *fs_err);
 
 #endif

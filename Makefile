@@ -1,5 +1,6 @@
 export GOPATH=$(abspath .)
 
+API_VER = 0.1
 DESTDIR =
 PREFIX = /usr/local/conf2
 INCLUDEDIR = $(PREFIX)/include
@@ -15,12 +16,12 @@ JDK_LIBRARY_PATH = $(JDK_HOME)/jre/lib/$(JDK_ARCH)/server:$(JDK_HOME)/jre/lib/$(
 
 
 libyangc2_CFLAGS = \
-	-I$(abspath src)
+	-I$(abspath include)
 
 libyangc2j_CFLAGS = \
 	$(libyangc2_CFLAGS) \
 	-I$(abspath drivers/java/include) \
-	-I$(abspath pkg/$(GO_ARCH)_shared) \
+	-I$(abspath include) \
 	$(JDK_CFLAGS)
 
 libyangc2j_LDFLAGS = \
@@ -63,7 +64,7 @@ driver-java :
 	test -d drivers/java/classes || mkdir drivers/java/classes
 	@javac -d drivers/java/classes $(JAVA_SRC)
 	javah -cp drivers/java/classes -d drivers/java/include $(JNI_SRCS)
-	jar -cf yangc2.jar -C drivers/java/classes .
+	jar -cf drivers/java/lib/yangc2-$(API_VER).jar -C drivers/java/classes .
 
 JAVA_TEST_JARS = \
 	$(wildcard drivers/java/lib/hamcrest-core-*.jar) \
@@ -76,10 +77,8 @@ JAVA_TEST_CP = drivers/java/classes:$(subst $(SPACE),:,$(JAVA_TEST_JARS))
 JAVA_TEST_RUNNER = org.junit.runner.JUnitCore
 
 JAVA_TESTS = \
-	org.conf2.yang.driver.DriverTest \
-	org.conf2.yang.driver.DriverLoaderTest
-
-JAVA_TESTS = \
+	org.conf2.yang.browse.ModuleBrowserTest \
+	org.conf2.yang.driver.BrowserAdaptorTest \
 	org.conf2.yang.driver.DriverLoaderTest
 
 JAVA_TEST_SRC = \

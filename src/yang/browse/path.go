@@ -70,6 +70,7 @@ func (ps *PathSegment) parseSegment(segment string) {
 type pathWalkController struct {
 	path *Path
 	target *Selection
+	resource yang.Resource
 }
 
 func newPathController(p *Path) *pathWalkController {
@@ -92,6 +93,13 @@ func (n *pathWalkController) ListIterator(s *Selection, level int, first bool) (
 	} else {
 		return false, nil
 	}
+}
+
+func (n *pathWalkController) setTarget(s *Selection) {
+	n.target = s
+	// we take ownership of resource so it's not released until target is used
+	n.resource = s.Resource
+	s.Resource = nil
 }
 
 func (n *pathWalkController) ContainerIterator(s *Selection, level int) yang.MetaIterator {

@@ -1,6 +1,6 @@
 package driver
 
-// #include "yang/driver/yangc2_browse.h"
+// #include "yang-c2/browse.h"
 // extern void* yangc2_browse_root_selector(yangc2_browse_root_selector_impl impl_func, void *browser_handle, void *browse_err);
 // extern void* yangc2_browse_enter(yangc2_browse_enter_impl impl_func, void *selection_handle, char *ident, short *found, void *browse_err);
 // extern short yangc2_browse_iterate(yangc2_browse_iterate_impl impl_func, void *selection_handle, char *encodedKeys, short first, void *browse_err);
@@ -18,12 +18,7 @@ import (
 	"fmt"
 )
 
-//export
-type BrowserHandle interface {
-	browse.Browser
-}
-
-type c_browser struct {
+type apiBrowser struct {
 	module *yang.Module
 	enter_impl C.yangc2_browse_enter_impl
 	iterate_impl C.yangc2_browse_iterate_impl
@@ -32,11 +27,7 @@ type c_browser struct {
 	choose_impl C.yangc2_browse_choose_impl
 	exit_impl C.yangc2_browse_exit_impl
 	root_selector_impl C.yangc2_browse_root_selector_impl
-	browser_hnd unsafe.Pointer
-}
-
-//export
-type ModuleHandle interface {
+	browser_hnd *ApiHandle
 }
 
 //export yangc2_load_module
@@ -48,49 +39,62 @@ func yangc2_load_module(
 		choose_impl C.yangc2_browse_choose_impl,
 		exit_impl C.yangc2_browse_exit_impl,
 		root_selector_impl C.yangc2_browse_root_selector_impl,
-		browser_hnd unsafe.Pointer,
-        rs ResourceHandle,
+		browser_hnd_id unsafe.Pointer,
+        stream_source_hnd_id unsafe.Pointer,
         resourceId *C.char,
-    ) ModuleHandle {
+    ) unsafe.Pointer {
+
+	stream_source_hnd, stream_source_found := GoHandles()[stream_source_hnd_id]
+	if !stream_source_found {
+		panic(fmt.Sprint("Stream source not found", stream_source_hnd_id))
+	}
+	stream_source := stream_source_hnd.Data.(yang.StreamSource)
+	defer stream_source.Close()
 
 	var module *yang.Module
 	var err error
 
-	module, err = yang.LoadModule(rs, C.GoString(resourceId))
+	module, err = yang.LoadModule(stream_source, C.GoString(resourceId))
 	if (err != nil) {
 		fmt.Println("Error loading module", err.Error())
 		return nil
 	}
-	local_browser := browse.NewYangBrowser(module)
+	module_browser := browse.NewYangBrowser(module)
 
-	remote_browser := yangc2_new_browser(
-		enter_impl,
-		iterate_impl,
-		read_impl,
-		edit_impl,
-		choose_impl,
-		exit_impl,
-		module,
-		root_selector_impl,
-		browser_hnd,
-	)
+	browser_hnd, browser_found := ApiHandles()[browser_hnd_id]
+	if ! browser_found {
+		panic(fmt.Sprint("Browser not found", browser_hnd))
+	}
+	apiModuleBrowser := &apiBrowser{
+		enter_impl:enter_impl,
+		iterate_impl:iterate_impl,
+		read_impl:read_impl,
+		edit_impl:edit_impl,
+		choose_impl:choose_impl,
+		exit_impl:exit_impl,
+		module: module,
+		root_selector_impl: root_selector_impl,
+		browser_hnd: browser_hnd,
+	}
 
 	var to *browse.Selection
-	to, err = remote_browser.RootSelector()
+	to, err = apiModuleBrowser.RootSelector()
+	defer to.Close()
 	if err == nil {
 		var from *browse.Selection
-		from, err = local_browser.RootSelector()
+		from, err = module_browser.RootSelector()
+		defer from.Close()
 		if err == nil {
 			err = browse.Insert(from, to)
 			if err == nil {
 				// TODO: add module reference to driver so GC doesn't claim it
-				return module
+				return NewGoHandle(module).ID
 			}
 		}
 	}
 	if (err != nil) {
 		fmt.Println("Error sending module", err.Error())
-		return nil
+		return NilHandle
 	}
 
 	// TODO: Find a way to return an error and not just nil
@@ -105,55 +109,78 @@ func yangc2_new_browser(
 	edit_impl C.yangc2_browse_edit_impl,
 	choose_impl C.yangc2_browse_choose_impl,
 	exit_impl C.yangc2_browse_exit_impl,
-	module ModuleHandle,
+	module_hnd_id unsafe.Pointer,
 	root_selector_impl C.yangc2_browse_root_selector_impl,
-	browser_hnd unsafe.Pointer) (BrowserHandle) {
+	browser_hnd_id unsafe.Pointer) unsafe.Pointer {
 
-	return &c_browser{
+	module_hnd, module_found := GoHandles()[module_hnd_id]
+	if !module_found {
+		panic(fmt.Sprint("Module not found", module_hnd))
+		return nil
+	}
+	module := module_hnd.Data.(*yang.Module)
+	browser_hnd, found_browser := ApiHandles()[browser_hnd_id]
+	if ! found_browser {
+
+		return nil
+	}
+
+	browser := &apiBrowser{
 		enter_impl:enter_impl,
 		iterate_impl:iterate_impl,
 		read_impl:read_impl,
 		edit_impl:edit_impl,
 		choose_impl:choose_impl,
 		exit_impl:exit_impl,
-		module: module.(*yang.Module),
+		module: module,
 		root_selector_impl: root_selector_impl,
 		browser_hnd: browser_hnd,
 	}
+	return NewGoHandle(browser).ID
 }
 
-func (cb *c_browser) RootSelector() (s *browse.Selection, err error) {
+func (cb *apiBrowser) RootSelector() (s *browse.Selection, err error) {
 	errPtr := unsafe.Pointer(&err)
-	root_selection_hnd := C.yangc2_browse_root_selector(cb.root_selector_impl, cb.browser_hnd, errPtr)
-	s, err = cb.c_selection(root_selection_hnd)
+	selector := &apiSelector{browser:cb}
+	root_selection_hnd_id := C.yangc2_browse_root_selector(cb.root_selector_impl, cb.browser_hnd.ID, errPtr)
+	root_selection_hnd, found := ApiHandles()[root_selection_hnd_id]
+	if ! found {
+		panic(fmt.Sprint("Root selector handle not found", root_selection_hnd_id))
+	}
+	s, err = selector.selection(root_selection_hnd)
 	s.Meta = cb.module
+	s.Resource = root_selection_hnd
 	return
 }
 
-func (cb *c_browser) c_selection(selection_hnd unsafe.Pointer) (*browse.Selection, error) {
+type apiSelector struct {
+	browser *apiBrowser
+}
+
+func (cb *apiSelector) selection(selectionHnd *ApiHandle) (*browse.Selection, error) {
 	s := &browse.Selection{}
 	s.Enter = func() (child *browse.Selection, err error) {
-		return cb.c_enter(s, selection_hnd)
+		return cb.enter(s, selectionHnd)
 	}
 	s.Iterate = func(keys []string, first bool) (bool, error) {
-		return cb.c_iterate(s, selection_hnd, keys, first)
+		return cb.iterate(s, selectionHnd, keys, first)
 	}
 	s.ReadValue = func(val *browse.Value) error {
-		return cb.c_read(s, selection_hnd, val)
+		return cb.read(s, selectionHnd, val)
 	}
 	s.Edit = func(op browse.Operation, val *browse.Value) error {
-		return cb.c_edit(s, selection_hnd, op, val)
+		return cb.edit(s, selectionHnd, op, val)
 	}
 	s.Exit = func() error {
-		return cb.c_exit(s, selection_hnd)
+		return cb.exit(s, selectionHnd)
 	}
 	s.Choose = func(m *yang.Choice) (yang.Meta, error) {
-		return cb.c_choose(s, selection_hnd, m)
+		return cb.choose(s, selectionHnd, m)
 	}
 	return s, nil
 }
 
-func (cb *c_browser) c_iterate(s *browse.Selection, selection_hnd unsafe.Pointer, keys []string, first bool) (hasMore bool, err error) {
+func (cb *apiSelector) iterate(s *browse.Selection, selectionHnd *ApiHandle, keys []string, first bool) (hasMore bool, err error) {
 	errPtr := unsafe.Pointer(&err)
 	var c_encoded_keys *C.char
 	if len(keys) > 0 {
@@ -166,21 +193,25 @@ func (cb *c_browser) c_iterate(s *browse.Selection, selection_hnd unsafe.Pointer
 		c_first = C.short(0)
 
 	}
-	has_more := C.yangc2_browse_iterate(cb.iterate_impl, selection_hnd, c_encoded_keys, c_first, errPtr)
+	has_more := C.yangc2_browse_iterate(cb.browser.iterate_impl, selectionHnd.ID, c_encoded_keys, c_first, errPtr)
 
 	return has_more > 0, err
 }
 
-func (cb *c_browser) c_enter(s *browse.Selection, selection_hnd unsafe.Pointer) (child *browse.Selection, err error) {
+func (cb *apiSelector) enter(s *browse.Selection, selectionHnd *ApiHandle) (child *browse.Selection, err error) {
 	errPtr := unsafe.Pointer(&err)
 	c_found := C.short(0)
 	ident := encodeIdent(s.Position)
-	child_hnd := C.yangc2_browse_enter(cb.enter_impl, selection_hnd, ident, &c_found, errPtr)
+	child_hnd_id := C.yangc2_browse_enter(cb.browser.enter_impl, selectionHnd.ID, ident, &c_found, errPtr)
 	if c_found > 0 {
 		s.Found = true
 	}
-	if child_hnd != nil && err == nil {
-		child, err = cb.c_selection(child_hnd)
+	if child_hnd_id != nil && err == nil {
+		child_hnd, found := ApiHandles()[child_hnd_id]
+		if ! found {
+			panic(fmt.Sprint("Enter selector handle not found", child_hnd_id))
+		}
+		child, err = cb.selection(child_hnd)
 	}
 	return
 }
@@ -193,11 +224,11 @@ func encodeIdent(position yang.Meta) *C.char {
 	return C.CString(position.GetIdent())
 }
 
-func (cb *c_browser) c_read(s *browse.Selection, selection_hnd unsafe.Pointer, val *browse.Value) (err error) {
+func (cb *apiSelector) read(s *browse.Selection, selectionHnd *ApiHandle, val *browse.Value) (err error) {
 	errPtr := unsafe.Pointer(&err)
 	ident := encodeIdent(s.Position)
 	var c_val C.struct_yangc2_browse_value
-	C.yangc2_browse_read(cb.read_impl, selection_hnd, ident, &c_val, errPtr)
+	C.yangc2_browse_read(cb.browser.read_impl, selectionHnd.ID, ident, &c_val, errPtr)
 	switch c_val.val_type {
 	case C.enum_yangc2_browse_value_type(C.STRING):
 		val.Str = C.GoString(c_val.str)
@@ -291,7 +322,7 @@ func leafValue(val *browse.Value) (*C.struct_yangc2_browse_value, error) {
 	return &c_val, nil
 }
 
-func (cb *c_browser) c_edit(s *browse.Selection, selection_hnd unsafe.Pointer, op browse.Operation, val *browse.Value) (err error) {
+func (cb *apiSelector) edit(s *browse.Selection, selectionHnd *ApiHandle, op browse.Operation, val *browse.Value) (err error) {
 	errPtr := unsafe.Pointer(&err)
 	var ident *C.char;
 	var c_val *C.struct_yangc2_browse_value
@@ -305,14 +336,14 @@ func (cb *c_browser) c_edit(s *browse.Selection, selection_hnd unsafe.Pointer, o
 			c_val, err = leafValue(val)
 		}
 	}
-	C.yangc2_browse_edit(cb.edit_impl, selection_hnd, ident, C.int(op), c_val, errPtr)
+	C.yangc2_browse_edit(cb.browser.edit_impl, selectionHnd.ID, ident, C.int(op), c_val, errPtr)
 	return
 }
 
-func (cb *c_browser) c_choose(s *browse.Selection, selection_hnd unsafe.Pointer, choice *yang.Choice) (resolved yang.Meta, err error) {
+func (cb *apiSelector) choose(s *browse.Selection, selectionHnd *ApiHandle, choice *yang.Choice) (resolved yang.Meta, err error) {
 	errPtr := unsafe.Pointer(&err)
 	ident := C.CString(s.Position.GetIdent())
-	resolved_case := C.yangc2_browse_choose(cb.choose_impl, selection_hnd, ident, errPtr)
+	resolved_case := C.yangc2_browse_choose(cb.browser.choose_impl, selectionHnd.ID, ident, errPtr)
 	if err == nil {
 		ccase := choice.GetCase(C.GoString(resolved_case))
 		resolved = ccase.GetFirstMeta()
@@ -320,9 +351,9 @@ func (cb *c_browser) c_choose(s *browse.Selection, selection_hnd unsafe.Pointer,
 	return
 }
 
-func (cb *c_browser) c_exit(s *browse.Selection, selection_hnd unsafe.Pointer) (err error) {
+func (cb *apiSelector) exit(s *browse.Selection, selectionHnd *ApiHandle) (err error) {
 	errPtr := unsafe.Pointer(&err)
 	ident := encodeIdent(s.Position)
-	C.yangc2_browse_exit(cb.exit_impl, selection_hnd, ident, errPtr)
+	C.yangc2_browse_exit(cb.browser.exit_impl, selectionHnd.ID, ident, errPtr)
 	return
 }

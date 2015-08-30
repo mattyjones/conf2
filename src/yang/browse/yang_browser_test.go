@@ -25,7 +25,7 @@ func printMeta(m yang.Meta, level string) {
 }
 
 func TestYangMeta(t *testing.T) {
-	ds := &yang.FileDataSource{Root:"../../../etc"}
+	ds := &yang.FileStreamSource{Root:"../../../etc"}
 	if yangModule, err := yang.LoadModule(ds, "yang-1.0.yang"); err != nil {
 		t.Error("yang module", err)
 	} else {
@@ -58,7 +58,7 @@ module json-test {
 	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr)); err != nil {
 		t.Error("bad module", err)
 	} else {
-		ds := &yang.FileDataSource{Root:"../../../etc"}
+		ds := &yang.FileStreamSource{Root:"../../../etc"}
 		if yangModule, err := yang.LoadModule(ds, "yang-1.0.yang"); err != nil {
 			t.Error("yang module", err)
 		} else {

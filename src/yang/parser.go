@@ -506,7 +506,6 @@ func (yyrcvr *yyParserImpl) Parse(yylex yyLexer) int {
 	var yylval yySymType
 	var yyVAL yySymType
 	var yyDollar []yySymType
-	_ = yyDollar // silence set and not used
 	yyS := make([]yySymType, yyMaxDepth)
 
 	Nerrs := 0   /* number of errors */

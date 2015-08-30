@@ -1,4 +1,5 @@
-#include "java_yang.h"
+#include <stdlib.h>
+#include "yang-c2/java.h"
 
 JavaVM* jvm = NULL;
 
@@ -15,16 +16,30 @@ RcError checkError(JNIEnv *env) {
   return RC_OK;
 }
 
+yangc2j_method get_static_driver_method(JNIEnv *env, GoInterface *err, char *method_name, char *signature) {
+  yangc2j_method m;
+  m.methodId = NULL;
+  m.cls = NULL;
+  m.cls = (*env)->FindClass(env, "org/conf2/yang/driver/Driver");
+  if (checkDriverError(env, err)) {
+    return m;
+  }
+  m.methodId = (*env)->GetStaticMethodID(env, m.cls, method_name, signature);
+  if (checkDriverError(env, err)) {
+    return m;
+  }
+  return m;
+}
+
 bool checkDriverError(JNIEnv *env, GoInterface *err) {
   if ((*env)->ExceptionCheck(env)) {
     jthrowable exception = (*env)->ExceptionOccurred(env);
     (*env)->ExceptionClear(env);
 
     char *msg = NULL;
-    jclass driver_class = (*env)->FindClass(env, "org/conf2/yang/driver/Driver");
-    jmethodID print_err = (*env)->GetStaticMethodID(env, driver_class, "printException", "(Ljava/lang/Throwable;)Ljava/lang/String;");
-    if (!(*env)->ExceptionCheck(env)) {
-      jobject err_message = (*env)->CallStaticObjectMethod(env, driver_class, print_err, exception);
+    yangc2j_method print_err = get_static_driver_method(env, err, "printException", "(Ljava/lang/Throwable;)Ljava/lang/String;");
+    if (print_err.methodId != NULL) {
+      jobject err_message = (*env)->CallStaticObjectMethod(env, print_err.cls, print_err.methodId, exception);
       if (!(*env)->ExceptionCheck(env)) {
         msg = (char *)(*env)->GetStringUTFChars(env, err_message, 0);
       }
@@ -60,42 +75,19 @@ void initJvmReference(JNIEnv* env) {
   }
 }
 
-jobject makeDriverHandle(JNIEnv *env, GoInterface iface) {
-  GoInt err;
-  jclass driverHandleCls = (*env)->FindClass(env, "org/conf2/yang/driver/DriverHandle");
-  if (!(err = checkError(env))) {
-    jmethodID driverHandleCtor = (*env)->GetMethodID(env, driverHandleCls, "<init>", "([B)V");
-    if (!(err = checkError(env))) {
-      jobject jbuffer = (*env)->NewByteArray(env, sizeof(iface));
-      void* cbuffer = (*env)->GetByteArrayElements(env, jbuffer, 0);
-      memcpy(cbuffer, &iface, sizeof(iface));
-      (*env)->SetByteArrayRegion(env, jbuffer, 0, sizeof(iface), cbuffer);
-      jobject handle = (*env)->NewObject(env, driverHandleCls, driverHandleCtor, jbuffer);
-      (*env)->ReleaseByteArrayElements(env, jbuffer, cbuffer, JNI_ABORT);
-      (*env)->DeleteLocalRef(env, jbuffer);
-      return handle;
-    }
-  }
-  return NULL;
+void java_release_string_chars(void *chars_ref, void *errPtr) {
+  java_string_chars *chars = (java_string_chars *)chars_ref;
+  JNIEnv* env = getCurrentJniEnv();
+  (*env)->ReleaseStringUTFChars(env, chars->j_string, chars->chars);
 }
 
-RcError resolveDriverHandle(JNIEnv *env, jobject driverHandle, GoInterface *iface) {
-  GoInt err;
-  jclass driverHandleCls = (*env)->FindClass(env, "org/conf2/yang/driver/DriverHandle");
-  if (!(err = checkError(env))) {
-    jfieldID ifaceField = (*env)->GetFieldID(env, driverHandleCls, "reference", "Ljava/nio/ByteBuffer;");
-    if (!(err = checkError(env))) {
-      jbyteArray ref = (jbyteArray) (*env)->GetObjectField(env, driverHandle, ifaceField);
-      if (!(err = checkError(env))) {
-        void *ifaceBytes = (*env)->GetDirectBufferAddress(env, ref);
-        if (ifaceBytes != NULL) {
-          memcpy(iface, ifaceBytes, sizeof(*iface));
-        } else {
-          err = RC_BAD;
-        }
-      }
-    }
-  }
+java_string_chars* java_new_string_chars(jobject j_string) {
+  JNIEnv* env = getCurrentJniEnv();
+  java_string_chars* ref = (java_string_chars* )malloc(sizeof(java_string_chars));
+  ref->j_string = j_string;
+  ref->chars = (*env)->GetStringUTFChars(env, j_string, 0);
+  ref->handle = yangc2_handle_new(ref, java_release_string_chars);
+  return ref;
 }
 
 JNIEnv *getCurrentJniEnv() {
@@ -109,3 +101,9 @@ JNIEXPORT void JNICALL Java_org_conf2_yang_driver_Driver_initializeDriver
   initJvmReference(env);
 }
 
+void java_release_global_ref(void *ref, void *errPtr) {
+printf("java_yang.c: RELEASE_GLOBAL REF %p\n", ref);
+  JNIEnv* env = getCurrentJniEnv();
+  jobject j_ref = (jobject)ref;
+  (*env)->DeleteGlobalRef(env, j_ref);
+}

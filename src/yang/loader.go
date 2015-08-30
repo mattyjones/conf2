@@ -22,8 +22,8 @@ func LoadModuleFromByteArray(data []byte) (*Module, error) {
 	return d.(*Module), nil
 }
 
-func LoadModule(source ResourceSource, yangfile string) (*Module, error) {
-	if res, err := source.OpenResource(yangfile); err != nil {
+func LoadModule(source StreamSource, yangfile string) (*Module, error) {
+	if res, err := source.OpenStream(yangfile); err != nil {
 		return nil, err
 	} else {
 		defer res.Close()

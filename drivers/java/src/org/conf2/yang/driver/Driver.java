@@ -1,29 +1,40 @@
 package org.conf2.yang.driver;
 
-import org.conf2.yang.DataSource;
+import org.conf2.yang.Handle;
+import org.conf2.yang.Module;
+import org.conf2.yang.StreamSource;
+import org.conf2.yang.browse.Browser;
+import org.conf2.yang.browse.ModuleBrowser;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class Driver {
-    private static boolean init;
+
+    // TODO: Use weakreference queue and release objects automatically
+    private Map<Object, Handle> handles = new HashMap<Object, Handle>();
     static {
         System.loadLibrary("yangc2j");
     }
 
     public Driver() {
-        if (!init) {
-            initializeDriver();
-            init = true;
-        }
+        initializeDriver();
     }
 
-    private native void initializeDriver();
+    public void release() {
+        for (Handle handle : handles.values()) {
+            handle.Release();
+        }
+        handles.clear();
+    }
 
-    public native String echoTest(DataSource loader, String resourceId);
-
-    public native DriverHandle newDataSource(DataSource source);
+    public void releaseHandle(DriverHandle handle) {
+        releaseHandle(handle.handle);
+    }
 
     public static String printException(Throwable t) {
         StringWriter out = new StringWriter();
@@ -40,4 +51,17 @@ public class Driver {
         pout.flush();
         return out.toString();
     }
+
+    public Module loadModule(StreamSource source, String resource) {
+//System.out.printf("ds.reference.length=%d\n", ds.reference.array().length);
+        ModuleBrowser moduleBrowser = new ModuleBrowser(null);
+        long handle = loadModule(source, resource, moduleBrowser);
+        Handle h = new DriverHandle(this, handle);
+        handles.put(moduleBrowser.module, h);
+        return moduleBrowser.module;
+    }
+
+    private native void releaseHandle(long handleId);
+    private native long loadModule(StreamSource resourceSourceHand, String resource, Browser yang_browser);
+    private native void initializeDriver();
 }

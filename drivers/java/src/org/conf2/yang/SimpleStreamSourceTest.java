@@ -9,12 +9,12 @@ import static org.junit.Assert.*;
 /**
  *
  */
-public class SimpleDataSourceTest {
+public class SimpleStreamSourceTest {
 
     @Test
     public void testClassLoad() throws IOException {
-        SimpleDataSource ds = new SimpleDataSource(SimpleDataSourceTest.class);
-        InputStream is = ds.getResource("SimpleDataSourceTest.class");
+        SimpleStreamSource ds = new SimpleStreamSource(SimpleStreamSourceTest.class);
+        InputStream is = ds.getStream("SimpleDataSourceTest.class");
         assertNotNull(is);
     }
 }

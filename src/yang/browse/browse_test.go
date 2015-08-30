@@ -8,7 +8,7 @@ import (
 )
 
 func LoadSampleModule(t *testing.T) (*yang.Module) {
-	f := &yang.FileDataSource{Root:"../testdata"}
+	f := &yang.FileStreamSource{Root:"../testdata"}
 	m, err:= yang.LoadModule(f, "romancing-the-stone.yang")
 	if err != nil {
 		t.Error(err.Error())
@@ -17,7 +17,7 @@ func LoadSampleModule(t *testing.T) (*yang.Module) {
 }
 
 func LoadYangModule(t *testing.T) (*yang.Module) {
-	f := &yang.FileDataSource{Root:"../../../etc"}
+	f := &yang.FileStreamSource{Root:"../../../etc"}
 	m, err:= yang.LoadModule(f, "yang-1.0.yang")
 	if err != nil {
 		t.Error(err.Error())

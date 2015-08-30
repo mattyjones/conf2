@@ -2,6 +2,7 @@ package org.conf2.yang.driver;
 
 import org.conf2.yang.*;
 import org.conf2.yang.browse.BrowseValue;
+import org.conf2.yang.browse.Browser;
 import org.conf2.yang.browse.EditOperation;
 import org.conf2.yang.browse.Selection;
 
@@ -10,6 +11,10 @@ import org.conf2.yang.browse.Selection;
  */
 public class BrowserAdaptor {
     private final static String[] NO_KEYS = new String[0];
+
+    public static Selection getRootSelector(Browser browser) {
+        return browser.getRootSelector();
+    }
 
     public static Selection enter(Selection s, String ident) {
         s.position = updatePosition(s.meta, ident);

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "yangc2_browse.h"
+#include "yang-c2/browse.h"
 
 // Bridge functions to call C function pointer in a given language data browsers
 void *yangc2_browse_root_selector(yangc2_browse_root_selector_impl impl_func, void *browser_handle, void *browse_err) {

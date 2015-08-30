@@ -1,15 +1,21 @@
 package org.conf2.yang.driver;
 
-import java.nio.ByteBuffer;
-import java.util.Arrays;
+import org.conf2.yang.Handle;
 
 /**
  *
  */
-public class DriverHandle {
-    public ByteBuffer reference;
-    public DriverHandle(byte[] reference) {
-        this.reference = ByteBuffer.allocateDirect(reference.length);
-        this.reference.put(reference);
+public class DriverHandle implements Handle {
+    long handle;
+    private Driver d;
+
+    public DriverHandle(Driver d, long handle) {
+        this.d = d;
+        this.handle = handle;
+    }
+
+    @Override
+    public void Release() {
+        d.releaseHandle(this);
     }
 }
