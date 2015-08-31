@@ -48,17 +48,17 @@ func yangc2_new_driver_resource_source(stream_source_hnd_id unsafe.Pointer, open
 
 func (source *DriverStreamSource) OpenStream(resourceId string) (res yang.DataStream, err error) {
 	errPtr := unsafe.Pointer(&err)
-fmt.Println("resource.go: OpenStream, source_handle=", source.sourceHandle);
+fmt.Println("driver_stream.go: OpenStream, source_handle=", source.sourceHandle);
 	streamHandleId := C.yangc2_open_stream(source.open_impl, source.sourceHandle.ID, C.CString(resourceId), errPtr)
 	if err != nil {
-fmt.Println("resource.go: ERR OpenResource", resourceId, err.Error());
+fmt.Println("driver_stream.go: ERR OpenResource", resourceId, err.Error());
 		return nil, err
 	}
 	streamHandle, found := ApiHandles()[streamHandleId]
 	if !found {
 		panic("Stream handle not found")
 	}
-fmt.Println("resource.go: GOOD OpenResource", resourceId);
+fmt.Println("driver_stream.go: GOOD OpenResource", resourceId);
 	res = &DriverStream{
 		streamHandle: streamHandle,
 		read_impl: source.read_impl,
@@ -67,12 +67,16 @@ fmt.Println("resource.go: GOOD OpenResource", resourceId);
 }
 
 func (res *DriverStream) Read(buff []byte) (n int, err error) {
+fmt.Printf("driver_stream.go: Read, res.read_impl=%p\n", res.read_impl);
 	errPtr := unsafe.Pointer(&err)
 	maxAmount := C.int(len(buff))
 	buffPtr := unsafe.Pointer(&buff)
+fmt.Println("driver_stream.go: pre read");
 	readAmount := C.yangc2_read_stream(res.read_impl, res.streamHandle.ID, buffPtr, maxAmount, errPtr)
+fmt.Println("driver_stream.go: post read");
 	if readAmount < 0 {
 		return 0, io.EOF
 	}
+fmt.Println("driver_stream.go: Leaving");
 	return int(readAmount), err
 }

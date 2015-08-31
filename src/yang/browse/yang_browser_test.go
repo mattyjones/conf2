@@ -65,7 +65,7 @@ module json-test {
 			var actual bytes.Buffer
 			json := NewJsonWriter(&actual)
 			out, _ := json.GetSelector()
-			metaTx := &YangBrowser{Meta:yangModule, Module:module}
+			metaTx := &YangBrowser{meta:yangModule, module:module}
 			in, err := metaTx.RootSelector()
 			if err != nil {
 				t.Error(err)

@@ -13,7 +13,7 @@ public class DriverLoaderTest {
 
     @Test
     public void testLoadModule() throws IOException {
-        Driver d = new Driver();
+        Driver d = Driver.yangDriver();
 		SimpleStreamSource ds = new SimpleStreamSource(DriverLoaderTest.class);
 		Module simple = d.loadModule(ds, "simple.yang");
 		assertNotNull(simple);

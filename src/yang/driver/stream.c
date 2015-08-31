@@ -7,6 +7,6 @@ void *yangc2_open_stream(yangc2_open_stream_impl impl_func, void *source_handle,
     return (*impl_func)(source_handle, resId, fsErr);
 }
 
-int yangc2_read_stream(yangc2_read_stream_impl impl_func, void *stream_handle, void *buffPtr, int maxAmout, void *fs_err) {
-    return (*impl_func)(stream_handle, buffPtr, maxAmout, fs_err);
+int yangc2_read_stream(yangc2_read_stream_impl impl_func, void *stream_handle, void *buffPtr, int maxAmount, void *fs_err) {
+    return (*impl_func)(stream_handle, buffPtr, maxAmount, fs_err);
 }

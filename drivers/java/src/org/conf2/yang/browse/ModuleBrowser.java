@@ -18,6 +18,10 @@ public class ModuleBrowser implements Browser {
         this.module = module;
     }
 
+    public Module getModule() {
+        return yang;
+    }
+
     @Override
     public Selection getRootSelector() {
         Selection s = new Selection();
@@ -29,7 +33,7 @@ public class ModuleBrowser implements Browser {
                     module = new Module("unknown");
                     break;
                 case UPDATE_VALUE:
-                    setterMethod(s.position, module, val);
+                    BrowseUtil.setterMethod(s.position, module, val);
                     break;
             }
         };
@@ -38,7 +42,7 @@ public class ModuleBrowser implements Browser {
 
     Selection enterModule(final Module module) {
         Selection s = new Selection();
-        s.Read = (BrowseValue v) -> getterMethod(s.position, module, v);
+        s.Read = (BrowseValue v) -> BrowseUtil.getterMethod(s.position, module, v);
         s.Enter = () -> {
             String ident = s.position.getIdent();
             if (ident.equals("revision")) {
@@ -71,7 +75,7 @@ public class ModuleBrowser implements Browser {
                     }
                     break;
                 case UPDATE_VALUE:
-                    setterMethod(s.position, module, val);
+                    BrowseUtil.setterMethod(s.position, module, val);
                     break;
             }
         };
@@ -128,7 +132,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
                     defs.addMeta(def[0]);
                     break;
                 case UPDATE_VALUE:
-                    setterMethod(s.position, def[0], val);
+                    BrowseUtil.setterMethod(s.position, def[0], val);
                     break;
             }
         };
@@ -156,7 +160,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
                     }
                     break;
                 case UPDATE_VALUE:
-                    setterMethod(s.position, leaf, val);
+                    BrowseUtil.setterMethod(s.position, leaf, val);
                     break;
             }
         };
@@ -172,7 +176,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
                     if ("ident".equals(s.position.getIdent())) {
                         type.setIdent(val.str);
                     } else {
-                        setterField(s.position, type, val);
+                        BrowseUtil.setterField(s.position, type, val);
                     }
                     break;
             }
@@ -202,7 +206,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
                     }
                     break;
                 case UPDATE_VALUE:
-                    setterMethod(s.position, leafList, val);
+                    BrowseUtil.setterMethod(s.position, leafList, val);
                     break;
             }
         };
@@ -218,7 +222,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
         s.Edit = (EditOperation op, BrowseValue val) -> {
             switch (op) {
                 case UPDATE_VALUE:
-                    setterMethod(s.position, uses, val);
+                    BrowseUtil.setterMethod(s.position, uses, val);
                     break;
             }
         };
@@ -240,7 +244,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
             String ident = s.position.getIdent();
             switch (op) {
                 case UPDATE_VALUE:
-                    setterMethod(s.position, choice, val);
+                    BrowseUtil.setterMethod(s.position, choice, val);
                     break;
             }
         };
@@ -270,7 +274,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
                     cases.addMeta(choiceCase[0]);
                     break;
                 case UPDATE_VALUE:
-                    setterMethod(s.position, choiceCase[0], val);
+                    BrowseUtil.setterMethod(s.position, choiceCase[0], val);
                     break;
             }
         };
@@ -306,7 +310,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
                 case CREATE_CHILD:
                     break;
                 case UPDATE_VALUE:
-                    setterMethod(s.position, notification[0], val);
+                    BrowseUtil.setterMethod(s.position, notification[0], val);
                     break;
             }
         };
@@ -330,7 +334,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
         s.Edit = (EditOperation op, BrowseValue val) -> {
             switch (op) {
                 case UPDATE_VALUE:
-                    setterMethod(s.position, container, val);
+                    BrowseUtil.setterMethod(s.position, container, val);
                     break;
             }
         };
@@ -364,7 +368,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
                     groupings.addMeta(grouping[0]);
                     break;
                 case UPDATE_VALUE:
-                    setterMethod(s.position, grouping[0], val);
+                    BrowseUtil.setterMethod(s.position, grouping[0], val);
                     break;
             }
         };
@@ -403,7 +407,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
                     }
                     break;
                 case UPDATE_VALUE:
-                    setterMethod(s.position, typedef[0], val);
+                    BrowseUtil.setterMethod(s.position, typedef[0], val);
                     break;
             }
         };
@@ -426,7 +430,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
         s.Edit = (EditOperation op, BrowseValue val) -> {
             switch (op) {
                 case UPDATE_VALUE:
-                    setterMethod(s.position, list, val);
+                    BrowseUtil.setterMethod(s.position, list, val);
                     break;
             }
         };
@@ -474,7 +478,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
                 case POST_CREATE_CHILD:
                     break;
                 case UPDATE_VALUE:
-                    setterMethod(s.position, rpc[0], val);
+                    BrowseUtil.setterMethod(s.position, rpc[0], val);
                     break;
             }
         };
@@ -498,7 +502,7 @@ System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.posit
 System.out.println("ModuleBrowser.java: enterRpcBase op=" + op + " position=" + s.position.getIdent());
             switch (op) {
                 case UPDATE_VALUE:
-                    setterMethod(s.position, rpcBase, val);
+                    BrowseUtil.setterMethod(s.position, rpcBase, val);
                     break;
             }
         };
@@ -507,125 +511,15 @@ System.out.println("ModuleBrowser.java: enterRpcBase op=" + op + " position=" + 
 
     Selection enterRevision(Revision rev) {
         Selection s = new Selection();
-        s.Read = (BrowseValue v) -> getterMethod(s.position, module, v);
+        s.Read = (BrowseValue v) -> BrowseUtil.getterMethod(s.position, module, v);
         s.Edit = (EditOperation op, BrowseValue val) -> {
             String ident = s.position.getIdent();
             if (ident.equals("rev-date")) {
                 rev.setIdent(val.str);
             } else {
-                setterMethod(s.position, module, val);
+                BrowseUtil.setterMethod(s.position, module, val);
             }
         };
         return s;
-    }
-
-    static String accessorMethodNameFromMeta(String prefix, String ident) {
-        return prefix + Character.toUpperCase(ident.charAt(0)) + ident.substring(1);
-    }
-
-    static void setterMethod(Meta m, Object o, BrowseValue v) {
-        String methodName = accessorMethodNameFromMeta("set", m.getIdent());
-        try {
-            if (v.isList) {
-                switch (v.valType) {
-                    case INT32: {
-                        Method method = o.getClass().getMethod(methodName, int[].class);
-                        method.invoke(o, new Object[] {v.int32list});
-                        break;
-                    }
-                    case STRING: {
-                        Method method = o.getClass().getMethod(methodName, String[].class);
-                        method.invoke(o, new Object[] {v.strlist});
-                        break;
-                    }
-                    case BOOLEAN: {
-                        Method method = o.getClass().getMethod(methodName, boolean[].class);
-                        method.invoke(o, new Object[] {v.boollist});
-                        break;
-                    }
-                    case EMPTY:
-                        break;
-                    default:
-                        throw new DriverError("Format " + v.valType + " not supported");
-                }
-            } else {
-                switch (v.valType) {
-                    case INT32: {
-                        Method method = o.getClass().getMethod(methodName, int.class);
-                        method.invoke(o, v.int32);
-                        break;
-                    }
-                    case STRING: {
-                        Method method = o.getClass().getMethod(methodName, String.class);
-                        method.invoke(o, v.str);
-                        break;
-                    }
-                    case BOOLEAN: {
-                        Method method = o.getClass().getMethod(methodName, boolean.class);
-                        method.invoke(o, v.bool);
-                        break;
-                    }
-                    case EMPTY:
-                        break;
-                    default:
-                        throw new DriverError("Format " + v.valType + " not supported");
-                }
-            }
-        } catch (ReflectiveOperationException e) {
-            throw new MetaError("Method not found", e);
-        }
-    }
-
-    static void setterField(Meta m, Object o, BrowseValue v) {
-        String fieldName = m.getIdent();
-        try {
-            switch (v.valType) {
-                case INT32: {
-                    Field field = o.getClass().getField(fieldName);
-                    if (v.isList) {
-                        field.set(o, v.int32list);
-                    } else {
-                        field.setInt(o, v.int32);
-                    }
-                    break;
-                }
-                case STRING: {
-                    Field field = o.getClass().getField(fieldName);
-                    if (v.isList) {
-                        field.set(o, v.strlist);
-                    } else {
-                        field.set(o, v.str);
-                    }
-                    break;
-                }
-                case BOOLEAN: {
-                    Field field = o.getClass().getField(fieldName);
-                    if (v.isList) {
-                        field.set(o, v.boollist);
-                    } else {
-                        field.setBoolean(o, v.bool);
-                    }
-                    break;
-                }
-                case EMPTY:
-                    break;
-                default:
-                    throw new DriverError("Format " + v.valType + " not supported");
-            }
-        } catch (ReflectiveOperationException e) {
-            throw new MetaError("Field not found", e);
-        }
-    }
-
-    static void getterMethod(Meta m, Object o, BrowseValue v) {
-        String methodName = accessorMethodNameFromMeta("get", m.getIdent());
-        try {
-            // TODO
-            Method method = o.getClass().getMethod(methodName);
-            Object result = method.invoke(o);
-            v.str = result.toString();
-        } catch (ReflectiveOperationException e) {
-            throw new MetaError("Method not found", e);
-        }
     }
 }

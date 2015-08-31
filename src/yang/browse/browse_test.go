@@ -58,7 +58,7 @@ func TestWalkYang(t *testing.T) {
 	var actualBuff bytes.Buffer
 	outJson := NewJsonWriter(&actualBuff)
 	out, _ := outJson.GetSelector()
-	browser := YangBrowser{Meta:yang, Module:module}
+	browser := YangBrowser{meta:yang, module:module}
 	if root, err := browser.RootSelector(); err != nil {
 		t.Error(err)
 	} else {

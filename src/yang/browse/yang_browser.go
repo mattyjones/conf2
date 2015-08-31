@@ -11,8 +11,12 @@ import (
  * meta.
  */
 type YangBrowser struct {
-	Module *yang.Module // read: meta
-	Meta *yang.Module // read: meta
+	module *yang.Module // read: meta
+	meta *yang.Module // read: meta
+}
+
+func (self *YangBrowser) Module() *yang.Module {
+	return self.meta
 }
 
 var yang1_0 *yang.Module
@@ -25,19 +29,19 @@ func NewYangBrowser(module *yang.Module) *YangBrowser {
 			panic(msg)
 		}
 	}
-	browser := &YangBrowser{Module:module, Meta:yang1_0}
+	browser := &YangBrowser{module:module, meta:yang1_0}
 	return browser
 }
 
 type MetaListSelector func(m yang.Meta) (*Selection, error)
 
 func (self *YangBrowser) RootSelector() (s *Selection, err error) {
-	s = &Selection{Meta:self.Meta}
+	s = &Selection{Meta:self.meta}
 	s.Enter = func() (*Selection, error) {
 		s.Found = true
 		switch s.Position.GetIdent() {
 		case "module" :
-			return selectModule(self.Module)
+			return selectModule(self.module)
 		}
 		return nil, nil
 	}
@@ -475,10 +479,10 @@ const YANG_1_0 = `module yang {
                     container leaf-list {
                         uses def-header;
                         leaf config {
-                            type string;
+                            type boolean;
                         }
                         leaf mandatory {
-                            type string;
+                            type boolean;
                         }
                         uses type;
                     }

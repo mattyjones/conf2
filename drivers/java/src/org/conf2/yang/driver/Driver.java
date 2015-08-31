@@ -13,16 +13,28 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class Driver {
-
+public abstract class Driver {
     // TODO: Use weakreference queue and release objects automatically
-    private Map<Object, Handle> handles = new HashMap<Object, Handle>();
-    static {
-        System.loadLibrary("yangc2j");
+    private Map<Object, DriverHandle> handles = new HashMap<Object, DriverHandle>();
+    private static boolean loaded;
+
+    protected Driver() {
+        if (!loaded) {
+            loadLibrary();
+            initializeDriver();
+            loaded = true;
+        }
     }
 
-    public Driver() {
-        initializeDriver();
+    public abstract void loadLibrary();
+
+    public static Driver yangDriver() {
+        return new Driver() {
+            @Override
+            public void loadLibrary() {
+                //System.loadLibrary("yangc2j");
+            }
+        };
     }
 
     public void release() {
@@ -30,6 +42,18 @@ public class Driver {
             handle.Release();
         }
         handles.clear();
+    }
+
+    public DriverHandle newHandle(long hndId, Object obj) {
+System.out.println("Adding handle " + hndId + " for " + obj.toString());
+        DriverHandle h = new DriverHandle(this, hndId);
+        handles.put(obj, h);
+        return h;
+    }
+
+    public DriverHandle getHandle(Object o) {
+System.out.println("Looking for handle " + o.toString() + " from handles: " + handles.size());
+        return handles.get(o);
     }
 
     public void releaseHandle(DriverHandle handle) {
@@ -56,8 +80,10 @@ public class Driver {
 //System.out.printf("ds.reference.length=%d\n", ds.reference.array().length);
         ModuleBrowser moduleBrowser = new ModuleBrowser(null);
         long handle = loadModule(source, resource, moduleBrowser);
-        Handle h = new DriverHandle(this, handle);
-        handles.put(moduleBrowser.module, h);
+        if (handle == 0) {
+            throw new DriverError("Could not load module " + resource);
+        }
+        newHandle(handle, moduleBrowser.module);
         return moduleBrowser.module;
     }
 

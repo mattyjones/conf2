@@ -6,7 +6,6 @@
 #include "yang-c2/browse.h"
 #include "yang-c2/driver.h"
 
-
 yangc2j_method get_adapter_method(JNIEnv *env, GoInterface *err, char *method_name, char *signature) {
   yangc2j_method m;
   m.methodId = NULL;
@@ -132,6 +131,8 @@ printf("java_browse.c:read selection_handle=%p, ident=%s\n", selection_handle, i
     return;
   }
 
+  // TODO: LeafList
+
   switch (val->val_type) {
     case STRING: {
       jfieldID s_val_field = (*env)->GetFieldID(env, value_cls, "str", "java/lang/String;");
@@ -180,21 +181,36 @@ jobject java_value(JNIEnv *env, struct yangc2_browse_value *val, GoInterface *er
     return;
   }
   if (val->islist) {
-      jmethodID factory_method = (*env)->GetStaticMethodID(env, value_cls, "fromByteArray", "(II[B)Lorg/conf2/yang/browse/BrowseValue;");
-      if (checkDriverError(env, err)) {
-        return;
-      }
+      switch (val->val_type) {
+        case STRING: {
+            jclass str_class = (*env)->FindClass(env, "java/lang/String");
+            jobjectArray j_strlist = (*env)->NewObjectArray(env, val->listlen, str_class, NULL);
+            if (j_strlist == NULL) {
+                *err = yangc2_new_driver_error("Out of memory");
+                return NULL;
+            }
+            int i;
+            for (i = 0; i < val->listlen; i++) {
+                (*env)->SetObjectArrayElement(env, j_strlist, i, (*env)->NewStringUTF(env, val->strlist[i]));
+            }
 
-      jobject jbuffer = (*env)->NewByteArray(env, val->datalen);
-      void* cbuffer = (*env)->GetByteArrayElements(env, jbuffer, 0);
-      memcpy(cbuffer, val->data, val->datalen);
-      (*env)->SetByteArrayRegion(env, jbuffer, 0, val->datalen, cbuffer);
-      j_value = (*env)->CallStaticObjectMethod(env, value_cls, factory_method, val->listlen, val->val_type, jbuffer);
-      if (checkDriverError(env, err)) {
-        return;
+            jmethodID factory_method = (*env)->GetStaticMethodID(env, value_cls, "Strlist", "([Ljava/lang/String;)Lorg/conf2/yang/browse/BrowseValue;");
+            if (checkDriverError(env, err)) {
+                return;
+            }
+            j_value = (*env)->CallStaticObjectMethod(env, value_cls, factory_method, j_strlist);
+            if (checkDriverError(env, err)) {
+                return;
+            }
+            break;
+        }
+        case INT32:
+            // TODO
+            break;
+        case BOOLEAN:
+            // TODO
+            break;
       }
-      (*env)->ReleaseByteArrayElements(env, jbuffer, cbuffer, JNI_ABORT);
-      (*env)->DeleteLocalRef(env, jbuffer);
   } else {
       switch (val->val_type) {
         case STRING: {
@@ -266,12 +282,13 @@ printf("java_browse.c:edit selection_handle=%p, op=%d, ident=%s\n", selection_ha
     return;
   }
 
-printf("java_browse.c:edit CallStaticVoidMethod\n");
+printf("java_browse.c:edit CallStaticVoidMethod j_selection=%p, j_value=%p\n", j_selection, j_value);
   (*env)->CallStaticVoidMethod(env, edit.cls, edit.methodId, j_selection, j_ident, j_op, j_value);
   if (checkDriverError(env, err)) {
 printf("java_browse.c:edit ERROR CallStaticVoidMethod\n");
     return;
   }
+printf("java_browse.c:edit LEAVING\n");
 }
 
 char *java_browse_choose(void *selection_handle, char *ident, void *browse_err) {

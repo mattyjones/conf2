@@ -14,6 +14,10 @@ public class DriverHandle implements Handle {
         this.handle = handle;
     }
 
+    public long getId() {
+        return handle;
+    }
+
     @Override
     public void Release() {
         d.releaseHandle(this);

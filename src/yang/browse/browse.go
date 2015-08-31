@@ -8,6 +8,7 @@ import (
 type Browser interface {
 	yang.Resource
 	RootSelector() (*Selection, error)
+	Module() (*yang.Module)
 }
 
 type Value struct {
@@ -90,7 +91,7 @@ type ResolveChoice func(choice *yang.Choice) (m yang.Meta, err error)
 func WalkPath(from *Selection, path *Path) (s *Selection, err error) {
 	nest := newPathController(path)
 	err = walk(from, nest, 0)
-	s.Resource = nest.resource
+	nest.target.Resource = nest.resource
 	return nest.target, err
 }
 

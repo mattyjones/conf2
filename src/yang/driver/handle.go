@@ -8,6 +8,7 @@ import (
 	"unsafe"
 	"fmt"
 	"yang"
+	"sync"
 )
 
 type Handle interface {
@@ -19,6 +20,7 @@ var NilHandle unsafe.Pointer
 func NewGoHandle(data interface{}) *GoHandle {
 	hnd := &GoHandle{ID:unsafe.Pointer(&data), Data:data}
 	GoHandles()[hnd.ID] = hnd
+fmt.Printf("handle.go: Added handle, full list %v\n", GoHandles())
 	return hnd
 }
 
@@ -29,6 +31,7 @@ type GoHandle struct {
 
 func (hnd *GoHandle) Close() error {
 	// just removing a reference from it allows the GC to do the rest
+fmt.Printf("Removing handle %p\n", hnd.ID)
 	delete(GoHandles(), hnd.ID)
 	return nil
 }
@@ -53,6 +56,8 @@ func (hnd *ApiHandle) Close() (err error) {
 var apiHandles map[unsafe.Pointer]*ApiHandle
 var goHandles map[unsafe.Pointer]*GoHandle
 
+var initGoHandles sync.Once
+
 func ApiHandles() map[unsafe.Pointer]*ApiHandle {
 	if apiHandles == nil {
 		apiHandles = make(map[unsafe.Pointer]*ApiHandle, 100)
@@ -62,7 +67,10 @@ func ApiHandles() map[unsafe.Pointer]*ApiHandle {
 
 func GoHandles() map[unsafe.Pointer]*GoHandle {
 	if goHandles == nil {
-		goHandles = make(map[unsafe.Pointer]*GoHandle, 100)
+		initGoHandles.Do(func() {
+			goHandles = make(map[unsafe.Pointer]*GoHandle, 100)
+			fmt.Printf("handle.go: MAKING HANDLE LIST %p\n", goHandles)
+		})
 	}
 	return goHandles
 }

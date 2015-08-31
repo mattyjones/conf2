@@ -1,6 +1,9 @@
 #ifndef YANGC2_BROWSE_H
 #define YANGC2_BROWSE_H
 
+
+struct GoSlice;
+
 enum yangc2_browse_value_type {
     EMPTY,
     BINARY,
@@ -31,8 +34,9 @@ struct yangc2_browse_value {
     int listlen;
     short boolean;
     char  *str;
-    int datalen;
-    void *data;
+    char **strlist;
+    int* intlist;
+    short *boollist;
     void *handle;
 };
 

@@ -8,6 +8,9 @@ package driver
 // extern void yangc2_browse_edit(yangc2_browse_edit_impl impl_func, void *selection_handle, char *ident, int op, struct yangc2_browse_value *val, void *browse_err);
 // extern char *yangc2_browse_choose(yangc2_browse_choose_impl impl_func, void *selection_handle, char *ident, void *browse_err);
 // extern void yangc2_browse_exit(yangc2_browse_exit_impl impl_func, void *selection_handle, char *ident, void *browse_err);
+// extern char** yangc2_cstrslice_as_strlist(void *cstr_slice);
+// extern int* yangc2_cintslice_as_intlist(void *cint_slice);
+// extern short* yangc2_cboolslice_as_boollist(void *cbool_slice);
 import "C"
 
 import (
@@ -80,21 +83,25 @@ func yangc2_load_module(
 	var to *browse.Selection
 	to, err = apiModuleBrowser.RootSelector()
 	defer to.Close()
+fmt.Printf("driver_browser.go: About to parse module\n")
 	if err == nil {
 		var from *browse.Selection
 		from, err = module_browser.RootSelector()
 		defer from.Close()
+fmt.Printf("driver_browser.go: Got root selector\n")
 		if err == nil {
 			err = browse.Insert(from, to)
+fmt.Printf("driver_browser.go: Insert complete\n")
 			if err == nil {
-				// TODO: add module reference to driver so GC doesn't claim it
-				return NewGoHandle(module).ID
+				moduleHnd := NewGoHandle(module)
+fmt.Printf("driver_browser.go: Adding module handle %p for module %v\n", moduleHnd.ID, module)
+				return moduleHnd.ID
 			}
 		}
 	}
 	if (err != nil) {
 		fmt.Println("Error sending module", err.Error())
-		return NilHandle
+		return nil
 	}
 
 	// TODO: Find a way to return an error and not just nil
@@ -109,13 +116,15 @@ func yangc2_new_browser(
 	edit_impl C.yangc2_browse_edit_impl,
 	choose_impl C.yangc2_browse_choose_impl,
 	exit_impl C.yangc2_browse_exit_impl,
+    root_selector_impl C.yangc2_browse_root_selector_impl,
 	module_hnd_id unsafe.Pointer,
-	root_selector_impl C.yangc2_browse_root_selector_impl,
 	browser_hnd_id unsafe.Pointer) unsafe.Pointer {
 
+fmt.Printf("driver.browser.go: GoHandles = %v\n", GoHandles())
+
 	module_hnd, module_found := GoHandles()[module_hnd_id]
-	if !module_found {
-		panic(fmt.Sprint("Module not found", module_hnd))
+	if ! module_found {
+		panic(fmt.Sprintf("Module not found %p\n", module_hnd_id))
 		return nil
 	}
 	module := module_hnd.Data.(*yang.Module)
@@ -151,6 +160,10 @@ func (cb *apiBrowser) RootSelector() (s *browse.Selection, err error) {
 	s.Meta = cb.module
 	s.Resource = root_selection_hnd
 	return
+}
+
+func (cb *apiBrowser) Module() *yang.Module {
+	return cb.module
 }
 
 type apiSelector struct {
@@ -256,44 +269,37 @@ func leafListValue(val *browse.Value) (*C.struct_yangc2_browse_value, error) {
 	c_val.islist = C_TRUE
 	switch val.Type.Ident {
 	case "string":
-		var datalen int
-		for _, s := range val.Strlist {
-			datalen += len(s) + 1
-		}
-		data := make([]byte, datalen)
-		var pos int
-		for _, s := range val.Strlist {
-			copy(data[pos:], []byte(s))
-			// +1 to make C string terminator
-			pos += len(s) + 1
-		}
 		c_val.listlen = C.int(len(val.Strlist))
-		c_val.datalen = C.int(datalen)
-		c_val.val_type = C.enum_yangc2_browse_value_type(C.STRING)
-		c_val.data = unsafe.Pointer(&data)
-
-	case "int32":
-		data := make([]C.int, len(val.Intlist))
-		for i, ival := range val.Intlist {
-			data[i] = C.int(ival)
+		strlist :=  make([]*C.char, len(val.Strlist))
+		for i, s := range val.Strlist {
+			strlist[i] = C.CString(s)
 		}
+		c_val.handle = NewGoHandle(strlist).ID
+		c_val.val_type = C.enum_yangc2_browse_value_type(C.STRING)
+		c_val.strlist = C.yangc2_cstrslice_as_strlist(unsafe.Pointer(&strlist))
+	case "int32":
 		c_val.listlen = C.int(len(val.Intlist))
-		c_val.datalen = C.int(4 * len(val.Intlist))
+		intlist := make([]C.int, len(val.Intlist))
+		c_val.handle = NewGoHandle(intlist).ID
+		for i, ival := range val.Intlist {
+			intlist[i] = C.int(ival)
+		}
 		c_val.val_type = C.enum_yangc2_browse_value_type(C.INT32)
-		c_val.data = unsafe.Pointer(&data)
+		c_val.intlist = C.yangc2_cintslice_as_intlist(unsafe.Pointer(&intlist))
 	case "boolean":
-		data := make([]C.short, len(val.Boollist))
+		// TODO: could make this smaller using bit field
+		c_val.listlen = C.int(len(val.Boollist))
+		boollist := make([]C.short, len(val.Boollist))
+		c_val.handle = NewGoHandle(boollist).ID
 		for i, bval := range val.Boollist {
 			if bval {
-				data[i] = C_TRUE
+				boollist[i] = C_TRUE
 			} else {
-				data[i] = C_FALSE
+				boollist[i] = C_FALSE
 			}
 		}
-		c_val.listlen = C.int(len(val.Boollist))
-		c_val.datalen = C.int(2 * len(val.Intlist))
 		c_val.val_type = C.enum_yangc2_browse_value_type(C.BOOLEAN)
-		c_val.data = unsafe.Pointer(&data)
+		c_val.boollist = C.yangc2_cboolslice_as_boollist(unsafe.Pointer(&boollist))
 	default:
 		return nil, &driverError{"Unsupported type"}
 	}
@@ -337,6 +343,10 @@ func (cb *apiSelector) edit(s *browse.Selection, selectionHnd *ApiHandle, op bro
 		}
 	}
 	C.yangc2_browse_edit(cb.browser.edit_impl, selectionHnd.ID, ident, C.int(op), c_val, errPtr)
+
+	if val != nil && c_val.handle != nil {
+		GoHandles()[c_val.handle].Close()
+	}
 	return
 }
 

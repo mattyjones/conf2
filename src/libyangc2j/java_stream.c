@@ -40,12 +40,17 @@ printf("java_stream.c:java_open_stream source_handle=%p\n", source_handle);
   if (checkDriverError(env, err)) {
     return NULL;
   }
+  if (j_inputstream == NULL) {
+    *err = yangc2_new_driver_error("Stream not found");
+  }
   jobject j_g_inputstream = (*env)->NewGlobalRef(env, j_inputstream);
   void *handle = yangc2_handle_new(j_g_inputstream, &java_close_stream);
+printf("java_stream.c:java_open_stream LEAVIG handle=%p, j_g_inputstream=%p\n", handle, j_g_inputstream);
   return handle;
 }
 
 int java_read_stream(void *stream_handle, void *buffSlicePtr, int maxAmount, void *errPtr) {
+printf("java_stream.c:java_read_stream stream_handle=%p\n", stream_handle);
   GoInterface *err = (GoInterface *) errPtr;
   JNIEnv* env = getCurrentJniEnv();
   GoSlice buff = *((GoSlice *)buffSlicePtr);

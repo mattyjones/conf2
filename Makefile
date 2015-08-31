@@ -25,7 +25,6 @@ libyangc2j_CFLAGS = \
 	$(JDK_CFLAGS)
 
 libyangc2j_LDFLAGS = \
-	-L$(abspath pkg/$(GO_ARCH)_shared) -lyangc2 \
 	$(JDK_LDFLAGS)
 
 GO_ARCH = linux_amd64
@@ -100,6 +99,8 @@ libyangc2j:
 	  go install -buildmode=c-shared $@
 
 libyangc2:
+	cd pkg/$(GO_ARCH)_shared; \
+	  ln -snf libyangc2.a libyangc2.so
 	CGO_CFLAGS="$($@_CFLAGS)" \
 	  CGO_LDFLAGS="$($@_LDFLAGS)" \
 	  go install -buildmode=c-shared $@
