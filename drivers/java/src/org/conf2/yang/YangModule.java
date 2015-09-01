@@ -63,7 +63,7 @@ public class YangModule {
             leaf.addMeta(new Uses("type"));
 
             ChoiceCase case4 = ccase(body, "leaf-list");
-            Container leafList = contr(case4, "leaf");
+            Container leafList = contr(case4, "leaf-list");
             leafList.addMeta(new Uses("def-header"));
             leaf(leafList, "config", "boolean");
             leaf(leafList, "mandatory", "boolean");

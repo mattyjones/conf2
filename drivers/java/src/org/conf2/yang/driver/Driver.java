@@ -13,28 +13,17 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public abstract class Driver {
+public class Driver {
     // TODO: Use weakreference queue and release objects automatically
     private Map<Object, DriverHandle> handles = new HashMap<Object, DriverHandle>();
     private static boolean loaded;
 
-    protected Driver() {
+    public Driver() {
         if (!loaded) {
-            loadLibrary();
+            System.loadLibrary("yangc2j");
             initializeDriver();
             loaded = true;
         }
-    }
-
-    public abstract void loadLibrary();
-
-    public static Driver yangDriver() {
-        return new Driver() {
-            @Override
-            public void loadLibrary() {
-                //System.loadLibrary("yangc2j");
-            }
-        };
     }
 
     public void release() {

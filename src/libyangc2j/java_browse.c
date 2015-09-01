@@ -103,13 +103,13 @@ printf("java_browse.c:iterate selection_handle=%p\n", selection_handle);
 }
 
 void java_browse_read(void *selection_handle, char *ident, struct yangc2_browse_value *val, void *browse_err) {
-printf("java_browse.c:read selection_handle=%p, ident=%s\n", selection_handle, ident);
+printf("java_browse.c:read !!! selection_handle=%p, ident=%s\n", selection_handle, ident);
   GoInterface *err = (GoInterface *) browse_err;
   JNIEnv* env = getCurrentJniEnv();
   jobject j_selection = selection_handle;
   jobject j_ident = (*env)->NewStringUTF(env, ident);
 
-  yangc2j_method read = get_adapter_method(env, err, "read", "(Lorg/conf2/yang/browse/Selection;Ljava/lang/String;)org/conf2/yang/browse/BrowseValue");
+  yangc2j_method read = get_adapter_method(env, err, "read", "(Lorg/conf2/yang/browse/Selection;Ljava/lang/String;)Lorg/conf2/yang/browse/BrowseValue;");
   if (read.methodId == NULL) {
     return;
   }
@@ -121,21 +121,23 @@ printf("java_browse.c:read selection_handle=%p, ident=%s\n", selection_handle, i
     return;
   }
 
-  jfieldID s_val_field = (*env)->GetFieldID(env, value_cls, "valType", "org/conf2/yang/ValueType;");
+  jmethodID decode_value = (*env)->GetMethodID(env, value_cls, "decodeValueType", "()I");
   if (checkDriverError(env, err)) {
     return;
   }
 
-  val->val_type = (*env)->GetIntField(env, j_value, s_val_field);
+  val->val_type = (*env)->CallIntMethod(env, j_value, decode_value);
   if (checkDriverError(env, err)) {
     return;
   }
+
+printf("java_browse.c:read val_type=%d\n", val->val_type);
 
   // TODO: LeafList
 
   switch (val->val_type) {
     case STRING: {
-      jfieldID s_val_field = (*env)->GetFieldID(env, value_cls, "str", "java/lang/String;");
+      jfieldID s_val_field = (*env)->GetFieldID(env, value_cls, "str", "Ljava/lang/String;");
       if (checkDriverError(env, err)) {
         return;
       }

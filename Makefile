@@ -25,6 +25,7 @@ libyangc2j_CFLAGS = \
 	$(JDK_CFLAGS)
 
 libyangc2j_LDFLAGS = \
+	-L$(abspath pkg/$(GO_ARCH)_shared) -lyangc2 \
 	$(JDK_LDFLAGS)
 
 GO_ARCH = linux_amd64
@@ -57,7 +58,10 @@ JAVA_SRC = $(shell find drivers/java/src \( \
 
 JNI_SRCS = \
 	org.conf2.yang.driver.Driver \
-	org.conf2.yang.driver.DriverLoader
+	org.conf2.restconf.Service
+
+clean :
+	! test -d drivers/java/classes || rm -rf drivers/java/classes
 
 driver-java :
 	test -d drivers/java/classes || mkdir drivers/java/classes

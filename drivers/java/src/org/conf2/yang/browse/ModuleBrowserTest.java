@@ -11,11 +11,6 @@ import static org.junit.Assert.*;
 public class ModuleBrowserTest {
 
     @Test
-    public void testGetterMethodNameFromMeta() {
-        assertEquals("xFoo", ModuleBrowser.accessorMethodNameFromMeta("x", "foo"));
-    }
-
-    @Test
     public void testRootSelector() {
         ModuleBrowser b = new ModuleBrowser(YangModule.YANG);
         Selection s = b.getRootSelector();

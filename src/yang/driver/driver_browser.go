@@ -166,6 +166,10 @@ func (cb *apiBrowser) Module() *yang.Module {
 	return cb.module
 }
 
+func (cb *apiBrowser) Close() error {
+	return cb.browser_hnd.Close()
+}
+
 type apiSelector struct {
 	browser *apiBrowser
 }

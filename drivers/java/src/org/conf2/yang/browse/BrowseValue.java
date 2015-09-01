@@ -2,6 +2,8 @@ package org.conf2.yang.browse;
 
 import org.conf2.yang.ValueType;
 
+import java.util.Arrays;
+
 /**
  *
  */
@@ -114,5 +116,9 @@ System.out.printf("AFTER string substrStart=%d, substrEnd=%d\n", substrStart, su
             v.boollist[i] = (data[i] > 0);
             v.boollist[i] = v.boollist[i] || (data[i + 1] > 0);
         }
+    }
+
+    int decodeValueType() {
+        return valType.code;
     }
 }

@@ -5,23 +5,29 @@ package org.conf2.yang;
  */
 public enum ValueType {
     // In specific order - see yangc2_browse.h
-    EMPTY,
-    BINARY,
-    BITS,
-    BOOLEAN,
-    DECIMAL64,
-    ENUMERATION,
-    IDENTITYDEF,
-    INSTANCE_IDENTIFIER,
-    INT8,
-    INT16,
-    INT32,
-    INT64,
-    LEAFREF,
-    STRING,
-    UINT8,
-    UINT16,
-    UINT32,
-    UINT64,
-    UNION;
+    EMPTY(0),
+    BINARY(1),
+    BITS(2),
+    BOOLEAN(3),
+    DECIMAL64(4),
+    ENUMERATION(5),
+    IDENTITYDEF(6),
+    INSTANCE_IDENTIFIER(7),
+    INT8(8),
+    INT16(9),
+    INT32(10),
+    INT64(11),
+    LEAFREF(12),
+    STRING(13),
+    UINT8(14),
+    UINT16(15),
+    UINT32(16),
+    UINT64(17),
+    UNION(18);
+
+    public final int code;
+
+    ValueType(int code) {
+        this.code = code;
+    }
 }

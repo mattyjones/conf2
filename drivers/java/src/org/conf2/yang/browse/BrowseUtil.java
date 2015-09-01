@@ -1,11 +1,12 @@
 package org.conf2.yang.browse;
 
-import org.conf2.yang.Meta;
-import org.conf2.yang.MetaError;
+import org.conf2.yang.*;
 import org.conf2.yang.driver.DriverError;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Iterator;
 
 /**
  *
@@ -13,7 +14,26 @@ import java.lang.reflect.Method;
 public class BrowseUtil {
 
     public static final String accessorMethodNameFromMeta(String prefix, String ident) {
-        return prefix + Character.toUpperCase(ident.charAt(0)) + ident.substring(1);
+        StringBuilder sb = new StringBuilder(prefix.length() + ident.length());
+        boolean upper = false;
+        if (prefix.length() > 0) {
+            upper = true;
+            sb.append(prefix);
+        }
+        for (int i = 0; i < ident.length(); i++) {
+            char c = ident.charAt(i);
+            if (c == '-') {
+                upper = true;
+            } else {
+                if (upper) {
+                    sb.append(Character.toUpperCase(c));
+                } else {
+                    sb.append(c);
+                }
+                upper = false;
+            }
+        }
+        return sb.toString();
     }
 
     public static final void setterMethod(Meta m, Object o, BrowseValue v) {
@@ -70,8 +90,51 @@ public class BrowseUtil {
         }
     }
 
+    public static final void readField(Meta m, Object o, BrowseValue v) {
+        String fieldName = accessorMethodNameFromMeta("", m.getIdent());
+        try {
+            DataType t = ((HasDataType) m).getDataType();
+            v.isList = (m instanceof LeafList);
+            v.valType = t.valType;
+            Field field = o.getClass().getField(fieldName);
+            switch (v.valType) {
+                case INT32: {
+                    if (v.isList) {
+                        v.int32list = (int[]) field.get(o);
+                    } else {
+                        v.int32 = field.getInt(o);
+                    }
+                    break;
+                }
+                case STRING: {
+                    if (v.isList) {
+                        v.strlist = coerseStringList(field.get(o));
+                    } else {
+                        v.str = field.get(o).toString();
+                    }
+                    break;
+                }
+                case BOOLEAN: {
+                    if (v.isList) {
+                        v.boollist = (boolean[]) field.get(o);
+                    } else {
+                        v.bool = field.getBoolean(o);
+                    }
+                    break;
+                }
+                case EMPTY:
+                    break;
+                default:
+                    throw new DriverError("Format " + v.valType + " not supported");
+            }
+        } catch (ReflectiveOperationException e) {
+            String msg = String.format("Field %s not found on class %s", fieldName, o.getClass().getSimpleName());
+            throw new MetaError(msg, e);
+        }
+    }
+
     public static final void setterField(Meta m, Object o, BrowseValue v) {
-        String fieldName = m.getIdent();
+        String fieldName = accessorMethodNameFromMeta("", m.getIdent());
         try {
             switch (v.valType) {
                 case INT32: {
@@ -112,13 +175,62 @@ public class BrowseUtil {
         }
     }
 
+    public static String[] coerseStringList(Object o) {
+        if (o instanceof Collection) {
+            Collection c = (Collection) o;
+            String[] strlist = new String[c.size()];
+            Iterator items = c.iterator();
+            for (int i = 0; items.hasNext(); i++) {
+                Object item = items.next();
+                strlist[i] = (item != null ? item.toString() : null);
+            }
+            return strlist;
+        }
+
+        return (String[])o;
+    }
+
     public static final void getterMethod(Meta m, Object o, BrowseValue v) {
         String methodName = accessorMethodNameFromMeta("get", m.getIdent());
         try {
-            // TODO
+            DataType t = ((HasDataType) m).getDataType();
+            v.isList = (m instanceof LeafList);
             Method method = o.getClass().getMethod(methodName);
             Object result = method.invoke(o);
-            v.str = result.toString();
+            if (result == null) {
+                return;
+            }
+            v.valType = t.valType;
+            switch (v.valType) {
+                case INT32: {
+                    if (v.isList) {
+                        v.int32list = (int[]) result;
+                    } else {
+                        v.int32 = (Integer) result;
+                    }
+                    break;
+                }
+                case STRING: {
+                    if (v.isList) {
+                        v.strlist = coerseStringList(result);
+                    } else {
+                        v.str = result.toString();
+                    }
+                    break;
+                }
+                case BOOLEAN: {
+                    if (v.isList) {
+                        v.boollist = (boolean[]) result;
+                    } else {
+                        v.bool = (Boolean) result;
+                    }
+                    break;
+                }
+                case EMPTY:
+                    break;
+                default:
+                    throw new DriverError("Format " + v.valType + " not supported");
+            }
         } catch (ReflectiveOperationException e) {
             throw new MetaError("Method not found", e);
         }
