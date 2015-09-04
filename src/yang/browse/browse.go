@@ -38,6 +38,18 @@ type Selection struct {
 	Resource yang.Resource
 }
 
+func (v *Value) SetEnumList(intlist []int) {
+	v.Strlist = make([]string, len(intlist))
+	for i, n := range intlist {
+		v.Strlist[i] = v.Type.Enumeration[n]
+	}
+}
+
+func (v *Value) SetEnum(n int) {
+	v.Int = n
+	v.Str = v.Type.Enumeration[n]
+}
+
 func (s *Selection) Close() (err error){
 	if s.Resource != nil {
 		err = s.Resource.Close()

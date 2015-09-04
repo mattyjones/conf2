@@ -250,7 +250,7 @@ type_stmt : type_stmt_def type_stmt_body {
         };
 
 type_stmt_def : kywd_type token_ident {
-            yylval.dataType = &DataType{Ident:$2}
+            yylval.dataType = NewDataType($2)
         };
 
 type_stmt_body :

@@ -778,7 +778,7 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		//line parser.y:252
 		{
-			yylval.dataType = &DataType{Ident: yyDollar[2].token}
+			yylval.dataType = NewDataType(yyDollar[2].token)
 		}
 	case 49:
 		yyDollar = yyS[yypt-3 : yypt+1]

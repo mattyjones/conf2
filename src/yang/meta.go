@@ -879,6 +879,7 @@ func (y *Typedef) SetDataType(dataType *DataType) {
 
 type DataType struct {
 	Ident string
+	Format DataFormat
 	Range string
 	Enumeration []string
 	MinLength int
@@ -894,8 +895,17 @@ type DataType struct {
 	 */
 }
 
+func NewDataType(ident string) (t *DataType) {
+	t = &DataType{Ident:ident}
+	// if not found, then not internal type and Resolve should
+	// determine type
+	t.Format = internalTypes[ident]
+	return
+}
+
+
 func (y *DataType) Resolve() *DataType {
-	/* Will look into hierarchy and overlay */
+	// TODO: Will look into hierarchy and overlay constraints
 	return y;
 }
 
@@ -912,48 +922,51 @@ func (y *DataType) DecodeLength(encoded string) (err error) {
 	return
 }
 
-var TYPE_BINARY = DataType{Ident:"binary"}
-var TYPE_BITS = DataType{Ident:"bits"}
-var TYPE_BOOLEAN = DataType{Ident:"boolean"}
-var TYPE_DECIMAL64 = DataType{Ident:"decimal64"}
-var TYPE_EMPTY = DataType{Ident:"empty"}
-var TYPE_ENUMERATION = DataType{Ident:"enumeration"}
-var TYPE_IDENTITYREF  = DataType{Ident:"identitydef"}
-var TYPE_INSTANCE_IDENTIFIER = DataType{Ident:"instance-identifier"}
-var TYPE_INT8 = DataType{Ident:"int8"}
-var TYPE_INT16 = DataType{Ident:"int16"}
-var TYPE_INT32 = DataType{Ident:"int32"}
-var TYPE_INT64 = DataType{Ident:"int64"}
-var TYPE_LEAFREF = DataType{Ident:"leafref"}
-var TYPE_STRING = DataType{Ident:"string"}
-var TYPE_UINT8 = DataType{Ident:"uint8"}
-var TYPE_UINT16 = DataType{Ident:"uint16"}
-var TYPE_UINT32 = DataType{Ident:"uint32"}
-var TYPE_UINT64 = DataType{Ident:"uint64"}
-var TYPE_UNION = DataType{Ident:"union"}
+type DataFormat int
+// matches list in browse.h
+const (
+	FMT_EMPTY DataFormat = iota
+	FMT_BINARY
+	FMT_BITS
+	FMT_BOOLEAN
+	FMT_DECIMAL64
+	FMT_ENUMERATION
+	FMT_IDENTITYREF
+	FMT_INSTANCE_IDENTIFIER
+	FMT_INT8
+	FMT_INT16
+	FMT_INT32
+	FMT_INT64
+	FMT_LEAFREF
+	FMT_STRING
+	FMT_UINT8
+	FMT_UINT16
+	FMT_UINT32
+	FMT_UINT64
+	FMT_UNION
+)
 
-var internalTypes = map[string]DataType{
-	TYPE_BINARY.Ident: TYPE_BINARY,
-	TYPE_BITS.Ident: TYPE_BITS,
-	TYPE_BOOLEAN.Ident : TYPE_BOOLEAN,
-	TYPE_DECIMAL64.Ident : TYPE_DECIMAL64,
-	TYPE_EMPTY.Ident : TYPE_EMPTY,
-	TYPE_ENUMERATION.Ident : TYPE_ENUMERATION,
-	TYPE_IDENTITYREF.Ident : TYPE_IDENTITYREF,
-	TYPE_INSTANCE_IDENTIFIER.Ident : TYPE_INSTANCE_IDENTIFIER,
-	TYPE_INT8.Ident : TYPE_INT8,
-	TYPE_INT16.Ident : TYPE_INT16,
-	TYPE_INT32.Ident : TYPE_INT32,
-	TYPE_INT64.Ident : TYPE_INT64,
-	TYPE_LEAFREF.Ident : TYPE_LEAFREF,
-	TYPE_STRING.Ident : TYPE_STRING,
-	TYPE_UINT8.Ident : TYPE_UINT8,
-	TYPE_UINT16.Ident : TYPE_UINT16,
-	TYPE_UINT32.Ident : TYPE_UINT32,
-	TYPE_UINT64.Ident : TYPE_UINT64,
-	TYPE_UNION.Ident : TYPE_UNION,
+var internalTypes = map[string]DataFormat{
+	"binary": FMT_BINARY,
+	"bits": FMT_BITS,
+	"boolean" : FMT_BOOLEAN,
+	"decimal64" : FMT_DECIMAL64,
+	"empty" : FMT_EMPTY,
+	"enumeration" : FMT_ENUMERATION,
+	"identitydef" : FMT_IDENTITYREF,
+	"instance-identifier" : FMT_INSTANCE_IDENTIFIER,
+	"int8" : FMT_INT8,
+	"int16" : FMT_INT16,
+	"int32" : FMT_INT32,
+	"int64" : FMT_INT64,
+	"leafref" : FMT_LEAFREF,
+	"string" : FMT_STRING,
+	"uint8" : FMT_UINT8,
+	"uint16" : FMT_UINT16,
+	"uint32" : FMT_UINT32,
+	"uint64" : FMT_UINT64,
+	"union" : FMT_UNION,
 }
-
 
 ////////////////////////////////////////////////////
 

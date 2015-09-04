@@ -4,7 +4,7 @@ package org.conf2.yang;
  *
  */
 public enum ValueType {
-    // In specific order - see yangc2_browse.h
+    // In specific order - see browse.h
     EMPTY(0),
     BINARY(1),
     BITS(2),

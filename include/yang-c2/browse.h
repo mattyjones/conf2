@@ -1,42 +1,41 @@
 #ifndef YANGC2_BROWSE_H
 #define YANGC2_BROWSE_H
 
-
 struct GoSlice;
 
-enum yangc2_browse_value_type {
-    EMPTY,
-    BINARY,
-    BITS,
-    BOOLEAN,
-    DECIMAL64,
-    ENUMERATION,
-    IDENTITYDEF,
-    INSTANCE_IDENTIFIER,
-    INT8,
-    INT16,
-    INT32,
-    INT64,
-    LEAFREF,
-    STRING,
-    UINT8,
-    UINT16,
-    UINT32,
-    UINT64,
-    UNION
+// matches list in meta.go
+enum yangc2_format {
+    FMT_EMPTY,
+    FMT_BINARY,
+    FMT_BITS,
+    FMT_BOOLEAN,
+    FMT_DECIMAL64,
+    FMT_ENUMERATION,
+    FMT_IDENTITYDEF,
+    FMT_INSTANCE_IDENTIFIER,
+    FMT_INT8,
+    FMT_INT16,
+    FMT_INT32,
+    FMT_INT64,
+    FMT_LEAFREF,
+    FMT_STRING,
+    FMT_UINT8,
+    FMT_UINT16,
+    FMT_UINT32,
+    FMT_UINT64,
+    FMT_UNION
 };
 
-struct yangc2_browse_value {
-    enum yangc2_browse_value_type val_type;
+struct yangc2_value {
+    enum yangc2_format format;
     // PERFORMANCE TODO: See if you can use a union.  Unclear of Go's integration level.
     int int32;
     short is_list;
     int list_len;
     short boolean;
     char  *cstr;
-    char **cstr_list;
-    int* int_list;
-    short *bool_list;
+    void *data;
+    int data_len;
     void *handle;
 };
 
@@ -46,8 +45,8 @@ struct yangc2_browse_value {
 typedef void* (*yangc2_browse_root_selector_impl)(void *browser_handle, void *browse_err);
 typedef void* (*yangc2_browse_enter_impl)(void *selection_handle, char *ident, short *found, void *browse_err);
 typedef short (*yangc2_browse_iterate_impl)(void *selection_handle, char *keys, short first, void *browse_err);
-typedef void (*yangc2_browse_read_impl)(void *selection_handle, char *ident, struct yangc2_browse_value* val, void *browse_err);
-typedef void (*yangc2_browse_edit_impl)(void *selection_handle, char *ident, int op, struct yangc2_browse_value* val, void *browse_err);
+typedef void (*yangc2_browse_read_impl)(void *selection_handle, char *ident, struct yangc2_value* val, void *browse_err);
+typedef void (*yangc2_browse_edit_impl)(void *selection_handle, char *ident, int op, struct yangc2_value* val, void *browse_err);
 typedef char* (*yangc2_browse_choose_impl)(void *selection_handle, char *ident, void *browse_err);
 typedef void (*yangc2_browse_exit_impl)(void *selection_handle, char *ident, void *browse_err);
 

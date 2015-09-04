@@ -4,13 +4,10 @@ package driver
 // extern void* yangc2_browse_root_selector(yangc2_browse_root_selector_impl impl_func, void *browser_handle, void *browse_err);
 // extern void* yangc2_browse_enter(yangc2_browse_enter_impl impl_func, void *selection_handle, char *ident, short *found, void *browse_err);
 // extern short yangc2_browse_iterate(yangc2_browse_iterate_impl impl_func, void *selection_handle, char *encodedKeys, short first, void *browse_err);
-// extern void yangc2_browse_read(yangc2_browse_read_impl impl_func, void *selection_handle, char *ident, struct yangc2_browse_value *val, void *browse_err);
-// extern void yangc2_browse_edit(yangc2_browse_edit_impl impl_func, void *selection_handle, char *ident, int op, struct yangc2_browse_value *val, void *browse_err);
+// extern void yangc2_browse_read(yangc2_browse_read_impl impl_func, void *selection_handle, char *ident, struct yangc2_value *val, void *browse_err);
+// extern void yangc2_browse_edit(yangc2_browse_edit_impl impl_func, void *selection_handle, char *ident, int op, struct yangc2_value *val, void *browse_err);
 // extern char *yangc2_browse_choose(yangc2_browse_choose_impl impl_func, void *selection_handle, char *ident, void *browse_err);
 // extern void yangc2_browse_exit(yangc2_browse_exit_impl impl_func, void *selection_handle, char *ident, void *browse_err);
-// extern char** yangc2_cstrslice_as_strlist(void *cstr_slice);
-// extern int* yangc2_cintslice_as_intlist(void *cint_slice);
-// extern short* yangc2_cboolslice_as_boollist(void *cbool_slice);
 import "C"
 
 import (
@@ -237,53 +234,85 @@ func encodeIdent(position yang.Meta) *C.char {
 	return C.CString(position.GetIdent())
 }
 
-func (cb *apiSelector) read_cstrs(cstr_list []*C.char, len int) []string {
+func getIntSlice(data []byte, listlen int) (intlist []int) {
+	intlist = make([]int, listlen)
+	var j int
+	for i := 0; i < listlen; i++ {
+		j = i * 4
+		intlist[i] = int(data[j])
+		intlist[i] += int(data[j + 1]) << 8
+		intlist[i] += int(data[j + 2]) << 16
+		intlist[i] += int(data[j + 3]) << 24
+	}
+	return
+}
 
+func getStringSlice(data []byte, listlen int, datalen int) (strlist []string) {
+	strlist = make([]string, listlen)
+	var strStart int
+	var strEnd int
+	for i := 0; i < listlen && strEnd < datalen; i++ {
+		for ; data[strEnd] != 0 && strEnd < datalen ; strEnd++ {
+		}
+		strlist[i] = string(data[strStart:strEnd])
+		strEnd += 1
+	}
+	return strlist
+}
+
+func getBoolSlice(data []byte, listlen int) (boolist []bool) {
+	boolist = make([]bool, listlen)
+	var j int
+	for i := 0; i < listlen; i++ {
+		j = i * 2
+		boolist[i] = data[j] > 0
+		boolist[i] = boolist[i] || data[j + 1] > 0
+	}
+	return
 }
 
 func (cb *apiSelector) read(s *browse.Selection, selectionHnd *ApiHandle, val *browse.Value) (err error) {
 	errPtr := unsafe.Pointer(&err)
 	ident := encodeIdent(s.Position)
-	var c_val C.struct_yangc2_browse_value
+	var c_val C.struct_yangc2_value
 	C.yangc2_browse_read(cb.browser.read_impl, selectionHnd.ID, ident, &c_val, errPtr)
+	valType := s.Position.(yang.HasDataType).GetDataType()
+	c_val_format := int(c_val.format)
+	if int(valType.Format) != c_val_format {
+		e := fmt.Sprint("Invalid value, expected %d but got %d", valType.Format, c_val_format)
+		return &driverError{e}
+	}
+	val.Type = valType
 	if c_val.is_list > 0 {
 		val.IsList = true
-		switch c_val.val_type {
-		case C.enum_yangc2_browse_value_type(C.ENUMERATION):
-			val.Strlist == read_cstrs(c_val.cstr_list, c_val.list_len)
-			val.Intlist == read_ints(c_val.int_list, c_val.list_len)
-			val.Type = yang.TYPE_ENUMERATION
-		case C.enum_yangc2_browse_value_type(C.STRING):
-			val.Strlist == read_cstrs(c_val.cstr_list, c_val.list_len)
-			val.Type = yang.TYPE_STRING
-		case C.enum_yangc2_browse_value_type(C.INT32):
-			val.Intlist == read_ints(c_val.int_list, c_val.list_len)
-			val.Type = yang.TYPE_INT32
-		case C.enum_yangc2_browse_value_type(C.BOOLEAN):
-			if c_val.boolean > C_FALSE {
-				val.Bool = true
-			} else {
-				// nop
-				val.Bool = false
-			}
-			val.Type = yang.TYPE_BOOLEAN
+		var data []byte
+		data = C.GoBytes(c_val.data, c_val.data_len)
+		listLen := int(c_val.list_len)
 
+		switch val.Type.Format {
+		case yang.FMT_ENUMERATION:
+			val.Type = s.Position.(yang.HasDataType).GetDataType()
+			intlist := getIntSlice(data, listLen)
+			val.SetEnumList(intlist)
+		case yang.FMT_STRING:
+			val.Strlist = getStringSlice(data, listLen, int(c_val.data_len))
+		case yang.FMT_INT32:
+			val.Intlist = getIntSlice(data, listLen)
+		case yang.FMT_BOOLEAN:
+			val.Boollist = getBoolSlice(data, listLen)
 		}
 	} else {
-		switch c_val.val_type {
-		case C.enum_yangc2_browse_value_type(C.ENUMERATION):
+fmt.Printf("driver_browser.go format=%d\n", val.Type.Format)
+		switch val.Type.Format {
+		case yang.FMT_ENUMERATION:
+			val.SetEnum(int(c_val.int32))
+		case yang.FMT_STRING:
 			val.Str = C.GoString(c_val.cstr)
+		case yang.FMT_INT32:
 			val.Int = int(c_val.int32)
-		case C.enum_yangc2_browse_value_type(C.STRING):
-			val.Str = C.GoString(c_val.cstr)
-		case C.enum_yangc2_browse_value_type(C.INT32):
-			val.Int = int(c_val.int32)
-		case C.enum_yangc2_browse_value_type(C.BOOLEAN):
+		case yang.FMT_BOOLEAN:
 			if c_val.boolean > C_FALSE {
 				val.Bool = true
-			} else {
-				// nop
-				val.Bool = false
 			}
 		}
 	}
@@ -296,61 +325,77 @@ const (
 	C_FALSE = C.short(0)
 )
 
-func leafListValue(val *browse.Value) (*C.struct_yangc2_browse_value, error) {
-	var buff bytes.Buffer
-	w := bufio.NewWriter(buff)
-	var c_val C.struct_yangc2_browse_value
-	c_val.is_list = C_TRUE
-	switch val.Type.Ident {
-	case "string":
-		c_val.list_len = C.int(len(val.Strlist))
-		strlist :=  make([]*C.char, len(val.Strlist))
-		for i, s := range val.Strlist {
-			strlist[i] = C.CString(s)
-		}
-		c_val.handle = NewGoHandle(strlist).ID
-		c_val.val_type = C.enum_yangc2_browse_value_type(C.STRING)
-		c_val.cstr_list = C.yangc2_cstrslice_as_strlist(unsafe.Pointer(&strlist))
-	case "int32":
-		c_val.list_len = C.int(len(val.Intlist))
-		intlist := make([]C.int, len(val.Intlist))
-		c_val.handle = NewGoHandle(intlist).ID
-		for i, ival := range val.Intlist {
-			intlist[i] = C.int(ival)
-		}
-		c_val.val_type = C.enum_yangc2_browse_value_type(C.INT32)
-		c_val.int_list = C.yangc2_cintslice_as_intlist(unsafe.Pointer(&intlist))
-	case "boolean":
-		// TODO: could make this smaller using bit field
-		c_val.list_len = C.int(len(val.Boollist))
-		boollist := make([]C.short, len(val.Boollist))
-		c_val.handle = NewGoHandle(boollist).ID
-		for i, bval := range val.Boollist {
-			if bval {
-				boollist[i] = C_TRUE
-			} else {
-				boollist[i] = C_FALSE
-			}
-		}
-		c_val.val_type = C.enum_yangc2_browse_value_type(C.BOOLEAN)
-		c_val.bool_list = C.yangc2_cboolslice_as_boollist(unsafe.Pointer(&boollist))
-	default:
-		return nil, &driverError{"Unsupported type"}
-	}
-	return &c_val, nil
+const CSTR_TERM = byte(0)
+
+func putInt(buff *[4]byte, i int) {
+	// x86 is little endian - TODO: detect and support others
+	buff[0] = byte(i)
+	buff[1] = byte(i >> 8)
+	buff[2] = byte(i >> 16)
+	buff[3] = byte(i >> 24)
 }
 
-func leafValue(val *browse.Value) (*C.struct_yangc2_browse_value, error) {
-	var c_val C.struct_yangc2_browse_value
-	switch val.Type.Ident {
-	case "string":
-		c_val.val_type = C.enum_yangc2_browse_value_type(C.STRING)
+func putShort(buff *[2]byte, i C.short) {
+	// x86 is little endian - TODO: detect and support others
+	buff[0] = byte(i)
+	buff[1] = byte(i >> 8)
+}
+
+func leafListValue(val *browse.Value) (*GoHandle, *C.struct_yangc2_value, error) {
+	var c_val C.struct_yangc2_value
+	var byteBuff bytes.Buffer
+	buffer := bufio.NewWriter(&byteBuff)
+	c_val.is_list = C_TRUE
+	switch val.Type.Format {
+	case yang.FMT_STRING:
+		c_val.list_len = C.int(len(val.Strlist))
+		for _, s := range val.Strlist {
+			buffer.WriteString(s)
+			buffer.WriteByte(CSTR_TERM)
+		}
+	case yang.FMT_INT32, yang.FMT_ENUMERATION:
+		bInt := [4]byte{}
+		c_val.list_len = C.int(len(val.Intlist))
+		for _, i := range val.Intlist {
+			putInt(&bInt, i)
+			buffer.Write(bInt[:])
+		}
+	case yang.FMT_BOOLEAN:
+		// TODO: Performance - could make this smaller using bit field
+		bShort := [2]byte{}
+		c_val.list_len = C.int(len(val.Boollist))
+		for _, b := range val.Boollist {
+			if b {
+				putShort(&bShort, C_TRUE)
+			} else {
+				putShort(&bShort, C_FALSE)
+			}
+			buffer.Write(bShort[:])
+		}
+	default:
+		return nil, nil, &driverError{"Unsupported type"}
+	}
+	buffer.Flush()
+	bytes := byteBuff.Bytes()
+	if len(bytes) > 0 {
+		c_val.data = unsafe.Pointer(&bytes[0])
+		c_val.data_len = C.int(len(bytes))
+	}
+	c_val.format = uint32(val.Type.Format)
+	// we return a handle to the bytes because nothing references the object leaving
+	// this function and in theory could be GC'ed.  Handle can be released when
+	// c_val is GC'ed
+	return NewGoHandle(bytes), &c_val, nil
+}
+
+func leafValue(val *browse.Value) (*C.struct_yangc2_value, error) {
+	var c_val C.struct_yangc2_value
+	switch val.Type.Format {
+	case yang.FMT_STRING:
 		c_val.cstr = C.CString(val.Str)
-	case "int32":
-		c_val.val_type = C.enum_yangc2_browse_value_type(C.INT32)
+	case yang.FMT_INT32, yang.FMT_ENUMERATION:
 		c_val.int32 = C.int(val.Int)
-	case "boolean":
-		c_val.val_type = C.enum_yangc2_browse_value_type(C.BOOLEAN)
+	case yang.FMT_BOOLEAN:
 		if val.Bool {
 			c_val.boolean = C_TRUE
 		} else {
@@ -359,28 +404,32 @@ func leafValue(val *browse.Value) (*C.struct_yangc2_browse_value, error) {
 	default:
 		return nil, &driverError{"Unsupported type"}
 	}
+	c_val.format = uint32(val.Type.Format)
 	return &c_val, nil
 }
 
 func (cb *apiSelector) edit(s *browse.Selection, selectionHnd *ApiHandle, op browse.Operation, val *browse.Value) (err error) {
 	errPtr := unsafe.Pointer(&err)
 	var ident *C.char;
-	var c_val *C.struct_yangc2_browse_value
+	var c_val *C.struct_yangc2_value
+	var handle *GoHandle
 	if s.Position != nil {
 		ident = encodeIdent(s.Position)
 	}
 	if val != nil {
 		if val.IsList {
-			c_val, err = leafListValue(val)
+			handle, c_val, err = leafListValue(val)
 		} else {
 			c_val, err = leafValue(val)
 		}
 	}
+
 	C.yangc2_browse_edit(cb.browser.edit_impl, selectionHnd.ID, ident, C.int(op), c_val, errPtr)
 
-	if val != nil && c_val.handle != nil {
-		GoHandles()[c_val.handle].Close()
+	if handle != nil {
+		handle.Close()
 	}
+
 	return
 }
 

@@ -73,56 +73,6 @@ public class Driver {
         return moduleBrowser.module;
     }
 
-    public static int utf8StrLen(CharSequence s) {
-        int count = 0;
-        for (int i = 0, len = s.length(); i < len; i++) {
-            char ch = s.charAt(i);
-            if (ch <= 0x7F) {
-                count++;
-            } else if (ch <= 0x7FF) {
-                count += 2;
-            } else if (Character.isHighSurrogate(ch)) {
-                count += 4;
-                ++i;
-            } else {
-                count += 3;
-            }
-        }
-        return count;
-    }
-
-    public static ByteBuffer encodeCStrArray(String[] strlist) throws IOException {
-        byte bNULL = 0;
-        int datalen = 0;
-        for (String s : strlist) {
-            datalen += utf8StrLen(s) + 1;
-        }
-        ByteBuffer out = ByteBuffer.allocateDirect(datalen);
-        for (String s : strlist) {
-            out.put(s.getBytes());
-            out.put(bNULL);
-        }
-        return out;
-    }
-
-    public static ByteBuffer encodeCIntArray(int[] intlist) throws IOException {
-        ByteBuffer out = ByteBuffer.allocateDirect(4 * intlist.length);
-        for (int i = 0; i < intlist.length; i++) {
-            out.putInt(intlist[i]);
-        }
-        return out;
-    }
-
-    public static ByteBuffer encodeCBoolArray(boolean[] boollist) throws IOException {
-        short sTrue = 1;
-        short sFalse = 0;
-        ByteBuffer out = ByteBuffer.allocateDirect(2 * boollist.length);
-        for (int i = 0; i < boollist.length; i++) {
-            out.putShort(boollist[i] ? sTrue : sFalse);
-        }
-        return out;
-    }
-
     private native void releaseHandle(long handleId);
     private native long loadModule(StreamSource resourceSourceHand, String resource, Browser yang_browser);
     private native void initializeDriver();
