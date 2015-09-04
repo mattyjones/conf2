@@ -86,11 +86,9 @@ public class ModuleBrowser implements Browser {
         final Meta[] def = new Meta[1];
         Selection s = new Selection();
         s.Iterate = (String[] keys, boolean isFirst) -> {
-System.out.println("ModuleBrowser.java: ITERATE DEF position");
             return false;
         };
         s.Enter = () -> {
-System.out.println("ModuleBrowser.java: ENTER DEF position " + s.position);
             if (def[0] == null) {
                 s.found = false;
                 //throw new DriverError("Definition not created yet");
@@ -110,7 +108,6 @@ System.out.println("ModuleBrowser.java: ENTER DEF position " + s.position);
             return null;
         };
         s.Edit = (EditOperation op, BrowseValue val) -> {
-System.out.println("ModuleBrowser.java: EDIT DEF " + op + " position " + s.position);
             switch (op) {
                 case CREATE_CHILD:
                     String ident = s.position.getIdent();

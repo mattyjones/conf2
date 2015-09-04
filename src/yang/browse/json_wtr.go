@@ -118,7 +118,7 @@ func (json *JsonWriter) writeValue(meta yang.Meta, v *Value) (err error) {
 			err = json.writeBool(v.Bool)
 		case "int32":
 			err = json.writeInt(v.Int)
-		case "string":
+		case "string", "enumeration":
 			err = json.writeString(v.Str)
 		}
 	case *yang.LeafList:
@@ -138,7 +138,7 @@ func (json *JsonWriter) writeValue(meta yang.Meta, v *Value) (err error) {
 				}
 			}
 			_, err = json.out.WriteRune(CLOSE_ARRAY)
-		case "string":
+		case "string", "enumeration":
 			if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
 				return
 			}

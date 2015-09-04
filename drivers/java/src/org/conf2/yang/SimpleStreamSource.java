@@ -27,11 +27,8 @@ public class SimpleStreamSource implements StreamSource {
 
     @Override
     public InputStream getStream(String resourceId) throws IOException {
-System.out.println("SimpleDataSource.getResource");
         if (rootClass != null) {
-System.out.println("SimpleDataSource - rootClass");
             InputStream is = rootClass.getResourceAsStream(resourceId);
-System.out.println("SimpleDataSource - GOT IS");
             return is;
         } else if (this.baseDir != null) {
             return new FileInputStream(new File(baseDir, resourceId));

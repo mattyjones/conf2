@@ -5,6 +5,7 @@ import org.conf2.yang.driver.DriverError;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
@@ -234,5 +235,23 @@ public class BrowseUtil {
         } catch (ReflectiveOperationException e) {
             throw new MetaError("Method not found", e);
         }
+    }
+
+    public static final String[] strArrayAppend(String[] strlist, String s) {
+        if (strlist == null) {
+            return new String[] { s };
+        }
+        String[] strlistNew = Arrays.copyOf(strlist, strlist.length + 1);
+        strlistNew[strlist.length - 1] = s;
+        return strlist;
+    }
+
+    public static final int[] intArrayAppend(int[] intlist, int n) {
+        if (intlist == null) {
+            return new int[] { n };
+        }
+        int[] intlistNew = Arrays.copyOf(intlist, intlist.length + 1);
+        intlistNew[intlistNew.length - 1] = n;
+        return intlistNew;
     }
 }

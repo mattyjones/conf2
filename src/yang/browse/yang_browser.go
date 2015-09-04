@@ -19,8 +19,13 @@ func (self *YangBrowser) Module() *yang.Module {
 	return self.meta
 }
 
-var yang1_0 *yang.Module
 func NewYangBrowser(module *yang.Module) *YangBrowser {
+	browser := &YangBrowser{module:module, meta:getYangModule()}
+	return browser
+}
+
+var yang1_0 *yang.Module
+func getYangModule() *yang.Module {
 	if yang1_0 == nil {
 		var err error
 		yang1_0, err = yang.LoadModuleFromByteArray([]byte(YANG_1_0))
@@ -29,8 +34,7 @@ func NewYangBrowser(module *yang.Module) *YangBrowser {
 			panic(msg)
 		}
 	}
-	browser := &YangBrowser{module:module, meta:yang1_0}
-	return browser
+	return yang1_0
 }
 
 type MetaListSelector func(m yang.Meta) (*Selection, error)
@@ -272,18 +276,20 @@ func selectMetaUses(data *yang.Uses) (s *Selection, err error) {
 	return
 }
 
-func selectMetaCases(data *yang.Choice) (s *Selection, err error) {
+func selectMetaCases(choice *yang.Choice) (s *Selection, err error) {
 	s = &Selection{}
+	i := listIterator{dataList:choice}
+	s.Iterate = i.Iterate
 	s.Enter = func() (*Selection, error) {
 		s.Found = true
 		switch s.Position.GetIdent() {
 		case "definitions":
-			return selectDefinitionsList(data)
+			return selectDefinitionsList(choice)
 		}
 		return nil, nil
 	}
 	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(yang.HasDataType), data, val)
+		return ReadField(s.Position.(yang.HasDataType), choice, val)
 	}
 	return
 }

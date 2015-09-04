@@ -1,4 +1,5 @@
 export GOPATH=$(abspath .)
+export YANGPATH=$(abspath etc)
 
 API_VER = 0.1
 DESTDIR =
@@ -58,6 +59,7 @@ JAVA_SRC = $(shell find drivers/java/src \( \
 
 JNI_SRCS = \
 	org.conf2.yang.driver.Driver \
+	org.conf2.yang.driver.DriverTestHarness \
 	org.conf2.restconf.Service
 
 clean :
@@ -82,6 +84,7 @@ JAVA_TEST_RUNNER = org.junit.runner.JUnitCore
 JAVA_TESTS = \
 	org.conf2.yang.browse.ModuleBrowserTest \
 	org.conf2.yang.driver.BrowserAdaptorTest \
+	org.conf2.yang.driver.BrowserComplianceTest \
 	org.conf2.yang.driver.DriverLoaderTest
 
 JAVA_TEST_SRC = \

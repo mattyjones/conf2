@@ -30,13 +30,13 @@ struct yangc2_browse_value {
     enum yangc2_browse_value_type val_type;
     // PERFORMANCE TODO: See if you can use a union.  Unclear of Go's integration level.
     int int32;
-    short islist;
-    int listlen;
+    short is_list;
+    int list_len;
     short boolean;
-    char  *str;
-    char **strlist;
-    int* intlist;
-    short *boollist;
+    char  *cstr;
+    char **cstr_list;
+    int* int_list;
+    short *bool_list;
     void *handle;
 };
 

@@ -20,7 +20,6 @@ var NilHandle unsafe.Pointer
 func NewGoHandle(data interface{}) *GoHandle {
 	hnd := &GoHandle{ID:unsafe.Pointer(&data), Data:data}
 	GoHandles()[hnd.ID] = hnd
-fmt.Printf("handle.go: Added handle, full list %v\n", GoHandles())
 	return hnd
 }
 
@@ -31,7 +30,6 @@ type GoHandle struct {
 
 func (hnd *GoHandle) Close() error {
 	// just removing a reference from it allows the GC to do the rest
-fmt.Printf("Removing handle %p\n", hnd.ID)
 	delete(GoHandles(), hnd.ID)
 	return nil
 }
@@ -69,7 +67,6 @@ func GoHandles() map[unsafe.Pointer]*GoHandle {
 	if goHandles == nil {
 		initGoHandles.Do(func() {
 			goHandles = make(map[unsafe.Pointer]*GoHandle, 100)
-			fmt.Printf("handle.go: MAKING HANDLE LIST %p\n", goHandles)
 		})
 	}
 	return goHandles
@@ -80,14 +77,12 @@ func yangc2_handle_new(api_handle unsafe.Pointer, release_impl C.yangc2_handle_r
 	go_handle := &ApiHandle{ID:api_handle, release_impl:release_impl}
 	key := unsafe.Pointer(go_handle)
 	ApiHandles()[key] = go_handle
-	fmt.Printf("handle.go: NEW %p\n", key)
 	return key
 }
 
 //export yangc2_handle_release
 func yangc2_handle_release(key unsafe.Pointer) {
-	fmt.Printf("handle.go: RELEASE %p\n", key)
-	handle, valid := ApiHandles()[key]
+	handle, valid := GoHandles()[key]
 	if valid {
 		handle.Close()
 	} else {

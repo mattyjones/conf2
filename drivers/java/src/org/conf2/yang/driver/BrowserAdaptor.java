@@ -6,6 +6,10 @@ import org.conf2.yang.browse.Browser;
 import org.conf2.yang.browse.EditOperation;
 import org.conf2.yang.browse.Selection;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 /**
  *
  */

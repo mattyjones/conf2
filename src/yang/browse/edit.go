@@ -217,28 +217,26 @@ func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (
 	s.Iterate = func(fromKeys []string, first bool) (hasMore bool, err error) {
 		from.Meta = s.Meta
 		to.Meta = s.Meta
+		if from.Iterate == nil {
+			msg := fmt.Sprint("Missing destination iterator on ", from.Meta.GetIdent())
+			return false, &browseError{Msg:msg}
+		}
 		hasMore, err = from.Iterate(fromKeys, first)
-fmt.Println("edit.go:s.Iterate s.meta=", to.Meta.GetIdent(), "hasMore", hasMore)
 
 		if err != nil {
-fmt.Println("edit.go:s.Iterate ERR")
 			return
 		}
 
 		if hasMore {
-fmt.Println("edit.go:Before to.Iterate")
 			_, err = to.Iterate(fromKeys, first)
 			if err != nil {
-fmt.Println("edit.go:s. to.Iterate ERROR")
 				return
 			}
 		}
 
 		// TODO: Consider to.hasMore results on LIST_ITEM calls
-fmt.Println("edit.go:Before first && hasMore")
 
 		if first && hasMore {
-fmt.Println("edit.go - Sending CREATE_LIST_ITEM")
 			err = to.Edit(CREATE_LIST_ITEM, nil)
 		} else if !first && hasMore {
 			err = to.Edit(POST_CREATE_LIST_ITEM, nil)

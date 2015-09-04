@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "yang-c2/java.h"
 
 JavaVM* jvm = NULL;
@@ -75,19 +76,115 @@ void initJvmReference(JNIEnv* env) {
   }
 }
 
-void java_release_string_chars(void *chars_ref, void *errPtr) {
-  java_string_chars *chars = (java_string_chars *)chars_ref;
+void yangc2j_release_x_array(void *x_array_ref, void *errPtr) {
+  yangc2j_array *x_array = (yangc2j_array *)x_array_ref;
   JNIEnv* env = getCurrentJniEnv();
-  (*env)->ReleaseStringUTFChars(env, chars->j_string, chars->chars);
+  (*env)->DeleteGlobalRef(env, x_array->j_buff);
+  if (x_array->cstr_list != NULL) {
+    free(x_array->cstr_list);
+  }
+  free(x_array_ref);
 }
 
-java_string_chars* java_new_string_chars(jobject j_string) {
+void yangc2j_release_cstr(void *cstr_ref, void *errPtr) {
+  yangc2j_cstr *chars = (yangc2j_cstr *)cstr_ref;
   JNIEnv* env = getCurrentJniEnv();
-  java_string_chars* ref = (java_string_chars* )malloc(sizeof(java_string_chars));
+  (*env)->ReleaseStringUTFChars(env, chars->j_string, chars->cstr);
+  free(cstr_ref);
+}
+
+yangc2j_cstr* yangc2j_new_cstr(jobject j_string) {
+  JNIEnv* env = getCurrentJniEnv();
+  yangc2j_cstr* ref = (yangc2j_cstr* )malloc(sizeof(yangc2j_cstr));
   ref->j_string = j_string;
-  ref->chars = (*env)->GetStringUTFChars(env, j_string, 0);
-  ref->handle = yangc2_handle_new(ref, java_release_string_chars);
+  ref->cstr = (*env)->GetStringUTFChars(env, j_string, 0);
+  ref->handle = yangc2_handle_new(ref, yangc2j_release_cstr);
   return ref;
+}
+
+yangc2j_array* yangc2j_new_cstr_list(JNIEnv *env, jobjectArray j_str_array, GoInterface *err) {
+  yangc2j_array* list = (yangc2j_array*) calloc(1, sizeof(yangc2j_array));
+  list->list_len = (*env)->GetArrayLength(env, j_str_array);
+  if (checkDriverError(env, err)) {
+    return NULL;
+  }
+
+  yangc2j_method to_buff = get_static_driver_method(env, err, "encodeCStrArray", "([Ljava/lang/String;)Ljava/nio/ByteBuffer;");
+  if (to_buff.methodId == NULL) {
+    free(list);
+    return NULL;
+  }
+  jobject j_buff = (*env)->CallStaticObjectMethod(env, to_buff.cls, to_buff.methodId, j_str_array);
+  if (checkDriverError(env, err)) {
+    free(list);
+    return NULL;
+  }
+
+  int bufflen = (*env)->GetDirectBufferCapacity(env, j_buff);
+printf("java_yang.c: bufflen=%d\n", bufflen);
+  list->j_buff = (*env)->NewGlobalRef(env, j_buff);
+  list->handle = yangc2_handle_new((void *)list, &yangc2j_release_x_array);
+  list->cstr_list = (char **)calloc(list->list_len, sizeof(char *));
+  char *buff = (char *)(*env)->GetDirectBufferAddress(env, j_buff);
+  int i;
+  int j = 0;
+  for (i = 0; j < bufflen && i < list->list_len; i++) {
+    list->cstr_list[i] = &buff[j];
+printf("java_yang.c: s[%d]=%s\n", i, list->cstr_list[i]);
+    for (;buff[j] != 0 && j < bufflen; j++) {
+    }
+    j++; // null term
+  }
+
+  return list;
+}
+
+yangc2j_array* yangc2j_new_bool_list(JNIEnv *env, jobjectArray j_bool_array, GoInterface *err) {
+  yangc2j_array* list = (yangc2j_array*) calloc(1, sizeof(yangc2j_array));
+  list->list_len = (*env)->GetArrayLength(env, j_bool_array);
+  if (checkDriverError(env, err)) {
+    free(list);
+    return NULL;
+  }
+
+  yangc2j_method to_buff = get_static_driver_method(env, err, "encodeCBoolArray", "([Z)Ljava/nio/ByteBuffer;");
+  if (to_buff.methodId == NULL) {
+    free(list);
+    return NULL;
+  }
+  jobject j_buff = (*env)->CallStaticObjectMethod(env, to_buff.cls, to_buff.methodId, j_bool_array);
+  if (checkDriverError(env, err)) {
+    free(list);
+    return NULL;
+  }
+  list->j_buff = (*env)->NewGlobalRef(env, j_buff);
+  list->handle = yangc2_handle_new((void *)list, &yangc2j_release_x_array);
+  list->bool_list = (short *)(*env)->GetDirectBufferAddress(env, j_buff);
+  return list;
+}
+
+yangc2j_array* yangc2j_new_int_list(JNIEnv *env, jobjectArray j_int_array, GoInterface *err) {
+  yangc2j_array* list = (yangc2j_array*) calloc(1, sizeof(yangc2j_array));
+  list->list_len = (*env)->GetArrayLength(env, j_int_array);
+  if (checkDriverError(env, err)) {
+    free(list);
+    return NULL;
+  }
+
+  yangc2j_method to_buff = get_static_driver_method(env, err, "encodeCIntArray", "([I)Ljava/nio/ByteBuffer;");
+  if (to_buff.methodId == NULL) {
+    free(list);
+    return NULL;
+  }
+  jobject j_buff = (*env)->CallStaticObjectMethod(env, to_buff.cls, to_buff.methodId, j_int_array);
+  if (checkDriverError(env, err)) {
+    free(list);
+    return NULL;
+  }
+  list->j_buff = (*env)->NewGlobalRef(env, j_buff);
+  list->handle = yangc2_handle_new((void *)list, &yangc2j_release_x_array);
+  list->int_list = (int *)(*env)->GetDirectBufferAddress(env, j_buff);
+  return list;
 }
 
 JNIEnv *getCurrentJniEnv() {
@@ -101,9 +198,13 @@ JNIEXPORT void JNICALL Java_org_conf2_yang_driver_Driver_initializeDriver
   initJvmReference(env);
 }
 
-void java_release_global_ref(void *ref, void *errPtr) {
-printf("java_yang.c: RELEASE_GLOBAL REF %p\n", ref);
+void yangc2j_release_global_ref(void *ref, void *errPtr) {
   JNIEnv* env = getCurrentJniEnv();
   jobject j_ref = (jobject)ref;
   (*env)->DeleteGlobalRef(env, j_ref);
+}
+
+JNIEXPORT void JNICALL Java_org_conf2_yang_driver_Driver_releaseHandle
+  (JNIEnv *env, jobject driver, jlong hnd_id) {
+  yangc2_handle_release((void *)hnd_id);
 }

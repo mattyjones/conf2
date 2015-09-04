@@ -6,7 +6,7 @@
 #include "yang-c2/stream.h"
 #include "yang-c2/driver.h"
 
-void java_close_stream(void *stream_handle, void *errPtr) {
+void yangc2j_close_stream(void *stream_handle, void *errPtr) {
   GoInterface *err = (GoInterface *) errPtr;
   JNIEnv* env = getCurrentJniEnv();
   jobject inputStream = stream_handle;
@@ -17,11 +17,10 @@ void java_close_stream(void *stream_handle, void *errPtr) {
   jmethodID closeMethod = (*env)->GetMethodID(env, inputStreamCls, "close", "()V");
   (*env)->CallObjectMethod(env, inputStream, closeMethod);
   checkDriverError(env, err);
-  java_release_global_ref(stream_handle, errPtr);
+  yangc2j_release_global_ref(stream_handle, errPtr);
 }
 
-void *java_open_stream(void *source_handle, char *resId, void *errPtr) {
-printf("java_stream.c:java_open_stream source_handle=%p\n", source_handle);
+void *yangc2j_open_stream(void *source_handle, char *resId, void *errPtr) {
   GoInterface *err = (GoInterface *) errPtr;
   JNIEnv* env = getCurrentJniEnv();
 
@@ -44,13 +43,11 @@ printf("java_stream.c:java_open_stream source_handle=%p\n", source_handle);
     *err = yangc2_new_driver_error("Stream not found");
   }
   jobject j_g_inputstream = (*env)->NewGlobalRef(env, j_inputstream);
-  void *handle = yangc2_handle_new(j_g_inputstream, &java_close_stream);
-printf("java_stream.c:java_open_stream LEAVIG handle=%p, j_g_inputstream=%p\n", handle, j_g_inputstream);
+  void *handle = yangc2_handle_new(j_g_inputstream, &yangc2j_close_stream);
   return handle;
 }
 
-int java_read_stream(void *stream_handle, void *buffSlicePtr, int maxAmount, void *errPtr) {
-printf("java_stream.c:java_read_stream stream_handle=%p\n", stream_handle);
+int yangc2j_read_stream(void *stream_handle, void *buffSlicePtr, int maxAmount, void *errPtr) {
   GoInterface *err = (GoInterface *) errPtr;
   JNIEnv* env = getCurrentJniEnv();
   GoSlice buff = *((GoSlice *)buffSlicePtr);

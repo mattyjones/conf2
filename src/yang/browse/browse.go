@@ -91,7 +91,9 @@ type ResolveChoice func(choice *yang.Choice) (m yang.Meta, err error)
 func WalkPath(from *Selection, path *Path) (s *Selection, err error) {
 	nest := newPathController(path)
 	err = walk(from, nest, 0)
-	nest.target.Resource = nest.resource
+	if nest.target != nil {
+		nest.target.Resource = nest.resource
+	}
 	return nest.target, err
 }
 

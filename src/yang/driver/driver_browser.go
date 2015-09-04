@@ -19,6 +19,8 @@ import (
 	"strings"
 	"yang/browse"
 	"fmt"
+	"bytes"
+	"bufio"
 )
 
 type apiBrowser struct {
@@ -83,18 +85,14 @@ func yangc2_load_module(
 	var to *browse.Selection
 	to, err = apiModuleBrowser.RootSelector()
 	defer to.Close()
-fmt.Printf("driver_browser.go: About to parse module\n")
 	if err == nil {
 		var from *browse.Selection
 		from, err = module_browser.RootSelector()
 		defer from.Close()
-fmt.Printf("driver_browser.go: Got root selector\n")
 		if err == nil {
 			err = browse.Insert(from, to)
-fmt.Printf("driver_browser.go: Insert complete\n")
 			if err == nil {
 				moduleHnd := NewGoHandle(module)
-fmt.Printf("driver_browser.go: Adding module handle %p for module %v\n", moduleHnd.ID, module)
 				return moduleHnd.ID
 			}
 		}
@@ -119,8 +117,6 @@ func yangc2_new_browser(
     root_selector_impl C.yangc2_browse_root_selector_impl,
 	module_hnd_id unsafe.Pointer,
 	browser_hnd_id unsafe.Pointer) unsafe.Pointer {
-
-fmt.Printf("driver.browser.go: GoHandles = %v\n", GoHandles())
 
 	module_hnd, module_found := GoHandles()[module_hnd_id]
 	if ! module_found {
@@ -241,22 +237,54 @@ func encodeIdent(position yang.Meta) *C.char {
 	return C.CString(position.GetIdent())
 }
 
+func (cb *apiSelector) read_cstrs(cstr_list []*C.char, len int) []string {
+
+}
+
 func (cb *apiSelector) read(s *browse.Selection, selectionHnd *ApiHandle, val *browse.Value) (err error) {
 	errPtr := unsafe.Pointer(&err)
 	ident := encodeIdent(s.Position)
 	var c_val C.struct_yangc2_browse_value
 	C.yangc2_browse_read(cb.browser.read_impl, selectionHnd.ID, ident, &c_val, errPtr)
-	switch c_val.val_type {
-	case C.enum_yangc2_browse_value_type(C.STRING):
-		val.Str = C.GoString(c_val.str)
-	case C.enum_yangc2_browse_value_type(C.INT32):
-		val.Int = int(c_val.int32)
-	case C.enum_yangc2_browse_value_type(C.BOOLEAN):
-		if c_val.boolean > C_FALSE {
-			val.Bool = true
-		} else {
-			// nop
-			val.Bool = false
+	if c_val.is_list > 0 {
+		val.IsList = true
+		switch c_val.val_type {
+		case C.enum_yangc2_browse_value_type(C.ENUMERATION):
+			val.Strlist == read_cstrs(c_val.cstr_list, c_val.list_len)
+			val.Intlist == read_ints(c_val.int_list, c_val.list_len)
+			val.Type = yang.TYPE_ENUMERATION
+		case C.enum_yangc2_browse_value_type(C.STRING):
+			val.Strlist == read_cstrs(c_val.cstr_list, c_val.list_len)
+			val.Type = yang.TYPE_STRING
+		case C.enum_yangc2_browse_value_type(C.INT32):
+			val.Intlist == read_ints(c_val.int_list, c_val.list_len)
+			val.Type = yang.TYPE_INT32
+		case C.enum_yangc2_browse_value_type(C.BOOLEAN):
+			if c_val.boolean > C_FALSE {
+				val.Bool = true
+			} else {
+				// nop
+				val.Bool = false
+			}
+			val.Type = yang.TYPE_BOOLEAN
+
+		}
+	} else {
+		switch c_val.val_type {
+		case C.enum_yangc2_browse_value_type(C.ENUMERATION):
+			val.Str = C.GoString(c_val.cstr)
+			val.Int = int(c_val.int32)
+		case C.enum_yangc2_browse_value_type(C.STRING):
+			val.Str = C.GoString(c_val.cstr)
+		case C.enum_yangc2_browse_value_type(C.INT32):
+			val.Int = int(c_val.int32)
+		case C.enum_yangc2_browse_value_type(C.BOOLEAN):
+			if c_val.boolean > C_FALSE {
+				val.Bool = true
+			} else {
+				// nop
+				val.Bool = false
+			}
 		}
 	}
 
@@ -269,30 +297,32 @@ const (
 )
 
 func leafListValue(val *browse.Value) (*C.struct_yangc2_browse_value, error) {
+	var buff bytes.Buffer
+	w := bufio.NewWriter(buff)
 	var c_val C.struct_yangc2_browse_value
-	c_val.islist = C_TRUE
+	c_val.is_list = C_TRUE
 	switch val.Type.Ident {
 	case "string":
-		c_val.listlen = C.int(len(val.Strlist))
+		c_val.list_len = C.int(len(val.Strlist))
 		strlist :=  make([]*C.char, len(val.Strlist))
 		for i, s := range val.Strlist {
 			strlist[i] = C.CString(s)
 		}
 		c_val.handle = NewGoHandle(strlist).ID
 		c_val.val_type = C.enum_yangc2_browse_value_type(C.STRING)
-		c_val.strlist = C.yangc2_cstrslice_as_strlist(unsafe.Pointer(&strlist))
+		c_val.cstr_list = C.yangc2_cstrslice_as_strlist(unsafe.Pointer(&strlist))
 	case "int32":
-		c_val.listlen = C.int(len(val.Intlist))
+		c_val.list_len = C.int(len(val.Intlist))
 		intlist := make([]C.int, len(val.Intlist))
 		c_val.handle = NewGoHandle(intlist).ID
 		for i, ival := range val.Intlist {
 			intlist[i] = C.int(ival)
 		}
 		c_val.val_type = C.enum_yangc2_browse_value_type(C.INT32)
-		c_val.intlist = C.yangc2_cintslice_as_intlist(unsafe.Pointer(&intlist))
+		c_val.int_list = C.yangc2_cintslice_as_intlist(unsafe.Pointer(&intlist))
 	case "boolean":
 		// TODO: could make this smaller using bit field
-		c_val.listlen = C.int(len(val.Boollist))
+		c_val.list_len = C.int(len(val.Boollist))
 		boollist := make([]C.short, len(val.Boollist))
 		c_val.handle = NewGoHandle(boollist).ID
 		for i, bval := range val.Boollist {
@@ -303,7 +333,7 @@ func leafListValue(val *browse.Value) (*C.struct_yangc2_browse_value, error) {
 			}
 		}
 		c_val.val_type = C.enum_yangc2_browse_value_type(C.BOOLEAN)
-		c_val.boollist = C.yangc2_cboolslice_as_boollist(unsafe.Pointer(&boollist))
+		c_val.bool_list = C.yangc2_cboolslice_as_boollist(unsafe.Pointer(&boollist))
 	default:
 		return nil, &driverError{"Unsupported type"}
 	}
@@ -315,7 +345,7 @@ func leafValue(val *browse.Value) (*C.struct_yangc2_browse_value, error) {
 	switch val.Type.Ident {
 	case "string":
 		c_val.val_type = C.enum_yangc2_browse_value_type(C.STRING)
-		c_val.str = C.CString(val.Str)
+		c_val.cstr = C.CString(val.Str)
 	case "int32":
 		c_val.val_type = C.enum_yangc2_browse_value_type(C.INT32)
 		c_val.int32 = C.int(val.Int)

@@ -6,12 +6,12 @@ import org.conf2.yang.StreamSource;
 import org.conf2.yang.browse.Browser;
 import org.conf2.yang.browse.ModuleBrowser;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 public class Driver {
     // TODO: Use weakreference queue and release objects automatically
@@ -34,14 +34,12 @@ public class Driver {
     }
 
     public DriverHandle newHandle(long hndId, Object obj) {
-System.out.println("Adding handle " + hndId + " for " + obj.toString());
         DriverHandle h = new DriverHandle(this, hndId);
         handles.put(obj, h);
         return h;
     }
 
     public DriverHandle getHandle(Object o) {
-System.out.println("Looking for handle " + o.toString() + " from handles: " + handles.size());
         return handles.get(o);
     }
 
@@ -66,7 +64,6 @@ System.out.println("Looking for handle " + o.toString() + " from handles: " + ha
     }
 
     public Module loadModule(StreamSource source, String resource) {
-//System.out.printf("ds.reference.length=%d\n", ds.reference.array().length);
         ModuleBrowser moduleBrowser = new ModuleBrowser(null);
         long handle = loadModule(source, resource, moduleBrowser);
         if (handle == 0) {
@@ -74,6 +71,56 @@ System.out.println("Looking for handle " + o.toString() + " from handles: " + ha
         }
         newHandle(handle, moduleBrowser.module);
         return moduleBrowser.module;
+    }
+
+    public static int utf8StrLen(CharSequence s) {
+        int count = 0;
+        for (int i = 0, len = s.length(); i < len; i++) {
+            char ch = s.charAt(i);
+            if (ch <= 0x7F) {
+                count++;
+            } else if (ch <= 0x7FF) {
+                count += 2;
+            } else if (Character.isHighSurrogate(ch)) {
+                count += 4;
+                ++i;
+            } else {
+                count += 3;
+            }
+        }
+        return count;
+    }
+
+    public static ByteBuffer encodeCStrArray(String[] strlist) throws IOException {
+        byte bNULL = 0;
+        int datalen = 0;
+        for (String s : strlist) {
+            datalen += utf8StrLen(s) + 1;
+        }
+        ByteBuffer out = ByteBuffer.allocateDirect(datalen);
+        for (String s : strlist) {
+            out.put(s.getBytes());
+            out.put(bNULL);
+        }
+        return out;
+    }
+
+    public static ByteBuffer encodeCIntArray(int[] intlist) throws IOException {
+        ByteBuffer out = ByteBuffer.allocateDirect(4 * intlist.length);
+        for (int i = 0; i < intlist.length; i++) {
+            out.putInt(intlist[i]);
+        }
+        return out;
+    }
+
+    public static ByteBuffer encodeCBoolArray(boolean[] boollist) throws IOException {
+        short sTrue = 1;
+        short sFalse = 0;
+        ByteBuffer out = ByteBuffer.allocateDirect(2 * boollist.length);
+        for (int i = 0; i < boollist.length; i++) {
+            out.putShort(boollist[i] ? sTrue : sFalse);
+        }
+        return out;
     }
 
     private native void releaseHandle(long handleId);
