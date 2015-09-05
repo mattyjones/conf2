@@ -1,9 +1,7 @@
 package org.conf2.yang.driver;
 
 import org.conf2.yang.ValueType;
-import org.conf2.yang.browse.BrowseRead;
-import org.conf2.yang.browse.BrowseValue;
-import org.conf2.yang.browse.Selection;
+import org.conf2.yang.browse.*;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -54,8 +52,21 @@ public class BrowserComplianceTest {
         assertTrue(passed);
     }
 
+    @Test
+    public void editTest() {
+        writeTest("write one a", (EditOperation op, BrowseValue val) -> {
+            System.out.printf("Here");
+        });
+    }
+
     void readTest(String testname, BrowseRead read) {
         selection.Read = read;
+        passed = harness.runTest(testname, selection) && passed;
+    }
+
+    void writeTest(String testname, BrowseEdit edit) {
+        selection.Edit = edit;
+        selection.found = true;
         passed = harness.runTest(testname, selection) && passed;
     }
 }

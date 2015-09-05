@@ -81,14 +81,19 @@ SPACE := $(EMPTY) $(EMPTY)
 JAVA_TEST_CP = drivers/java/classes:$(subst $(SPACE),:,$(JAVA_TEST_JARS))
 JAVA_TEST_RUNNER = org.junit.runner.JUnitCore
 
-JAVA_TESTS = \
-	org.conf2.yang.browse.ModuleBrowserTest \
-	org.conf2.yang.driver.BrowserAdaptorTest \
-	org.conf2.yang.driver.BrowserComplianceTest \
-	org.conf2.yang.driver.DriverLoaderTest
+JAVA_TESTS = Test
 
 JAVA_TEST_SRC = \
 	$(shell find drivers/java/src -name '*Test.java')
+
+JAVA_TEST_SRC_BASE = \
+	$(shell find drivers/java/src -name '*Test.java' -printf '%P ')
+
+JAVA_TESTS = \
+	$(subst /,.,$(JAVA_TEST_SRC_BASE:.java=))
+
+debug :
+	echo $(JAVA_TESTS)
 
 driver-java-test :
 	test -d drivers/java/test || mkdir drivers/java/test

@@ -26,7 +26,10 @@ public class ModuleBrowser implements Browser {
     public Selection getRootSelector() {
         Selection s = new Selection();
         s.meta = yang;
-        s.Enter = () -> enterModule(module);
+        s.Enter = () -> {
+            s.found = module != null;
+            return enterModule(module);
+        };
         s.Edit = (EditOperation op, BrowseValue val) -> {
             switch (op) {
                 case CREATE_CHILD:

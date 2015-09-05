@@ -302,7 +302,6 @@ func (cb *apiSelector) read(s *browse.Selection, selectionHnd *ApiHandle, val *b
 			val.Boollist = getBoolSlice(data, listLen)
 		}
 	} else {
-fmt.Printf("driver_browser.go format=%d\n", val.Type.Format)
 		switch val.Type.Format {
 		case yang.FMT_ENUMERATION:
 			val.SetEnum(int(c_val.int32))

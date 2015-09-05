@@ -84,6 +84,18 @@ public class BrowseValue {
         str = type.enumeration[n];
     }
 
+    public void setEnum(Meta meta, String enumLabel) {
+        valType = ValueType.ENUMERATION;
+        DataType type = ((HasDataType)meta).getDataType();
+        for (int n= 0; n < type.enumeration.length; n++) {
+            if (type.enumeration[n].equals(enumLabel)) {
+                int32 = n;
+                str = type.enumeration[n];
+                return;
+            }
+        }
+    }
+
     public void addEnum(Meta meta, int n) {
         valType = ValueType.ENUMERATION;
         isList = true;
@@ -161,7 +173,6 @@ public class BrowseValue {
     public static int[] decodeCIntArray(ByteBuffer buff, int listlen) {
         int[] intlist = new int[listlen];
         for (int i = 0; i < listlen; i++) {
-            buff.getInt();
             intlist[i] =  buff.getInt();
         }
         return intlist;
