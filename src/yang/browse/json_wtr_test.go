@@ -44,10 +44,11 @@ module json-test {
 
 		tests := [] struct {
 			path string
+			expected string
 		} {
 			//{ "birding" },
 			//{ "birding/lifer" },
-			{ "birding/lifer=towhee" },
+			{ "birding/lifer=towhee", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"}]}` },
 			//{ "birding/reference" },
 		}
 
@@ -70,6 +71,10 @@ module json-test {
 					t.Error("failed to transmit json", err)
 				} else {
 					actual := string(actualBuff.Bytes())
+					if actual != test.expected {
+						msg := fmt.Sprintf("\nExpected:'%s'\n  Actual:'%s'", test.expected, actual)
+						t.Error(msg)
+					}
 					t.Log("Round Trip:", actual)
 				}
 			}

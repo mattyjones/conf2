@@ -44,14 +44,14 @@ func (self *YangBrowser) RootSelector() (s *Selection, err error) {
 		s.Found = true
 		switch s.Position.GetIdent() {
 		case "module" :
-			return selectModule(self.module)
+			return SelectModule(self.module)
 		}
 		return nil, nil
 	}
 	return
 }
 
-func selectModule(module *yang.Module) (s *Selection, err error) {
+func SelectModule(module *yang.Module) (s *Selection, err error) {
 	s = &Selection{}
 	s.Enter = func() (child *Selection, err error) {
 		s.Found = true

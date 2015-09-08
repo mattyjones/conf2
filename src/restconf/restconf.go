@@ -56,7 +56,6 @@ type registration struct {
 }
 
 func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("RESTCONF", r.URL.Path)
 	var err error
 	var path *browse.Path
 	if path, err = browse.NewPath(r.URL.Path); err == nil {
@@ -122,6 +121,7 @@ func (service *serviceImpl) Listen() {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
+	log.Println("Starting RESTCONF interface")
 	log.Fatal(s.ListenAndServe())
 }
 

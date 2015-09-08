@@ -41,15 +41,19 @@ func (json *JsonWriter) selectJson() (*Selection, error) {
 		case BEGIN_EDIT:
 			_, err = json.out.WriteRune(OPEN_OBJ)
 			if yang.IsList(s.Meta) {
-				json.beginList(s.Meta)
+				if err = json.beginList(s.Meta); err == nil {
+					err = json.beginArrayItem()
+				}
 			} else {
-				json.beginContainer(s.Meta)
+				err = json.beginContainer(s.Meta)
 			}
 		case END_EDIT:
 			if yang.IsList(s.Meta) {
-				json.endList()
+				if err = json.endArrayItem(); err == nil {
+					err = json.endList()
+				}
 			} else {
-				json.endContainer()
+				err = json.endContainer()
 			}
 			if _, err = json.out.WriteRune(CLOSE_OBJ); err != nil {
 				return err

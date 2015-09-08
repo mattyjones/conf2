@@ -4,7 +4,6 @@ import (
 	"yang"
 	"yang/browse"
 	"sort"
-	"fmt"
 )
 
 type RestconfBrowser struct {
@@ -22,7 +21,6 @@ func NewBrowser(restconf *serviceImpl) (rcb *RestconfBrowser, err error) {
 		targetMaster := yang.FindByPath(targetParent, "module").(*yang.Container)
 		// shallow clone target otherwise we alter browser's schema
 		target := *targetMaster
-fmt.Printf("restconf_browser target=%v\n", target)
 		parent.ReplaceMeta(placeholder, &target);
 		rcb = &RestconfBrowser{Meta:module, Service:restconf}
 	}
@@ -73,14 +71,12 @@ func enterRegistrations(registrations map[string]registration) (*browse.Selectio
 	}
 	s.Enter = func() (*browse.Selection, error) {
 		ident := s.Position.GetIdent()
-fmt.Printf("restconf_browser, i=%d, name=%s, ident=%s\n", i, names[i], ident)
 		switch ident {
 		case "module":
 			var reg registration
 			reg, s.Found = registrations[names[i]]
 			if s.Found {
-				yangBrowser := browse.NewYangBrowser(reg.browser.Module())
-				return yangBrowser.RootSelector()
+				return browse.SelectModule(reg.browser.Module())
 			}
 		}
 		return nil, nil

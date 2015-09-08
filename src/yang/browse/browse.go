@@ -3,7 +3,6 @@ package browse
 import (
 	"yang"
 	"reflect"
-	"fmt"
 )
 
 type Browser interface {
@@ -145,7 +144,6 @@ func walk(selection *Selection, controller WalkController, level int) (err error
 			if yang.IsLeaf(selection.Position) {
 				val := &Value{}
 				if err = selection.ReadValue(val); err != nil {
-fmt.Printf("browse.go - got here\n")
 					return err
 				}
 			} else {
