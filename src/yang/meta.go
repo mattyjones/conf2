@@ -93,6 +93,7 @@ func (y *ListBase) swapMeta(oldChild Meta, newChild Meta) error {
 	}
 	previousSibling.SetSibling(newChild)
 	newChild.SetSibling(oldChild.GetSibling())
+	newChild.SetParent(oldChild.GetParent())
 	if y.FirstMeta == oldChild {
 		y.FirstMeta = newChild
 	}

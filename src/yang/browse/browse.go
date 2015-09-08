@@ -3,6 +3,7 @@ package browse
 import (
 	"yang"
 	"reflect"
+	"fmt"
 )
 
 type Browser interface {
@@ -109,22 +110,8 @@ func WalkPath(from *Selection, path *Path) (s *Selection, err error) {
 	return nest.target, err
 }
 
-type WalkController interface {
-	ListIterator(s *Selection, level int, first bool) (hasMore bool, err error)
-	ContainerIterator(s *Selection, level int) yang.MetaIterator
-}
-
-type exhaustiveController struct {}
-
-func (e exhaustiveController) ListIterator(s *Selection, level int, first bool) (hasMore bool, err error) {
-	return s.Iterate([]string{}, first)
-}
-func (e exhaustiveController) ContainerIterator(s *Selection, level int) yang.MetaIterator {
-	return yang.NewMetaListIterator(s.Meta, true)
-}
-
 func WalkExhaustive(selection *Selection) (err error) {
-	return walk(selection, exhaustiveController{}, 0)
+	return walk(selection, &exhaustiveController{MaxDepth:32}, 0)
 }
 
 func walk(selection *Selection, controller WalkController, level int) (err error) {
@@ -158,11 +145,13 @@ func walk(selection *Selection, controller WalkController, level int) (err error
 			if yang.IsLeaf(selection.Position) {
 				val := &Value{}
 				if err = selection.ReadValue(val); err != nil {
+fmt.Printf("browse.go - got here\n")
 					return err
 				}
 			} else {
 				child, err = selection.Enter()
 				if child != nil {
+					child.Meta = selection.Position.(yang.MetaList)
 					defer child.Close()
 				}
 				if err != nil {
@@ -171,7 +160,6 @@ func walk(selection *Selection, controller WalkController, level int) (err error
 				if !selection.Found {
 					continue
 				}
-				child.Meta = selection.Position.(yang.MetaList)
 
 				if err = walk(child, controller, level + 1); err != nil {
 					return

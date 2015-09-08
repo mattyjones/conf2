@@ -28,12 +28,20 @@ type Service interface {
 	Stop()
 }
 
-func NewService() Service {
+func NewService() (Service, error) {
 	service := &serviceImpl{restconfPath:"/restconf/"}
 	service.registrations = make(map[string]registration, 5)
 	service.mux = http.NewServeMux()
 	service.mux.HandleFunc("/.well-known/host-meta", service.resources)
-	return service
+	// always add browser for restconf server itself
+	rcb, err := NewBrowser(service)
+	if err != nil {
+		return nil, err
+	}
+	if err = service.RegisterBrowser(rcb); err != nil {
+		return nil, err
+	}
+	return service, nil
 }
 
 type serviceImpl struct {
@@ -50,8 +58,10 @@ type registration struct {
 func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("RESTCONF", r.URL.Path)
 	var err error
-	if path, err := browse.NewPath(r.URL.Path); err == nil {
-		if selection, err := reg.browser.RootSelector(); err == nil {
+	var path *browse.Path
+	if path, err = browse.NewPath(r.URL.Path); err == nil {
+		var selection *browse.Selection
+		if selection, err = reg.browser.RootSelector(); err == nil {
 			if selection, err = browse.WalkPath(selection, path); err == nil {
 				if selection == nil {
 					http.Error(w, r.URL.Path, http.StatusNotFound)
@@ -60,12 +70,14 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					case "GET":
 						w.Header().Set("Content-Type", mime.TypeByExtension("json"))
 						wtr := browse.NewJsonWriter(w)
-						if out, err := wtr.GetSelector(); err == nil {
+						var out *browse.Selection
+						if out, err = wtr.GetSelector(); err == nil {
 							err = browse.Insert(selection, out)
 						}
 					case "POST":
 						rdr := browse.NewJsonReader(r.Body)
-						if in, err := rdr.GetSelector(selection.Meta); err == nil {
+						var in *browse.Selection
+						if in, err = rdr.GetSelector(selection.Meta); err == nil {
 							if err = browse.Insert(in, selection); err == nil {
 								http.Error(w, "", http.StatusNoContent)
 							}

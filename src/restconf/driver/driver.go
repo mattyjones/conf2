@@ -13,7 +13,11 @@ import (
 
 //export restconfc2_service_new
 func restconfc2_service_new() unsafe.Pointer {
-	service := restconf.NewService()
+	service, err := restconf.NewService()
+	// TODO : Proper error handling
+	if err != nil {
+		return nil
+	}
 	return driver.NewGoHandle(service).ID
 }
 

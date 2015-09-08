@@ -2,6 +2,7 @@ package org.conf2.yang.browse;
 
 import org.conf2.yang.Meta;
 import org.conf2.yang.MetaCollection;
+import org.conf2.yang.driver.DriverHandle;
 
 /**
  *

@@ -181,6 +181,10 @@ func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (
 	s.ReadValue = func(v *Value) (err error) {
 		from.Position = s.Position
 		to.Position = s.Position
+		if from.ReadValue == nil {
+			msg := fmt.Sprint("Read not implemented on ", from.Meta.GetIdent())
+			return &browseError{Msg:msg}
+		}
 		if err = from.ReadValue(v); err != nil {
 			return
 		}

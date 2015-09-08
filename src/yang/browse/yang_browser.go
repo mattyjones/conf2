@@ -2,7 +2,6 @@ package browse
 import (
 	"yang"
 	"fmt"
-	"reflect"
 )
 
 /**
@@ -20,12 +19,12 @@ func (self *YangBrowser) Module() *yang.Module {
 }
 
 func NewYangBrowser(module *yang.Module) *YangBrowser {
-	browser := &YangBrowser{module:module, meta:getYangModule()}
+	browser := &YangBrowser{module:module, meta:GetYangModule()}
 	return browser
 }
 
 var yang1_0 *yang.Module
-func getYangModule() *yang.Module {
+func GetYangModule() *yang.Module {
 	if yang1_0 == nil {
 		var err error
 		yang1_0, err = yang.LoadModuleFromByteArray([]byte(YANG_1_0))
@@ -383,8 +382,8 @@ func definitionType(data yang.Meta) string {
 	switch data.(type) {
 	case *yang.List:
 		return "list"
-	case *yang.Container:
-		return "container"
+//	case *yang.Container:
+//		return "container"
 	case *yang.Uses:
 		return "uses"
 	case *yang.Choice:
@@ -394,8 +393,9 @@ func definitionType(data yang.Meta) string {
 	case *yang.LeafList:
 		return "leaf-list"
 	default:
-		msg := fmt.Sprint("unknown type", reflect.TypeOf(data))
-		panic(msg)
+		return "container"
+//		msg := fmt.Sprint("unknown type", reflect.TypeOf(data))
+//		panic(msg)
 	}
 }
 
