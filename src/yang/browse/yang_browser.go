@@ -222,7 +222,7 @@ func selectMetaList(data *yang.List) (s *Selection, err error) {
 	return
 }
 
-func selectMetaContainer(data *yang.Container) (s *Selection, err error) {
+func selectMetaContainer(data yang.MetaList) (s *Selection, err error) {
 	s = &Selection{}
 	s.Enter = func() (*Selection, error) {
 		s.Found = true
@@ -350,8 +350,6 @@ func selectDefinitionsList(dataList yang.MetaList) (s *Selection, err error) {
 		switch s.Position.GetIdent() {
 		case "list":
 			return selectMetaList(i.data.(*yang.List))
-		case "container":
-			return selectMetaContainer(i.data.(*yang.Container))
 		case "leaf":
 			return selectMetaLeaf(i.data.(*yang.Leaf))
 		case "leaf-list":
@@ -360,6 +358,8 @@ func selectDefinitionsList(dataList yang.MetaList) (s *Selection, err error) {
 			return selectMetaUses(i.data.(*yang.Uses))
 		case "choice":
 			return selectMetaChoice(i.data.(*yang.Choice))
+		default:
+			return selectMetaContainer(i.data.(yang.MetaList))
 		}
 		return nil, nil
 	}
@@ -382,8 +382,6 @@ func definitionType(data yang.Meta) string {
 	switch data.(type) {
 	case *yang.List:
 		return "list"
-//	case *yang.Container:
-//		return "container"
 	case *yang.Uses:
 		return "uses"
 	case *yang.Choice:
@@ -394,8 +392,6 @@ func definitionType(data yang.Meta) string {
 		return "leaf-list"
 	default:
 		return "container"
-//		msg := fmt.Sprint("unknown type", reflect.TypeOf(data))
-//		panic(msg)
 	}
 }
 

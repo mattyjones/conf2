@@ -33,28 +33,28 @@ func (self *JsonReader) GetSelector(meta yang.MetaList) (s *Selection, err error
 func readLeafOrLeafList(meta yang.Meta, data interface{}, val *Value) (err error) {
 	switch tmeta := meta.(type) {
 	case *yang.Leaf:
-		switch tmeta.DataType.Resolve().Ident {
-		case "int32":
+		switch tmeta.DataType.Format {
+		case yang.FMT_INT32:
 			val.Int = int(data.(float64))
-		case "string":
+		case yang.FMT_STRING:
 			s := data.(string)
 			val.Str = s
-		case "boolean":
+		case yang.FMT_BOOLEAN:
 			s := data.(string)
 			val.Bool = ("true" == s)
 		}
 	case *yang.LeafList:
-		switch tmeta.DataType.Resolve().Ident {
-		case "int32":
+		switch tmeta.DataType.Format {
+		case yang.FMT_INT32:
 			a := data.([]float64)
 			val.Intlist = make([]int, len(a))
 			for i, f := range a {
 				val.Intlist[i] = int(f)
 			}
-		case "string":
+		case yang.FMT_STRING:
 			a := data.([]string)
 			val.Strlist = a
-		case "boolean":
+		case yang.FMT_BOOLEAN:
 			a := data.([]string)
 			val.Boollist = make([]bool, len(a))
 			for i, s := range a {

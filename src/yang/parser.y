@@ -155,9 +155,7 @@ module_stmt :
     }
 
 module_body_stmt :
-    typedef_stmt
-    | grouping_stmt
-    | rpc_stmt
+    rpc_stmt
     | notification_stmt
     | body_stmt
 
@@ -170,7 +168,9 @@ optional_body_stmts :
     | body_stmts;
 
 body_stmt :
-    list_stmt
+    typedef_stmt
+    | grouping_stmt
+    | list_stmt
     | container_stmt
     | leaf_stmt
     | leaf_list_stmt
