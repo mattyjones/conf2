@@ -38,6 +38,11 @@ type Selection struct {
 	Resource yang.Resource
 }
 
+type WalkController interface {
+	ListIterator(s *Selection, level int, first bool) (hasMore bool, err error)
+	ContainerIterator(s *Selection, level int) yang.MetaIterator
+}
+
 func (v *Value) SetEnumList(intlist []int) {
 	v.Strlist = make([]string, len(intlist))
 	for i, n := range intlist {
@@ -101,7 +106,7 @@ type Exit func() (error)
 type ResolveChoice func(choice *yang.Choice) (m yang.Meta, err error)
 
 func WalkPath(from *Selection, path *Path) (s *Selection, err error) {
-	nest := newPathController(path)
+	nest := path.FindTargetController()
 	err = walk(from, nest, 0)
 	if nest.target != nil {
 		nest.target.Resource = nest.resource
@@ -109,8 +114,8 @@ func WalkPath(from *Selection, path *Path) (s *Selection, err error) {
 	return nest.target, err
 }
 
-func WalkExhaustive(selection *Selection) (err error) {
-	return walk(selection, &exhaustiveController{MaxDepth:32}, 0)
+func WalkExhaustive(selection *Selection, controller WalkController) (err error) {
+	return walk(selection, controller, 0)
 }
 
 func walk(selection *Selection, controller WalkController, level int) (err error) {

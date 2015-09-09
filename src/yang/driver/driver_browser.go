@@ -61,7 +61,7 @@ func yangc2_load_module(
 		fmt.Println("Error loading module", err.Error())
 		return nil
 	}
-	module_browser := browse.NewYangBrowser(module)
+	module_browser := browse.NewYangBrowser(module, false)
 
 	browser_hnd, browser_found := ApiHandles()[browser_hnd_id]
 	if ! browser_found {
@@ -87,7 +87,7 @@ func yangc2_load_module(
 		from, err = module_browser.RootSelector()
 		defer from.Close()
 		if err == nil {
-			err = browse.Insert(from, to)
+			err = browse.Insert(from, to, browse.NewExhaustiveController())
 			if err == nil {
 				moduleHnd := NewGoHandle(module)
 				return moduleHnd.ID

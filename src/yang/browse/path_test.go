@@ -71,16 +71,15 @@ func TestPathParams(t *testing.T) {
 		in string
 		expected int
 	}{
-		{"a", 					0},
-		{"a?", 					0},
-		{"a?depth=1", 			1},
-		{"a/b?depth=99", 		99},
+		{"", 				32},
+		{"depth=1", 		1},
+		{"depth=99", 		99},
 	}
 	for _, test := range tests {
-		p, _ := NewPath(test.in)
-		if p.Depth != test.expected {
+		p, _ := NewWalkTargetController(test.in)
+		if p.MaxDepth != test.expected {
 			desc := fmt.Sprintf("\"%s\" - expected depth \"%d\" - got \"%d\"",
-				test.in, test.expected, p.Depth)
+				test.in, test.expected, p.MaxDepth)
 			t.Error(desc)
 		}
 	}

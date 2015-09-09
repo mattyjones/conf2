@@ -31,23 +31,23 @@ const (
 type editor struct {
 }
 
-func Insert(from *Selection, to *Selection) error {
-	return edit(from, to, INSERT)
+func Insert(from *Selection, to *Selection, controller WalkController) error {
+	return edit(from, to, INSERT, controller)
 }
 
-func Upsert(from *Selection, to *Selection) error {
-	return edit(from, to, UPSERT)
+func Upsert(from *Selection, to *Selection, controller WalkController) error {
+	return edit(from, to, UPSERT, controller)
 }
 
-func Delete(from *Selection, to *Selection, p *Path) error {
-	return edit(from, to, DELETE)
+func Delete(from *Selection, to *Selection, p *Path, controller WalkController) error {
+	return edit(from, to, DELETE, controller)
 }
 
-func Update(from *Selection, to *Selection) error {
-	return edit(from, to, UPDATE)
+func Update(from *Selection, to *Selection, controller WalkController) error {
+	return edit(from, to, UPDATE, controller)
 }
 
-func edit(from *Selection, dest *Selection, strategy strategy) (err error) {
+func edit(from *Selection, dest *Selection, strategy strategy, controller WalkController) (err error) {
 	e := editor{}
 	var s *Selection
 	s, err = e.editTarget(from, dest, strategy)
@@ -55,7 +55,7 @@ func edit(from *Selection, dest *Selection, strategy strategy) (err error) {
 		s.Meta = from.Meta
 		dest.Meta = s.Meta
 		if err = dest.Edit(BEGIN_EDIT, nil); err == nil {
-			if err = WalkExhaustive(s); err == nil {
+			if err = WalkExhaustive(s, controller); err == nil {
 				err = dest.Edit(END_EDIT, nil)
 			}
 		}
@@ -239,7 +239,6 @@ func (e *editor) editTarget(from *Selection, to *Selection, strategy strategy) (
 		}
 
 		// TODO: Consider to.hasMore results on LIST_ITEM calls
-
 		if first && hasMore {
 			err = to.Edit(CREATE_LIST_ITEM, nil)
 		} else if !first && hasMore {

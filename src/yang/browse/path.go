@@ -8,7 +8,7 @@ import (
 type Path struct {
 	Segments []PathSegment
 	URL string
-	Depth int
+	query string
 }
 
 type PathSegment struct {
@@ -28,9 +28,7 @@ func NewPath(path string) (p *Path, err error) {
 	qmark := strings.Index(path, "?")
 	if qmark >= 0 {
 		p.URL = path[:qmark]
-		if err = p.parseQuery(path[qmark + 1:]); err != nil {
-			return nil, err
-		}
+		p.query = path[qmark + 1:]
 	} else {
 		p.URL = path
 	}
@@ -39,20 +37,6 @@ func NewPath(path string) (p *Path, err error) {
 	for i, segment := range segments {
 		p.Segments[i] = PathSegment{Path:p, Index:i}
 		p.Segments[i].parseSegment(segment)
-	}
-	return
-}
-
-func (p *Path) parseQuery(q string) (err error) {
-	params := strings.Split(q, "&")
-	for _, param := range params {
-		nameValue := strings.Split(param, "=")
-		switch nameValue[0] {
-		case "depth":
-			if p.Depth, err = strconv.Atoi(nameValue[1]); err != nil {
-				return
-			}
-		}
 	}
 	return
 }
@@ -67,17 +51,70 @@ func (ps *PathSegment) parseSegment(segment string) {
 	}
 }
 
-type pathWalkController struct {
+func (p *Path) FindTargetController() *FindTargetController {
+	return &FindTargetController{path:p}
+}
+
+func (p *Path) WalkTargetController() (WalkController, error) {
+	if len(p.query) > 0 {
+		return NewWalkTargetController(p.query)
+	}
+	return NewExhaustiveController(), nil
+}
+
+type WalkTargetController struct {
+	MaxDepth int
+}
+
+func NewWalkTargetController(query string) (*WalkTargetController, error) {
+	c := &WalkTargetController{MaxDepth:32}
+	c.parseQuery(query)
+	return c, nil
+}
+
+func (p *WalkTargetController) parseQuery(q string) (err error) {
+	params := strings.Split(q, "&")
+	for _, param := range params {
+		nameValue := strings.Split(param, "=")
+		switch nameValue[0] {
+		case "depth":
+			if p.MaxDepth, err = strconv.Atoi(nameValue[1]); err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+func NewExhaustiveController() WalkController {
+	return &WalkTargetController{MaxDepth:32}
+}
+
+func (e *WalkTargetController) ListIterator(s *Selection, level int, first bool) (hasMore bool, err error) {
+	if level >= e.MaxDepth {
+		return false, nil
+	}
+	return s.Iterate([]string{}, first)
+}
+
+func (e *WalkTargetController) ContainerIterator(s *Selection, level int) yang.MetaIterator {
+	if level >= e.MaxDepth {
+		return yang.EmptyInterator(0)
+	}
+	return yang.NewMetaListIterator(s.Meta, true)
+}
+
+type FindTargetController struct {
 	path *Path
 	target *Selection
 	resource yang.Resource
 }
 
-func newPathController(p *Path) *pathWalkController {
-	return &pathWalkController{path:p}
+func newPathController(p *Path) *FindTargetController {
+	return &FindTargetController{path:p}
 }
 
-func (n *pathWalkController) ListIterator(s *Selection, level int, first bool) (hasMore bool, err error) {
+func (n *FindTargetController) ListIterator(s *Selection, level int, first bool) (hasMore bool, err error) {
 	if level == len(n.path.Segments) {
 		if len(n.path.Segments[level - 1].Keys) == 0 {
 			n.target = s
@@ -95,14 +132,14 @@ func (n *pathWalkController) ListIterator(s *Selection, level int, first bool) (
 	}
 }
 
-func (n *pathWalkController) setTarget(s *Selection) {
+func (n *FindTargetController) setTarget(s *Selection) {
 	n.target = s
 	// we take ownership of resource so it's not released until target is used
 	n.resource = s.Resource
 	s.Resource = nil
 }
 
-func (n *pathWalkController) ContainerIterator(s *Selection, level int) yang.MetaIterator {
+func (n *FindTargetController) ContainerIterator(s *Selection, level int) yang.MetaIterator {
 	if level >= len(n.path.Segments) {
 		n.target = s
 		return yang.EmptyInterator(0)

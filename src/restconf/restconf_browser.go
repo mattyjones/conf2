@@ -76,7 +76,8 @@ func enterRegistrations(registrations map[string]registration) (*browse.Selectio
 			var reg registration
 			reg, s.Found = registrations[names[i]]
 			if s.Found {
-				return browse.SelectModule(reg.browser.Module())
+				browser := browse.NewYangBrowser(reg.browser.Module(), true)
+				return browser.SelectModule(reg.browser.Module())
 			}
 		}
 		return nil, nil

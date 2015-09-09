@@ -46,10 +46,13 @@ module json-test {
 			path string
 			expected string
 		} {
-			//{ "birding" },
-			//{ "birding/lifer" },
-			{ "birding/lifer=towhee", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"}]}` },
-			//{ "birding/reference" },
+			{ "", strings.Replace(json, "\n", "", -1)},
+			{ "birding", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"},{"species":"robin","location":"East Rock, CT"}],"reference":{"name":"Peterson's Guide"}}`},
+			{ "birding/lifer=towhee", `{"species":"towhee","location":"Hammonasset, CT"}` },
+			{ "birding?depth=1", `{"lifer":[],"reference":{}}` },
+			{ "birding/lifer", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"},{"species":"robin","location":"East Rock, CT"}]}` },
+			{ "birding/lifer?depth=1", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"},{"species":"robin","location":"East Rock, CT"}]}` },
+			{ "birding/reference", `{"name":"Peterson's Guide"}` },
 		}
 
 		for _, test := range tests {
@@ -65,17 +68,19 @@ module json-test {
 			} else {
 				out := NewJsonWriter(&actualBuff)
 				to, _ := out.GetSelector()
-				fmt.Println("json_test:=====================")
-				err = Insert(ref, to)
-				if err != nil {
-					t.Error("failed to transmit json", err)
+				var cntlr WalkController
+				if cntlr, err = p.WalkTargetController(); err != nil {
 				} else {
-					actual := string(actualBuff.Bytes())
-					if actual != test.expected {
-						msg := fmt.Sprintf("\nExpected:'%s'\n  Actual:'%s'", test.expected, actual)
-						t.Error(msg)
+					err = Insert(ref, to, cntlr)
+					if err != nil {
+						t.Error("failed to transmit json", err)
+					} else {
+						actual := string(actualBuff.Bytes())
+						if actual != test.expected {
+							msg := fmt.Sprintf("For path %s\nExpected:'%s'\n  Actual:'%s'", test.path, test.expected, actual)
+							t.Error(msg)
+						}
 					}
-					t.Log("Round Trip:", actual)
 				}
 			}
 		}

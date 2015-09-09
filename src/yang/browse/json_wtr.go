@@ -18,6 +18,9 @@ const COMMA = ',';
 type JsonWriter struct {
 	out *bufio.Writer
 	firstInContainer bool
+	startingInsideList bool
+	firstWrite bool
+	closeArrayOnExit bool
 }
 
 func NewJsonWriter(out io.Writer) *JsonWriter {
@@ -40,48 +43,58 @@ func (json *JsonWriter) selectJson() (*Selection, error) {
 		switch op {
 		case BEGIN_EDIT:
 			_, err = json.out.WriteRune(OPEN_OBJ)
-			if yang.IsList(s.Meta) {
-				if err = json.beginList(s.Meta); err == nil {
-					err = json.beginArrayItem()
-				}
-			} else {
-				err = json.beginContainer(s.Meta)
-			}
+			json.startingInsideList = yang.IsList(s.Meta)
+			json.firstWrite = true
+			return err
 		case END_EDIT:
-			if yang.IsList(s.Meta) {
-				if err = json.endArrayItem(); err == nil {
-					err = json.endList()
+			if err = json.conditionallyCloseArrayOnLastWrite(); err == nil {
+				if _, err = json.out.WriteRune(CLOSE_OBJ); err == nil {
+					err = json.out.Flush()
 				}
-			} else {
-				err = json.endContainer()
 			}
-			if _, err = json.out.WriteRune(CLOSE_OBJ); err != nil {
-				return err
-			}
-			return json.out.Flush()
 		case CREATE_CHILD:
 			err = json.beginContainer(s.Position)
 		case POST_CREATE_CHILD:
 			err = json.endContainer()
 		case CREATE_LIST_ITEM:
-			err = json.beginArrayItem()
+			if err = json.conditionallyOpenArrayOnFirstWrite(s); err == nil {
+				err = json.beginArrayItem()
+			}
 		case POST_CREATE_LIST_ITEM:
 			err = json.endArrayItem()
 		case CREATE_LIST:
-			return json.beginList(s.Position)
+			err = json.beginList(s.Position)
 		case POST_CREATE_LIST:
 			return json.endList()
 		case UPDATE_VALUE:
-			return json.writeValue(s.Position, v)
+			err = json.writeValue(s.Position, v)
 		default:
-			return &browseError{Msg:"Operation not supported"}
+			err = &browseError{Msg:"Operation not supported"}
 		}
+		json.firstWrite = false
 		return
 	}
 	s.Iterate = func(keys []string, first bool) (hasMore bool, err error) {
 		return false, nil
 	}
 	return s, nil
+}
+
+func (json *JsonWriter) conditionallyOpenArrayOnFirstWrite(s *Selection) error {
+	var err error
+	if json.firstWrite && json.startingInsideList {
+		json.closeArrayOnExit = true
+		err = json.beginList(s.Meta)
+	}
+	return err
+}
+
+func (json *JsonWriter) conditionallyCloseArrayOnLastWrite() error {
+	var err error
+	if json.closeArrayOnExit {
+		err = json.endList()
+	}
+	return err
 }
 
 func (json *JsonWriter) beginList(meta yang.Meta) (err error) {
@@ -109,6 +122,7 @@ func (json *JsonWriter) beginContainer(meta yang.Meta) (err error) {
 }
 
 func (json *JsonWriter) endContainer() (err error) {
+	json.firstInContainer = false;
 	_, err = json.out.WriteRune(CLOSE_OBJ)
 	return
 }
@@ -210,6 +224,7 @@ func (json *JsonWriter) beginArrayItem() (err error) {
 }
 
 func (json *JsonWriter) endArrayItem() (err error) {
+	json.firstInContainer = false;
 	_, err = json.out.WriteRune(CLOSE_OBJ);
 	return
 }

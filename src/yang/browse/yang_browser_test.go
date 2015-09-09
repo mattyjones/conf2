@@ -19,7 +19,7 @@ func printMeta(m yang.Meta, level string) {
 	}
 }
 
-func TestRead(t *testing.T) {
+func TestYangBrowserRead(t *testing.T) {
 	tests := []struct {
 		yang string
 		expected string
@@ -27,7 +27,7 @@ func TestRead(t *testing.T) {
 	} {
 		{
 			`leaf c { type enumeration { enum a; enum b; } }`,
-			`{"test":{"c":"a"}}`,
+			`{"c":"a"}`,
 			func(v *Value) error {
 				v.Int = 0
 				v.Str = "a"
@@ -36,7 +36,7 @@ func TestRead(t *testing.T) {
     	},
 		{
 			`leaf-list c { type enumeration { enum a; enum b; } }`,
-			`{"test":{"c":["a","b"]}}`,
+			`{"c":["a","b"]}`,
 			func(v *Value) error {
 				v.Intlist = []int {0, 1}
 				v.Strlist = []string {"a", "b"}
@@ -82,7 +82,7 @@ func tojson(t *testing.T, s *Selection) string {
 	var actual bytes.Buffer
 	json := NewJsonWriter(&actual)
 	out, _ := json.GetSelector()
-	err := Insert(s, out)
+	err := Insert(s, out, NewExhaustiveController())
 	if err != nil {
 		t.Error(err)
 	}
@@ -134,7 +134,7 @@ module json-test {
 			if err != nil {
 				t.Error(err)
 			}
-			if err = Insert(in, out); err != nil {
+			if err = Insert(in, out, NewExhaustiveController()); err != nil {
 				t.Error("failed to transmit json", err)
 			} else {
 				t.Log("Round Trip:", string(actual.Bytes()))

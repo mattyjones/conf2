@@ -62,23 +62,28 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var selection *browse.Selection
 		if selection, err = reg.browser.RootSelector(); err == nil {
 			if selection, err = browse.WalkPath(selection, path); err == nil {
+				var walkCntlr browse.WalkController
 				if selection == nil {
 					http.Error(w, r.URL.Path, http.StatusNotFound)
 				} else {
 					switch r.Method {
 					case "GET":
-						w.Header().Set("Content-Type", mime.TypeByExtension("json"))
+						w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
 						wtr := browse.NewJsonWriter(w)
 						var out *browse.Selection
 						if out, err = wtr.GetSelector(); err == nil {
-							err = browse.Insert(selection, out)
+							if walkCntlr, err = browse.NewWalkTargetController(r.URL.RawQuery); err == nil {
+								err = browse.Insert(selection, out, walkCntlr)
+							}
 						}
 					case "POST":
 						rdr := browse.NewJsonReader(r.Body)
 						var in *browse.Selection
 						if in, err = rdr.GetSelector(selection.Meta); err == nil {
-							if err = browse.Insert(in, selection); err == nil {
-								http.Error(w, "", http.StatusNoContent)
+							if walkCntlr, err = browse.NewWalkTargetController(r.URL.RawQuery); err == nil {
+								if err = browse.Insert(in, selection, walkCntlr); err == nil {
+									http.Error(w, "", http.StatusNoContent)
+								}
 							}
 						}
 					default:
