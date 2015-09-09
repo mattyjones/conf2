@@ -74,6 +74,8 @@ var keywords = [...]string{
 	"max-elements",
 	"choice",
 	"case",
+	"import",
+	"include",
 }
 
 const eof rune = 0
@@ -83,7 +85,6 @@ func (l *lexer) keyword(ttype int) string {
 		panic("Not a keyword")
 	}
 	return keywords[ttype - token_ident]
-
 }
 
 func (t Token) String() string {
@@ -103,6 +104,12 @@ func (l *lexer) error(msg string)  stateFunc {
 	})
 	fmt.Println("Setting err ", msg)
 	l.Error(msg)
+	return nil
+}
+
+func (l *lexer) importModule(into *Module, moduleName string) error {
+
+	fmt.Printf("lexer.go - Import module here %s\n", moduleName)
 	return nil
 }
 
@@ -142,6 +149,7 @@ type lexer struct {
 	head int
 	tail int
 	stack *yangMetaStack
+	importer ImportModule
 	lastError error
 }
 
@@ -314,11 +322,11 @@ func lexBegin(l *lexer) stateFunc {
 		kywd_grouping,
 		kywd_typedef,
 		kywd_module,
+		kywd_choice,
 		kywd_leaf,
 		kywd_list,
-		kywd_rpc,
-		kywd_choice,
 		kywd_case,
+		kywd_rpc,
 	}
 	for _, ttype := range defTypes {
 		if l.acceptToken(ttype) {
@@ -365,6 +373,8 @@ func lexBegin(l *lexer) stateFunc {
 	//  xxx zzz { ...
 	defOrReference := [...]int{
 		kywd_type,
+		kywd_import,
+		kywd_include,
 	}
 	for _, ttype := range defOrReference {
 		if l.acceptToken(ttype) {
@@ -484,7 +494,7 @@ const (
 	nestedYangDefMax = 256
 )
 
-func lex(input string) (*lexer) {
+func lex(input string, importer ImportModule) (*lexer) {
 	l := &lexer{
 		input : input,
 		tokens : make([]Token, lexRingBufferSize),
@@ -492,6 +502,7 @@ func lex(input string) (*lexer) {
 		tail : 0,
 		state : lexBegin,
 		stack : newDefStack(256),
+		importer : importer,
 	}
 	l.acceptWS()
 	return l

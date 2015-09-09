@@ -30,7 +30,7 @@ module json-test {
 	}
 }
 	`
-	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr)); err != nil {
+	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr), nil); err != nil {
 		t.Error("bad module", err)
 	} else {
 		json := `{"hobbies":[

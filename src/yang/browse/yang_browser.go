@@ -31,7 +31,7 @@ var yang1_0 *yang.Module
 func GetYangModule() *yang.Module {
 	if yang1_0 == nil {
 		var err error
-		yang1_0, err = yang.LoadModuleFromByteArray([]byte(YANG_1_0))
+		yang1_0, err = yang.LoadModuleFromByteArray([]byte(YANG_1_0), nil)
 		if err != nil {
 			msg := fmt.Sprintf("Error parsing yang-1.0 yang, %s", err.Error())
 			panic(msg)

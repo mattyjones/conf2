@@ -67,7 +67,7 @@ module test {
 }
 `
 	yangStr := fmt.Sprintf(moduleStr, yangFragment)
-	if module, err := yang.LoadModuleFromByteArray([]byte(yangStr)); err != nil {
+	if module, err := yang.LoadModuleFromByteArray([]byte(yangStr), nil); err != nil {
 		t.Error(err.Error())
 	} else {
 		s := &Selection{}
@@ -119,7 +119,7 @@ module json-test {
 		}
 	}
 }`
-	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr)); err != nil {
+	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr), nil); err != nil {
 		t.Error("bad module", err)
 	} else {
 		ds := &yang.FileStreamSource{Root:"../../../etc"}

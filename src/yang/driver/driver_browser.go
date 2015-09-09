@@ -51,7 +51,7 @@ func yangc2_load_module(
 		panic(fmt.Sprint("Stream source not found", stream_source_hnd_id))
 	}
 	stream_source := stream_source_hnd.Data.(yang.StreamSource)
-	defer stream_source.Close()
+	defer yang.CloseResource(stream_source)
 
 	var module *yang.Module
 	var err error

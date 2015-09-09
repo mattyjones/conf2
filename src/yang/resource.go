@@ -5,3 +5,10 @@ package yang
 type Resource interface {
 	Close() error
 }
+
+func CloseResource(o interface{}) error {
+	if res, isRes := o.(Resource); isRes {
+		return res.Close()
+	}
+	return nil
+}

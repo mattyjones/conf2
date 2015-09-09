@@ -25,6 +25,7 @@ func (l *lexer) Lex(lval *yySymType) int {
     }
     lval.token = t.val
     lval.stack = l.stack
+    lval.importer = l.importer
     return int(t.typ)
 }
 
@@ -63,6 +64,7 @@ func popAndAddMeta(yylval *yySymType) error {
     token string
     dataType *DataType
     stack *yangMetaStack
+    importer ImportModule
 }
 
 %token <token> token_ident
@@ -102,6 +104,8 @@ func popAndAddMeta(yylval *yySymType) error {
 %token kywd_max_elements
 %token kywd_choice
 %token kywd_case
+%token kywd_import
+%token kywd_include
 
 %%
 
@@ -149,10 +153,25 @@ module_stmt :
          d.(*Module).Namespace = tokenString($2)
     }
     | description
+    | import_stmt
     | kywd_prefix token_string {
          m := yylval.stack.Peek().(*Module)
          m.Prefix = tokenString($2)
     }
+
+import_stmt : kywd_import token_ident {
+    var err error
+    if yylval.importer == nil {
+        yylex.Error("No importer defined")
+        goto ret1
+    } else {
+        m := yylval.stack.Peek().(*Module)
+        if err = yylval.importer(m, $2); err != nil {
+            yylex.Error(err.Error())
+            goto ret1
+        }
+    }
+}
 
 module_body_stmt :
     rpc_stmt
@@ -488,8 +507,3 @@ reference_stmt :
 
 %%
 
-func parse(yang string) int {
-    l := lex(yang)
-    err := yyParse(l)
-    return err
-}

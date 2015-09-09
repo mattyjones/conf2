@@ -12,7 +12,7 @@ func TestSimpleExample(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	l := lex(string(data))
+	l := lex(string(data), nil)
 	tokens := list.New()
 	for  {
 		token, err := l.nextToken()
@@ -39,5 +39,5 @@ func TestStoneLex(t *testing.T) {
 	if err != nil {
 		t.Errorf("could not load file %s", err)
 	}
-	lex(string(stone))
+	lex(string(stone), nil)
 }

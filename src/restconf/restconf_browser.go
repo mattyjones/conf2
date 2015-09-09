@@ -13,7 +13,7 @@ type RestconfBrowser struct {
 
 func NewBrowser(restconf *serviceImpl) (rcb *RestconfBrowser, err error) {
 	var module *yang.Module
-	module, err = yang.LoadModuleFromByteArray([]byte(restconfYang))
+	module, err = yang.LoadModuleFromByteArray([]byte(restconfYang), nil)
 	if err == nil {
 		parent := yang.FindByPath(module, "modules").(*yang.List)
 		placeholder := yang.FindByPath(parent, "module")

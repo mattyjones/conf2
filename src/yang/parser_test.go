@@ -23,7 +23,7 @@ module ff {
 	}
 }
 `
-	l := lex(yang)
+	l := lex(yang, nil)
 	err := yyParse(l)
 	if err != 0 {
 		t.Errorf("Error parsing %d", err)
@@ -43,4 +43,3 @@ module ff {
 		t.Errorf("Container x not identified")
 	}
 }
-

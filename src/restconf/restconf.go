@@ -132,7 +132,7 @@ func (service *serviceImpl) Listen() {
 
 func (service *serviceImpl) Stop() {
 	if service.docroot != nil && service.docroot.docroot != nil {
-		service.docroot.docroot.Close()
+		yang.CloseResource(service.docroot.docroot)
 	}
 	// TODO - actually stop service
 }
@@ -145,7 +145,7 @@ func (service *docRootImpl) ServeHTTP(wtr http.ResponseWriter, req *http.Request
 	if rdr, err := service.docroot.OpenStream(path); err != nil {
 		http.Error(wtr, err.Error(), http.StatusInternalServerError)
 	} else {
-		defer rdr.Close()
+		defer yang.CloseResource(rdr)
 		ctype := mime.TypeByExtension(filepath.Ext(path))
 		wtr.Header().Set("Content-Type", ctype)
 		if _, err = io.Copy(wtr, rdr); err != nil {

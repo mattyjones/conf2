@@ -13,7 +13,7 @@ func TestTokenStr(t *testing.T) {
 }
 
 func TestPosition(t *testing.T) {
-	l := lex("x")
+	l := lex("x", nil)
 	c1 := l.next()
 	if (c1 != 'x') {
 		t.Errorf("next: unexpected rune %d", c1)
@@ -40,14 +40,14 @@ func TestPosition(t *testing.T) {
 }
 
 func TestNextWithWhitespace(t *testing.T) {
-	l := lex("  zzz \t  ggg")
+	l := lex("  zzz \t  ggg", nil)
 	l.acceptWS()
 	c1 := l.next()
 	if (c1 != 'z') {
 		t.Errorf("next: unexpected rune %d", c1)
 	}
 
-	l = lex("  /* this is a comment */ aaa")
+	l = lex("  /* this is a comment */ aaa", nil)
 	l.acceptWS()
 	c1 = l.next()
 	if (c1 != 'a') {
@@ -57,7 +57,7 @@ func TestNextWithWhitespace(t *testing.T) {
 }
 
 func TestAccept(t *testing.T) {
-	l := lex("xyz")
+	l := lex("xyz", nil)
 	p0 := l.pos
 	l.acceptRun(0, "abc")
 	if p0 != l.pos {
@@ -67,7 +67,7 @@ func TestAccept(t *testing.T) {
 	if p0 != l.pos - 2 {
 		t.Errorf("Should only advance 2 not %d", l.pos - p0)
 	}
-	l = lex("   \t\t  x  \n\n  ")
+	l = lex("   \t\t  x  \n\n  ", nil)
 	l.acceptWS()
 	c0 := l.next()
 	if c0 != 'x' {
@@ -76,7 +76,7 @@ func TestAccept(t *testing.T) {
 }
 
 func TestBegin(t *testing.T) {
-	l := lex(" module foo {")
+	l := lex(" module foo {", nil)
 	next := lexBegin(l)
 	if next == nil {
 		t.Error("expected lexModule")
@@ -88,7 +88,7 @@ func TestBegin(t *testing.T) {
 }
 
 func TestNextToken(t *testing.T) {
-	l := lex(" ")
+	l := lex(" ", nil)
 	token, _ := l.nextToken()
 	if token.typ != ParseEof {
 		t.Errorf("unexpected token(%d) %s", token.typ, token)
@@ -96,7 +96,7 @@ func TestNextToken(t *testing.T) {
 }
 
 func TestMaxElements(t *testing.T) {
-	l := lex("max-elements 100;")
+	l := lex("max-elements 100;", nil)
 	if ! l.acceptToken(kywd_max_elements) {
 		t.Errorf("unexpected max-elements")
 	}
@@ -111,7 +111,7 @@ func TestMaxElements(t *testing.T) {
 }
 
 func TestAlphaNumeric(t *testing.T) {
-	l := lex("aaa zzz")
+	l := lex("aaa zzz", nil)
 	if ! l.acceptAlphaNumeric(0) {
 		t.Errorf("unexpected alphanumeric")
 	}
@@ -123,7 +123,7 @@ func TestAlphaNumeric(t *testing.T) {
 
 func TestString(t *testing.T) {
 	expected := "\"string here\""
-	l := lex(expected)
+	l := lex(expected, nil)
 	if ! l.acceptString(0) {
 		t.Errorf("unexpected alphanumeric")
 	}
@@ -134,7 +134,7 @@ func TestString(t *testing.T) {
 }
 
 func TestAcceptRun(t *testing.T) {
-	l := lex("aaabbbzzz")
+	l := lex("aaabbbzzz", nil)
 	if ! l.acceptRun(0, "abc") {
 		t.Errorf("unexpected alphanumeric")
 	}
@@ -143,7 +143,7 @@ func TestAcceptRun(t *testing.T) {
 		t.Errorf("expected ")
 	}
 
-	l = lex("2015-06-03 {")
+	l = lex("2015-06-03 {", nil)
 	if ! l.acceptRun(0, "0123456789-") {
 		t.Errorf("unexpected alphanumeric")
 	}
@@ -155,7 +155,7 @@ func TestAcceptRun(t *testing.T) {
 
 
 func TestModule(t *testing.T) {
-	l := lex("module foo { } ")
+	l := lex("module foo { } ", nil)
 	expecteds := [...]int{kywd_module, token_ident, token_curly_open, token_curly_close}
 	for _, expected := range expecteds {
 		token, err := l.nextToken()
@@ -207,7 +207,7 @@ module foo {
 		token_curly_close,
 	}
 
-	l := lex(yang)
+	l := lex(yang, nil)
 	for _, expected := range expecteds {
 		token, err := l.nextToken()
 		if err != nil {
