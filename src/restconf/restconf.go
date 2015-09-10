@@ -146,7 +146,8 @@ func (service *docRootImpl) ServeHTTP(wtr http.ResponseWriter, req *http.Request
 		http.Error(wtr, err.Error(), http.StatusInternalServerError)
 	} else {
 		defer yang.CloseResource(rdr)
-		ctype := mime.TypeByExtension(filepath.Ext(path))
+		ext := filepath.Ext(path)
+		ctype := mime.TypeByExtension(ext)
 		wtr.Header().Set("Content-Type", ctype)
 		if _, err = io.Copy(wtr, rdr); err != nil {
 			http.Error(wtr, err.Error(), http.StatusInternalServerError)
