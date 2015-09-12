@@ -1,8 +1,8 @@
 package restconf
 
 import (
-	"yang"
-	"yang/browse"
+	"schema"
+	"schema/browse"
 	"net/http"
 	"time"
 	"fmt"
@@ -24,7 +24,7 @@ func (err *restconfError) Error() string {
 type Service interface {
 	Listen()
 	RegisterBrowser(browser browse.Browser) error
-	SetDocRoot(yang.StreamSource)
+	SetDocRoot(schema.StreamSource)
 	Stop()
 }
 
@@ -100,7 +100,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type docRootImpl struct {
-	docroot yang.StreamSource
+	docroot schema.StreamSource
 }
 
 func (service *serviceImpl) RegisterBrowser(browser browse.Browser) error {
@@ -113,7 +113,7 @@ func (service *serviceImpl) RegisterBrowser(browser browse.Browser) error {
 	return nil
 }
 
-func (service *serviceImpl) SetDocRoot(docroot yang.StreamSource) {
+func (service *serviceImpl) SetDocRoot(docroot schema.StreamSource) {
 	service.docroot = &docRootImpl{docroot:docroot}
 	service.mux.Handle("/ui/", http.StripPrefix("/ui/", service.docroot))
 }
@@ -132,7 +132,7 @@ func (service *serviceImpl) Listen() {
 
 func (service *serviceImpl) Stop() {
 	if service.docroot != nil && service.docroot.docroot != nil {
-		yang.CloseResource(service.docroot.docroot)
+		schema.CloseResource(service.docroot.docroot)
 	}
 	// TODO - actually stop service
 }
@@ -145,7 +145,7 @@ func (service *docRootImpl) ServeHTTP(wtr http.ResponseWriter, req *http.Request
 	if rdr, err := service.docroot.OpenStream(path); err != nil {
 		http.Error(wtr, err.Error(), http.StatusInternalServerError)
 	} else {
-		defer yang.CloseResource(rdr)
+		defer schema.CloseResource(rdr)
 		ext := filepath.Ext(path)
 		ctype := mime.TypeByExtension(ext)
 		wtr.Header().Set("Content-Type", ctype)

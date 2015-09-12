@@ -16,50 +16,55 @@ JDK_LDFLAGS = -L$(JDK_HOME)/jre/lib/$(JDK_ARCH) -ljava
 JDK_LIBRARY_PATH = $(JDK_HOME)/jre/lib/$(JDK_ARCH)/server:$(JDK_HOME)/jre/lib/$(JDK_ARCH)
 
 
-libyangc2_CFLAGS = \
+libconf2_CFLAGS = \
 	-I$(abspath include)
 
-libyangc2j_CFLAGS = \
-	$(libyangc2_CFLAGS) \
+libconf2j_CFLAGS = \
+	$(libconf2_CFLAGS) \
 	-I$(abspath drivers/java/include) \
 	-I$(abspath include) \
 	$(JDK_CFLAGS)
 
-libyangc2j_LDFLAGS = \
-	-L$(abspath pkg/$(GO_ARCH)_shared) -lyangc2 \
+libconf2j_LDFLAGS = \
+	-L$(abspath pkg/$(GO_ARCH)_shared) -lconf2 \
 	$(JDK_LDFLAGS)
 
 GO_ARCH = linux_amd64
 
-PKGS = yang yang/browse bridge
+PKGS = \
+	schema \
+	schema/browse \
+	schema/adapt \
+	restconf
 
 all : generate driver-java build test install
 
 .PHONY: generate driver-java build test install
 generate :
-	go generate yang
+	go generate schema/yang
 
 build :
-	CGO_CFLAGS="$(libyangc2_CFLAGS)" \
+	CGO_CFLAGS="$(libconf22_CFLAGS)" \
 	  go build $(PKGS)
 
 TEST='Test*'
 Test% :
 	$(MAKE) test TEST='$@'
 
-test : src/yang/parser.go
-	CGO_CFLAGS="$(libyangc2_CFLAGS)" \
+test :
+	CGO_CFLAGS="$(libconf2_CFLAGS)" \
 	  go test -v $(PKGS) -run $(TEST)
 
-install: libyangc2 libyangc2j;
+install: libconf2 libconf2j;
 
 JAVA_SRC = $(shell find drivers/java/src \( \
 	-name '*.java' -a \
 	-not -name '*Test.java' \) -type f)
 
 JNI_SRCS = \
-	org.conf2.yang.driver.Driver \
-	org.conf2.yang.driver.DriverTestHarness \
+	org.conf2.schema.driver.Driver \
+	org.conf2.schema.yang.ModuleLoader \
+	org.conf2.schema.driver.DriverTestHarness \
 	org.conf2.restconf.Service
 
 clean :
@@ -69,7 +74,7 @@ driver-java :
 	test -d drivers/java/classes || mkdir drivers/java/classes
 	@javac -d drivers/java/classes $(JAVA_SRC)
 	javah -cp drivers/java/classes -d drivers/java/include $(JNI_SRCS)
-	jar -cf drivers/java/lib/yangc2-$(API_VER).jar -C drivers/java/classes .
+	jar -cf drivers/java/lib/conf2-$(API_VER).jar -C drivers/java/classes .
 
 JAVA_TEST_JARS = \
 	$(wildcard drivers/java/lib/hamcrest-core-*.jar) \
@@ -92,9 +97,6 @@ JAVA_TEST_SRC_BASE = \
 JAVA_TESTS = \
 	$(subst /,.,$(JAVA_TEST_SRC_BASE:.java=))
 
-debug :
-	echo $(JAVA_TESTS)
-
 driver-java-test :
 	test -d drivers/java/test || mkdir drivers/java/test
 	javac -d drivers/java/test -cp $(JAVA_TEST_CP) $(JAVA_TEST_SRC)
@@ -102,17 +104,17 @@ driver-java-test :
 	  CLASSPATH=drivers/java/src:drivers/java/test:$(JAVA_TEST_CP) \
 	  java $(JAVA_TEST_RUNNER) $(JAVA_TESTS)
 
-libyangc2j:
+libconf2j:
 	cd pkg/$(GO_ARCH)_shared; \
-	  ln -snf libyangc2j.a libyangc2j.so
+	  ln -snf libconf2j.a libconf2j.so
 	LD_LIBRARY_PATH=$(JDK_LIBRARY_PATH) \
 	  CGO_CFLAGS="$($@_CFLAGS)" \
 	  CGO_LDFLAGS="$($@_LDFLAGS)" \
 	  go install -buildmode=c-shared $@
 
-libyangc2:
+libconf2:
 	cd pkg/$(GO_ARCH)_shared; \
-	  ln -snf libyangc2.a libyangc2.so
+	  ln -snf libconf2.a libconf2.so
 	CGO_CFLAGS="$($@_CFLAGS)" \
 	  CGO_LDFLAGS="$($@_LDFLAGS)" \
 	  go install -buildmode=c-shared $@

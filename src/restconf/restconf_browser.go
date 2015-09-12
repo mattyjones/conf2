@@ -1,24 +1,25 @@
 package restconf
 
 import (
-	"yang"
-	"yang/browse"
+	"schema"
+	"schema/yang"
+	"schema/browse"
 	"sort"
 )
 
 type RestconfBrowser struct {
 	Service *serviceImpl
-	Meta *yang.Module
+	Meta *schema.Module
 }
 
 func NewBrowser(restconf *serviceImpl) (rcb *RestconfBrowser, err error) {
-	var module *yang.Module
+	var module *schema.Module
 	module, err = yang.LoadModuleFromByteArray([]byte(restconfYang), nil)
 	if err == nil {
-		parent := yang.FindByPath(module, "modules").(*yang.List)
-		placeholder := yang.FindByPath(parent, "module")
+		parent := schema.FindByPath(module, "modules").(*schema.List)
+		placeholder := schema.FindByPath(parent, "module")
 		targetParent := browse.GetYangModule()
-		targetMaster := yang.FindByPath(targetParent, "module").(*yang.Container)
+		targetMaster := schema.FindByPath(targetParent, "module").(*schema.Container)
 		// shallow clone target otherwise we alter browser's schema
 		target := *targetMaster
 		parent.ReplaceMeta(placeholder, &target);
@@ -27,7 +28,7 @@ func NewBrowser(restconf *serviceImpl) (rcb *RestconfBrowser, err error) {
 	return
 }
 
-func (rcb *RestconfBrowser) Module() (*yang.Module) {
+func (rcb *RestconfBrowser) Module() (*schema.Module) {
 	return rcb.Meta
 }
 
@@ -86,7 +87,7 @@ func enterRegistrations(registrations map[string]registration) (*browse.Selectio
 		ident := s.Position.GetIdent()
 		switch ident {
 			case "name":
-				val.Type = s.Position.(yang.HasDataType).GetDataType()
+				val.Type = s.Position.(schema.HasDataType).GetDataType()
 				val.Str = names[i]
 		}
 		return nil

@@ -1,9 +1,9 @@
 package org.conf2.restconf;
 
-import org.conf2.yang.browse.Browser;
-import org.conf2.yang.StreamSource;
-import org.conf2.yang.driver.Driver;
-import org.conf2.yang.driver.DriverHandle;
+import org.conf2.schema.browse.Browser;
+import org.conf2.schema.StreamSource;
+import org.conf2.schema.driver.Driver;
+import org.conf2.schema.driver.DriverHandle;
 
 /**
  * Restconf Service

@@ -1,7 +1,7 @@
 package restconf
 import (
 	"testing"
-	"yang/browse"
+	"schema/browse"
 )
 
 func TestRestMetaLoad(t *testing.T) {
