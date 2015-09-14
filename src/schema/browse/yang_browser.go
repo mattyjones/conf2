@@ -11,8 +11,8 @@ import (
  * meta.
  */
 type YangBrowser struct {
-	module *schema.Module // read: meta
-	meta *schema.Module // read: meta
+	module *schema.Module  // read: data
+	meta *schema.Module    // read: meta-data
 
 	// resolve all uses, groups and typedefs.  if this is false, then depth must be
 	// used to avoid infinite recursion
@@ -47,7 +47,7 @@ func (self *YangBrowser) RootSelector() (Selection, error) {
 	s := &MySelection{}
 	s.State.Meta = self.meta
 	s.OnSelect = func() (Selection, error) {
-		s.WalkState().Found = true
+		s.State.Found = true
 		switch s.State.Position.GetIdent() {
 		case "module" :
 			return self.SelectModule(self.module)
@@ -353,11 +353,11 @@ func (self *YangBrowser) selectDefinitionsList(dataList schema.MetaList) (Select
 		return self.resolveDefinitionCase(choice, i.data)
 	}
 	s.OnSelect = func() (Selection, error) {
-		var e error
-		choice := s.State.Meta.GetFirstMeta().(*schema.Choice)
-		if s.State.Position, e = self.resolveDefinitionCase(choice, i.data); e != nil {
-			return nil, e
-		}
+//		var e error
+//		choice := s.State.Position.(*schema.Choice) //s.State.Meta.GetFirstMeta().(*schema.Choice)
+//		if s.State.Position, e = self.resolveDefinitionCase(choice, i.data); e != nil {
+//			return nil, e
+//		}
 		s.WalkState().Found = true
 		switch s.State.Position.GetIdent() {
 		case "list":
@@ -374,6 +374,9 @@ func (self *YangBrowser) selectDefinitionsList(dataList schema.MetaList) (Select
 			return self.selectMetaContainer(i.data.(schema.MetaList))
 		}
 		return nil, nil
+	}
+	s.OnRead = func(val *Value) error {
+		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
 	s.OnNext = i.Iterate
 	return s, nil
@@ -459,6 +462,9 @@ const YANG_1_0 = `module yang {
     grouping containers-lists-leafs-uses-choice {
         list definitions {
             key "ident";
+            leaf ident {
+            	type string;
+            }
             choice body-stmt {
                 case container {
                     container container {
