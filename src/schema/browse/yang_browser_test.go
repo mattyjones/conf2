@@ -24,7 +24,7 @@ func TestYangBrowserRead(t *testing.T) {
 	tests := []struct {
 		yang string
 		expected string
-		read ReadValue
+		read ReadFunc
 	} {
 		{
 			`leaf c { type enumeration { enum a; enum b; } }`,
@@ -46,8 +46,8 @@ func TestYangBrowserRead(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		s := makeSelection(t, test.yang)
-		s.ReadValue = test.read
+		s := makeMySelection(t, test.yang)
+		s.OnRead = test.read
 		actual := tojson(t, s)
 		if actual != test.expected {
 			msg := fmt.Sprintf("Expected:\"%s\" Actual:\"%s\"", test.expected, actual)
@@ -56,7 +56,7 @@ func TestYangBrowserRead(t *testing.T) {
 	}
 }
 
-func makeSelection(t *testing.T, yangFragment string) *Selection {
+func makeMySelection(t *testing.T, yangFragment string) *MySelection {
 	moduleStr := `
 module test {
 	prefix "t";
@@ -71,15 +71,15 @@ module test {
 	if module, err := yang.LoadModuleFromByteArray([]byte(yangStr), nil); err != nil {
 		t.Error(err.Error())
 	} else {
-		s := &Selection{}
-		s.Meta = module
-		s.Position = module.GetFirstMeta()
+		s := &MySelection{}
+		s.State.Meta = module
+		s.State.Position = module.GetFirstMeta()
 		return s
 	}
 	return nil
 }
 
-func tojson(t *testing.T, s *Selection) string {
+func tojson(t *testing.T, s *MySelection) string {
 	var actual bytes.Buffer
 	json := NewJsonWriter(&actual)
 	out, _ := json.GetSelector()
@@ -149,8 +149,8 @@ module json-test {
 //	var actual bytes.Buffer
 //	dumper := NewDumper(&actual)
 //	var err error
-//	var in *Selection
-//	var out *Selection
+//	var in *MySelection
+//	var out *MySelection
 //	if in, err = schema.RootSelector(); err != nil {
 //		t.Error("failed to dump yang", err)
 //	}

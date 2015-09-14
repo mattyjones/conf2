@@ -30,20 +30,20 @@ func NewJsonWriter(out io.Writer) *JsonWriter {
 	}
 }
 
-func (json *JsonWriter) GetSelector() (*Selection, error) {
+func (json *JsonWriter) GetSelector() (Selection, error) {
 	return json.selectJson()
 }
 
-func (json *JsonWriter) selectJson() (*Selection, error) {
-	s := &Selection{}
-	s.Enter = func() (child *Selection, err error) {
+func (json *JsonWriter) selectJson() (Selection, error) {
+	s := &MySelection{}
+	s.OnSelect = func() (child Selection, err error) {
 		return json.selectJson()
 	}
-	s.Edit = func(op Operation, v *Value) (err error) {
+	s.OnWrite = func(op Operation, v *Value) (err error) {
 		switch op {
 		case BEGIN_EDIT:
 			_, err = json.out.WriteRune(OPEN_OBJ)
-			json.startingInsideList = schema.IsList(s.Meta)
+			json.startingInsideList = schema.IsList(s.State.Meta)
 			json.firstWrite = true
 			return err
 		case END_EDIT:
@@ -53,7 +53,7 @@ func (json *JsonWriter) selectJson() (*Selection, error) {
 				}
 			}
 		case CREATE_CHILD:
-			err = json.beginContainer(s.Position)
+			err = json.beginContainer(s.State.Position)
 		case POST_CREATE_CHILD:
 			err = json.endContainer()
 		case CREATE_LIST_ITEM:
@@ -63,28 +63,28 @@ func (json *JsonWriter) selectJson() (*Selection, error) {
 		case POST_CREATE_LIST_ITEM:
 			err = json.endArrayItem()
 		case CREATE_LIST:
-			err = json.beginList(s.Position)
+			err = json.beginList(s.State.Position)
 		case POST_CREATE_LIST:
 			return json.endList()
 		case UPDATE_VALUE:
-			err = json.writeValue(s.Position, v)
+			err = json.writeValue(s.State.Position, v)
 		default:
 			err = &browseError{Msg:"Operation not supported"}
 		}
 		json.firstWrite = false
 		return
 	}
-	s.Iterate = func(keys []string, first bool) (hasMore bool, err error) {
+	s.OnNext = func(keys []string, first bool) (hasMore bool, err error) {
 		return false, nil
 	}
 	return s, nil
 }
 
-func (json *JsonWriter) conditionallyOpenArrayOnFirstWrite(s *Selection) error {
+func (json *JsonWriter) conditionallyOpenArrayOnFirstWrite(s *MySelection) error {
 	var err error
 	if json.firstWrite && json.startingInsideList {
 		json.closeArrayOnExit = true
-		err = json.beginList(s.Meta)
+		err = json.beginList(s.State.Meta)
 	}
 	return err
 }

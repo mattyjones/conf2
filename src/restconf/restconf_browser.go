@@ -36,26 +36,26 @@ func (rcb *RestconfBrowser) Close() error {
 	return nil
 }
 
-func (rcb *RestconfBrowser) RootSelector() (s *browse.Selection, err error) {
-	s = &browse.Selection{}
-	s.Meta = rcb.Meta
-	s.Enter = func () (*browse.Selection, error) {
-		ident := s.Position.GetIdent()
+func (rcb *RestconfBrowser) RootSelector() (browse.Selection, error) {
+	s := &browse.MySelection{}
+	s.WalkState().Meta = rcb.Meta
+	s.OnSelect = func () (browse.Selection, error) {
+		ident := s.State.Position.GetIdent()
 		switch ident {
 			case "modules":
-				s.Found = len(rcb.Service.registrations) > 0
+				s.WalkState().Found = len(rcb.Service.registrations) > 0
 				return enterRegistrations(rcb.Service.registrations)
 		}
 		return nil, nil
 	}
-	return
+	return s, nil
 }
 
-func enterRegistrations(registrations map[string]registration) (*browse.Selection, error) {
+func enterRegistrations(registrations map[string]registration) (browse.Selection, error) {
 	var i int
 	var names []string
-	s := &browse.Selection{}
-	s.Iterate = func(keys []string, isFirst bool) (bool, error) {
+	s := &browse.MySelection{}
+	s.OnNext = func(keys []string, isFirst bool) (bool, error) {
 		if isFirst {
 			i = 0
 			names = make([]string, len(registrations))
@@ -70,24 +70,25 @@ func enterRegistrations(registrations map[string]registration) (*browse.Selectio
 		}
 		return i < len(names), nil
 	}
-	s.Enter = func() (*browse.Selection, error) {
-		ident := s.Position.GetIdent()
+	s.OnSelect = func() (browse.Selection, error) {
+		ident := s.State.Position.GetIdent()
 		switch ident {
 		case "module":
 			var reg registration
-			reg, s.Found = registrations[names[i]]
-			if s.Found {
+			state := s.WalkState()
+			reg, state.Found = registrations[names[i]]
+			if state.Found {
 				browser := browse.NewYangBrowser(reg.browser.Module(), true)
 				return browser.SelectModule(reg.browser.Module())
 			}
 		}
 		return nil, nil
 	}
-	s.ReadValue = func(val *browse.Value) error {
-		ident := s.Position.GetIdent()
+	s.OnRead = func(val *browse.Value) error {
+		ident := s.State.Position.GetIdent()
 		switch ident {
 			case "name":
-				val.Type = s.Position.(schema.HasDataType).GetDataType()
+				val.Type = s.State.Position.(schema.HasDataType).GetDataType()
 				val.Str = names[i]
 		}
 		return nil

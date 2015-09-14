@@ -60,8 +60,8 @@ module json-test {
 			s, err := WalkPath(in, p)
 			if err != nil {
 				t.Error("failed to transmit json", err)
-			} else if (s.Meta.GetIdent() != test.expectedMeta) {
-				t.Error(test.path, "-", test.expectedMeta, "!=", s.Meta.GetIdent())
+			} else if (s.WalkState().Meta.GetIdent() != test.expectedMeta) {
+				t.Error(test.path, "-", test.expectedMeta, "!=", s.WalkState().Meta.GetIdent())
 			}
 		}
 	}

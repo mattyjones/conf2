@@ -31,22 +31,22 @@ func NewDumper(out io.Writer) *Dumper {
 	}
 }
 
-func (d *Dumper) GetSelector() (*Selection, error) {
+func (d *Dumper) GetSelector() (Selection, error) {
 	return d.Enter(0)
 }
 
-func (d *Dumper) Enter(level int) (*Selection, error) {
+func (d *Dumper) Enter(level int) (Selection, error) {
 	row := 0
-	s := &Selection{}
-	s.Enter = func() (child *Selection, err error) {
+	s := &MySelection{}
+	s.OnSelect = func() (child Selection, err error) {
 		return d.Enter(level + 1)
 	}
-	s.Edit = func(op Operation, v *Value) (err error) {
+	s.OnWrite = func(op Operation, v *Value) (err error) {
 		d.dumpEditOp(s, op, level)
 		d.dumpValue(v, level)
 		return
 	}
-	s.Iterate = func(keys []string, first bool) (hasMore bool, err error) {
+	s.OnNext = func(keys []string, first bool) (hasMore bool, err error) {
 		d.out.WriteString(fmt.Sprintf("%sITERATE row=%d, first=%v\n", Padding[:level], row, first))
 		row++
 		return false, nil
@@ -87,10 +87,10 @@ func (d *Dumper) dumpValue(v *Value, level int) {
 	d.out.WriteString(line)
 }
 
-func (d *Dumper) dumpEditOp(s *Selection, op Operation, level int) {
+func (d *Dumper) dumpEditOp(s *MySelection, op Operation, level int) {
 	ident := ""
-	if s.Position != nil {
-		ident = s.Position.GetIdent()
+	if s.State.Position != nil {
+		ident = s.State.Position.GetIdent()
 	}
 	line := fmt.Sprintf("%s%s %s\n", Padding[:level], editOps[op], ident)
 	d.out.WriteString(line)

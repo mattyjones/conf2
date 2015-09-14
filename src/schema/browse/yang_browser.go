@@ -41,114 +41,118 @@ func GetYangModule() *schema.Module {
 	return yang1_0
 }
 
-type MetaListSelector func(m schema.Meta) (*Selection, error)
+type MetaListSelector func(m schema.Meta) (Selection, error)
 
-func (self *YangBrowser) RootSelector() (s *Selection, err error) {
-	s = &Selection{Meta:self.meta}
-	s.Enter = func() (*Selection, error) {
-		s.Found = true
-		switch s.Position.GetIdent() {
+func (self *YangBrowser) RootSelector() (Selection, error) {
+	s := &MySelection{}
+	s.State.Meta = self.meta
+	s.OnSelect = func() (Selection, error) {
+		s.WalkState().Found = true
+		switch s.State.Position.GetIdent() {
 		case "module" :
 			return self.SelectModule(self.module)
 		}
 		return nil, nil
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) SelectModule(module *schema.Module) (s *Selection, err error) {
-	s = &Selection{}
-	s.Enter = func() (child *Selection, err error) {
-		s.Found = true
-		switch s.Position.GetIdent() {
+func (self *YangBrowser) SelectModule(module *schema.Module) (Selection, error) {
+	s := &MySelection{}
+	s.OnSelect = func() (child Selection, err error) {
+		s.WalkState().Found = true
+		switch s.State.Position.GetIdent() {
 		case "revision":
 			return self.selectRevision(module.Revision)
 		case "rpcs":
 			return self.selectRpcs(module.GetRpcs())
 		case "notifications":
-			s.Found = schema.ListLen(module.GetNotifications()) > 0
+			s.WalkState().Found = schema.ListLen(module.GetNotifications()) > 0
 			return self.selectNotifications(module.GetNotifications())
 		default:
-			return self.GroupingsTypedefsDefinitions(s, s.Position, module)
+			return self.GroupingsTypedefsDefinitions(s, s.State.Position, module)
 		}
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), module, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), module, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectRevision(rev *schema.Revision) (*Selection, error) {
-	s := &Selection{}
-	s.ReadValue = func(val *Value) (err error) {
-		switch s.Position.GetIdent() {
+func (self *YangBrowser) selectRevision(rev *schema.Revision) (Selection, error) {
+	s := &MySelection{}
+	s.OnRead = func(val *Value) (err error) {
+		switch s.State.Position.GetIdent() {
 		case "rev-date":
-			return ReadFieldWithFieldName("Ident", s.Position.(schema.HasDataType), rev, val)
+			return ReadFieldWithFieldName("Ident", s.State.Position.(schema.HasDataType), rev, val)
 		default:
-			return ReadField(s.Position.(schema.HasDataType), rev, val)
+			return ReadField(s.State.Position.(schema.HasDataType), rev, val)
 		}
 	}
 	return s, nil
 }
 
-func (self *YangBrowser) selectType(typeData *schema.DataType) (s *Selection, err error) {
-	s = &Selection{}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), typeData, val)
+func (self *YangBrowser) selectType(typeData *schema.DataType) (Selection, error) {
+	s := &MySelection{}
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), typeData, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectGroupings(groupings schema.MetaList) (s *Selection, err error) {
-	s = &Selection{}
+func (self *YangBrowser) selectGroupings(groupings schema.MetaList) (Selection, error) {
+	s := &MySelection{}
 	i := listIterator{dataList:groupings, resolve:self.resolve}
-	s.Enter = func() (*Selection, error) {
-		s.Found = true
-		return self.GroupingsTypedefsDefinitions(s, s.Position, i.data)
+	s.OnSelect = func() (Selection, error) {
+		s.WalkState().Found = true
+		return self.GroupingsTypedefsDefinitions(s, s.State.Position, i.data)
 	}
-	s.Iterate = i.Iterate
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), i.data, val)
+	s.OnNext = i.Iterate
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectRpcInput(rpc *schema.RpcInput) (s *Selection, err error) {
-	s = &Selection{}
-	s.Enter = func() (*Selection, error) {
-		s.Found = rpc != nil
-		if s.Found {
-			return self.GroupingsTypedefsDefinitions(s, s.Position, rpc)
+func (self *YangBrowser) selectRpcInput(rpc *schema.RpcInput) (Selection, error) {
+	s := &MySelection{}
+	s.OnSelect = func() (Selection, error) {
+		state := s.WalkState()
+		state.Found = rpc != nil
+		if state.Found {
+			return self.GroupingsTypedefsDefinitions(s, s.State.Position, rpc)
 		}
 		return nil, nil
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), rpc, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), rpc, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectRpcOutput(rpc *schema.RpcOutput) (s *Selection, err error) {
-	s = &Selection{}
-	s.Enter = func() (*Selection, error) {
-		s.Found = rpc != nil
-		if s.Found {
-			return self.GroupingsTypedefsDefinitions(s, s.Position, rpc)
+func (self *YangBrowser) selectRpcOutput(rpc *schema.RpcOutput) (Selection, error) {
+	s := &MySelection{}
+	s.OnSelect = func() (Selection, error) {
+		state := s.WalkState()
+		state.Found = rpc != nil
+		if state.Found {
+			return self.GroupingsTypedefsDefinitions(s, s.State.Position, rpc)
 		}
 		return nil, nil
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), rpc, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), rpc, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectRpcs(rpcs schema.MetaList) (s *Selection, err error) {
-	s = &Selection{}
+func (self *YangBrowser) selectRpcs(rpcs schema.MetaList) (Selection, error) {
+	s := &MySelection{}
 	i := listIterator{dataList:rpcs, resolve:self.resolve}
-	s.Enter = func() (*Selection, error) {
-		s.Found = true
-		switch s.Position.GetIdent() {
+	s.OnSelect = func() (Selection, error) {
+		state := s.WalkState()
+		state.Found = true
+		switch s.State.Position.GetIdent() {
 		case "input":
 			return self.selectRpcInput(i.data.(*schema.Rpc).Input)
 		case "output":
@@ -157,161 +161,162 @@ func (self *YangBrowser) selectRpcs(rpcs schema.MetaList) (s *Selection, err err
 
 		return nil, nil
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), i.data, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
-	s.Iterate = i.Iterate
-	return
+	s.OnNext = i.Iterate
+	return s, nil
 }
 
-func (self *YangBrowser) selectTypedefs(typedefs schema.MetaList) (s *Selection, err error) {
-	s = &Selection{}
+func (self *YangBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, error) {
+	s := &MySelection{}
 	i := listIterator{dataList:typedefs, resolve:self.resolve}
-	s.Enter = func() (*Selection, error) {
-		s.Found = true
-		switch s.Position.GetIdent() {
+	s.OnSelect = func() (Selection, error) {
+		s.WalkState().Found = true
+		switch s.State.Position.GetIdent() {
 		case "type":
 			return self.selectType(i.data.(*schema.Typedef).GetDataType())
 		}
 
 		return nil, nil
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), i.data, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
-	s.Iterate = i.Iterate
-	return
+	s.OnNext = i.Iterate
+	return s, nil
 }
 
-func (self *YangBrowser) GroupingsTypedefsDefinitions(s *Selection, meta schema.Meta, data schema.Meta) (*Selection, error) {
+func (self *YangBrowser) GroupingsTypedefsDefinitions(s Selection, meta schema.Meta, data schema.Meta) (Selection, error) {
+	state := s.WalkState()
 	switch meta.GetIdent() {
 	case "groupings":
 		groupings := data.(schema.HasGroupings).GetGroupings()
-		s.Found = !self.resolve && schema.ListLen(groupings) > 0
+		state.Found = !self.resolve && schema.ListLen(groupings) > 0
 		return self.selectGroupings(groupings)
 	case "typedefs":
 		typedefs := data.(schema.HasTypedefs).GetTypedefs()
-		s.Found = !self.resolve && schema.ListLen(typedefs) > 0
+		state.Found = !self.resolve && schema.ListLen(typedefs) > 0
 		return self.selectTypedefs(typedefs)
 	case "definitions":
 		defs := data.(schema.MetaList)
-		s.Found = schema.ListLen(defs) > 0
+		state.Found = schema.ListLen(defs) > 0
 		return self.selectDefinitionsList(defs)
 	}
 	return nil, nil
 }
 
-func (self *YangBrowser) selectNotifications(notifications schema.MetaList) (s *Selection, err error) {
-	s = &Selection{}
+func (self *YangBrowser) selectNotifications(notifications schema.MetaList) (Selection, error) {
+	s := &MySelection{}
 	i := listIterator{dataList:notifications, resolve:self.resolve}
-	s.Enter = func() (*Selection, error) {
-		s.Found = true
-		return self.GroupingsTypedefsDefinitions(s, s.Position, i.data)
+	s.OnSelect = func() (Selection, error) {
+		s.WalkState().Found = true
+		return self.GroupingsTypedefsDefinitions(s, s.State.Position, i.data)
 	}
-	s.Iterate = i.Iterate
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), i.data, val)
+	s.OnNext = i.Iterate
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectMetaList(data *schema.List) (s *Selection, err error) {
-	s = &Selection{}
-	s.Found = true
-	s.Enter = func() (*Selection, error) {
-		return self.GroupingsTypedefsDefinitions(s, s.Position, data)
+func (self *YangBrowser) selectMetaList(data *schema.List) (Selection, error) {
+	s := &MySelection{}
+	s.WalkState().Found = true
+	s.OnSelect = func() (Selection, error) {
+		return self.GroupingsTypedefsDefinitions(s, s.State.Position, data)
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), data, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectMetaContainer(data schema.MetaList) (s *Selection, err error) {
-	s = &Selection{}
-	s.Enter = func() (*Selection, error) {
-		s.Found = true
-		return self.GroupingsTypedefsDefinitions(s, s.Position, data)
+func (self *YangBrowser) selectMetaContainer(data schema.MetaList) (Selection, error) {
+	s := &MySelection{}
+	s.OnSelect = func() (Selection, error) {
+		s.WalkState().Found = true
+		return self.GroupingsTypedefsDefinitions(s, s.State.Position, data)
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), data, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectMetaLeaf(data *schema.Leaf) (s *Selection, err error) {
-	s = &Selection{}
-	s.Enter = func() (*Selection, error) {
-		s.Found = true
-		switch s.Position.GetIdent() {
+func (self *YangBrowser) selectMetaLeaf(data *schema.Leaf) (Selection, error) {
+	s := &MySelection{}
+	s.OnSelect = func() (Selection, error) {
+		s.WalkState().Found = true
+		switch s.State.Position.GetIdent() {
 		case "type":
 			return self.selectType(data.DataType)
 		}
 		return nil, nil
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), data, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectMetaLeafList(data *schema.LeafList) (s *Selection, err error) {
-	s = &Selection{}
-	s.Enter = func() (*Selection, error) {
-		s.Found = true
-		switch s.Position.GetIdent() {
+func (self *YangBrowser) selectMetaLeafList(data *schema.LeafList) (Selection, error) {
+	s := &MySelection{}
+	s.OnSelect = func() (Selection, error) {
+		s.WalkState().Found = true
+		switch s.State.Position.GetIdent() {
 		case "type":
 			return self.selectType(data.DataType)
 		}
 		return nil, nil
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), data, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectMetaUses(data *schema.Uses) (s *Selection, err error) {
-	s = &Selection{}
+func (self *YangBrowser) selectMetaUses(data *schema.Uses) (Selection, error) {
+	s := &MySelection{}
 	// TODO: uses has refine container(s)
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), data, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectMetaCases(choice *schema.Choice) (s *Selection, err error) {
-	s = &Selection{}
+func (self *YangBrowser) selectMetaCases(choice *schema.Choice) (Selection, error) {
+	s := &MySelection{}
 	i := listIterator{dataList:choice, resolve:self.resolve}
-	s.Iterate = i.Iterate
-	s.Enter = func() (*Selection, error) {
-		s.Found = true
-		switch s.Position.GetIdent() {
+	s.OnNext = i.Iterate
+	s.OnSelect = func() (Selection, error) {
+		s.WalkState().Found = true
+		switch s.State.Position.GetIdent() {
 		case "definitions":
 			return self.selectDefinitionsList(choice)
 		}
 		return nil, nil
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), choice, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), choice, val)
 	}
-	return
+	return s, nil
 }
 
-func (self *YangBrowser) selectMetaChoice(data *schema.Choice) (s *Selection, err error) {
-	s = &Selection{}
-	s.Enter = func() (*Selection, error) {
-		s.Found = true
-		switch s.Position.GetIdent() {
+func (self *YangBrowser) selectMetaChoice(data *schema.Choice) (Selection, error) {
+	s := &MySelection{}
+	s.OnSelect = func() (Selection, error) {
+		s.WalkState().Found = true
+		switch s.State.Position.GetIdent() {
 		case "cases":
 			return self.selectMetaCases(data);
 		}
 		return nil, nil
 	}
-	s.ReadValue = func(val *Value) (err error) {
-		return ReadField(s.Position.(schema.HasDataType), data, val)
+	s.OnRead = func(val *Value) (err error) {
+		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
-	return
+	return s, nil
 }
 
 type listIterator struct {
@@ -341,19 +346,20 @@ func (i *listIterator) Iterate(keys []string, first bool) (bool, error) {
 	return i.data != nil, nil
 }
 
-func (self *YangBrowser) selectDefinitionsList(dataList schema.MetaList) (s *Selection, err error) {
-	s = &Selection{}
+func (self *YangBrowser) selectDefinitionsList(dataList schema.MetaList) (Selection, error) {
+	s := &MySelection{}
 	i := listIterator{dataList:dataList, resolve:self.resolve}
-	s.Choose = func(choice *schema.Choice) (m schema.Meta, err error) {
+	s.OnChoose = func(choice *schema.Choice) (m schema.Meta, err error) {
 		return self.resolveDefinitionCase(choice, i.data)
 	}
-	s.Enter = func() (s2 *Selection, e error) {
-		choice := s.Meta.GetFirstMeta().(*schema.Choice)
-		if s.Position, e = self.resolveDefinitionCase(choice, i.data); e != nil {
+	s.OnSelect = func() (Selection, error) {
+		var e error
+		choice := s.State.Meta.GetFirstMeta().(*schema.Choice)
+		if s.State.Position, e = self.resolveDefinitionCase(choice, i.data); e != nil {
 			return nil, e
 		}
-		s.Found = true
-		switch s.Position.GetIdent() {
+		s.WalkState().Found = true
+		switch s.State.Position.GetIdent() {
 		case "list":
 			return self.selectMetaList(i.data.(*schema.List))
 		case "leaf":
@@ -369,8 +375,8 @@ func (self *YangBrowser) selectDefinitionsList(dataList schema.MetaList) (s *Sel
 		}
 		return nil, nil
 	}
-	s.Iterate = i.Iterate
-	return
+	s.OnNext = i.Iterate
+	return s, nil
 
 }
 

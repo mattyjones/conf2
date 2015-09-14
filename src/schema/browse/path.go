@@ -86,27 +86,31 @@ func (p *WalkTargetController) parseQuery(q string) (err error) {
 	return
 }
 
+func (p *WalkTargetController) CloseSelection(s Selection) error {
+	return schema.CloseResource(s)
+}
+
 func NewExhaustiveController() WalkController {
 	return &WalkTargetController{MaxDepth:32}
 }
 
-func (e *WalkTargetController) ListIterator(s *Selection, level int, first bool) (hasMore bool, err error) {
+func (e *WalkTargetController) ListIterator(s Selection, level int, first bool) (hasMore bool, err error) {
 	if level >= e.MaxDepth {
 		return false, nil
 	}
-	return s.Iterate([]string{}, first)
+	return s.Next([]string{}, first)
 }
 
-func (e *WalkTargetController) ContainerIterator(s *Selection, level int) schema.MetaIterator {
+func (e *WalkTargetController) ContainerIterator(s Selection, level int) schema.MetaIterator {
 	if level >= e.MaxDepth {
 		return schema.EmptyInterator(0)
 	}
-	return schema.NewMetaListIterator(s.Meta, true)
+	return schema.NewMetaListIterator(s.WalkState().Meta, true)
 }
 
 type FindTargetController struct {
 	path *Path
-	target *Selection
+	target Selection
 	resource schema.Resource
 }
 
@@ -114,7 +118,7 @@ func newPathController(p *Path) *FindTargetController {
 	return &FindTargetController{path:p}
 }
 
-func (n *FindTargetController) ListIterator(s *Selection, level int, first bool) (hasMore bool, err error) {
+func (n *FindTargetController) ListIterator(s Selection, level int, first bool) (hasMore bool, err error) {
 	if level == len(n.path.Segments) {
 		if len(n.path.Segments[level - 1].Keys) == 0 {
 			n.target = s
@@ -126,24 +130,31 @@ func (n *FindTargetController) ListIterator(s *Selection, level int, first bool)
 		}
 	}
 	if first && level > 0 && level <= len(n.path.Segments) {
-		return s.Iterate(n.path.Segments[level - 1].Keys, first)
+		return s.Next(n.path.Segments[level - 1].Keys, first)
 	} else {
 		return false, nil
 	}
 }
 
-func (n *FindTargetController) setTarget(s *Selection) {
+func (p *FindTargetController) CloseSelection(s Selection) error {
+	if s != p.target {
+		return schema.CloseResource(s)
+	}
+	return nil
+}
+
+func (n *FindTargetController) setTarget(s *MySelection) {
 	n.target = s
 	// we take ownership of resource so it's not released until target is used
 	n.resource = s.Resource
 	s.Resource = nil
 }
 
-func (n *FindTargetController) ContainerIterator(s *Selection, level int) schema.MetaIterator {
+func (n *FindTargetController) ContainerIterator(s Selection, level int) schema.MetaIterator {
 	if level >= len(n.path.Segments) {
 		n.target = s
 		return schema.EmptyInterator(0)
 	}
-	position := schema.FindByIdent2(s.Meta, n.path.Segments[level].Ident)
+	position := schema.FindByIdent2(s.WalkState().Meta, n.path.Segments[level].Ident)
 	return &schema.SingletonIterator{Meta:position}
 }

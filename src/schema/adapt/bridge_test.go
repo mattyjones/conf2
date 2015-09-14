@@ -24,13 +24,13 @@ func TestBridge(t *testing.T) {
 		jsonRdr := browse.NewJsonReader(strings.NewReader(json))
 		var actualBuff bytes.Buffer
 		jsonWtr := browse.NewJsonWriter(&actualBuff)
-		var from *browse.Selection
+		var from browse.Selection
 		from, err = jsonRdr.GetSelector(m1)
 		if err != nil {
 			t.Error(err)
 		} else {
 			toJson, _ := jsonWtr.GetSelector()
-			toJson.Meta = m2
+			toJson.WalkState().Meta = m2
 			b := &Bridge{Map: mapp}
 			to, _ := b.enterBridge(toJson)
 			browse.Insert(from, to, browse.NewExhaustiveController())

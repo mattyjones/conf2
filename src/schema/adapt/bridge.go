@@ -40,7 +40,7 @@ func (m *Map) MapMeta(from schema.Meta, toParent schema.MetaList) (schema.Meta, 
 	return to, nil
 }
 
-func (bb *BridgeBrowser) RootSelector() (*browse.Selection, error) {
+func (bb *BridgeBrowser) RootSelector() (browse.Selection, error) {
 	root, err := bb.To.RootSelector()
 	if err != nil {
 		return nil, err
@@ -49,31 +49,34 @@ func (bb *BridgeBrowser) RootSelector() (*browse.Selection, error) {
 	return bridge.enterBridge(root)
 }
 
-func (b *Bridge) enterBridge(to *browse.Selection) (*browse.Selection, error) {
-	s := &browse.Selection{}
-	s.Enter = func() (child *browse.Selection, err error) {
-		if to.Position, err = b.Map.MapMeta(s.Position, to.Meta); err == nil {
-			var toChild *browse.Selection
-			if toChild, err = to.Enter(); err == nil {
-				s.Found = to.Found
+func (b *Bridge) enterBridge(to browse.Selection) (browse.Selection, error) {
+	s := &browse.MySelection{}
+	s.OnSelect = func() (child browse.Selection, err error) {
+		toState := to.WalkState()
+		if toState.Position, err = b.Map.MapMeta(s.State.Position, toState.Meta); err == nil {
+			var toChild browse.Selection
+			if toChild, err = to.Select(); err == nil {
+				s.WalkState().Found = to.WalkState().Found
 				if toChild != nil {
-					toChild.Meta = to.Position.(schema.MetaList)
+					toChild.WalkState().Meta = toState.Position.(schema.MetaList)
 					return b.enterBridge(toChild)
 				}
 			}
 		}
 		return
 	}
-	s.Edit = func(op browse.Operation, val *browse.Value) (err error) {
-		if to.Position, err = b.Map.MapMeta(s.Position, to.Meta); err == nil {
-			return to.Edit(op, val)
+	s.OnWrite = func(op browse.Operation, val *browse.Value) (err error) {
+		toState := to.WalkState()
+		if toState.Position, err = b.Map.MapMeta(s.State.Position, toState.Meta); err == nil {
+			return to.Write(op, val)
 		}
 		return
 	}
-	s.ReadValue = func(val *browse.Value) (err error) {
-		if to.Position, err = b.Map.MapMeta(s.Position, to.Meta); err == nil {
+	s.OnRead = func(val *browse.Value) (err error) {
+		toState := to.WalkState()
+		if toState.Position, err = b.Map.MapMeta(s.State.Position, toState.Meta); err == nil {
 			// TODO: txlate val
-			return to.Edit(browse.UPDATE_VALUE, val)
+			return to.Write(browse.UPDATE_VALUE, val)
 		}
 		return
 	}

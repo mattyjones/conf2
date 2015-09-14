@@ -97,10 +97,10 @@ func TestPathControllerContainerIterator(t *testing.T) {
 		{"a/b=key",     		2},
 		{"a=key/b",		        2},
 	}
-	selection := &Selection{}
-	selection.Meta = &schema.Container{Ident:"root"}
-	selection.Meta.AddMeta(&schema.Container{Ident:"a"})
-	selection.Meta.AddMeta(&schema.Container{Ident:"b"})
+	selection := &MySelection{}
+	selection.State.Meta = &schema.Container{Ident:"root"}
+	selection.State.Meta.AddMeta(&schema.Container{Ident:"a"})
+	selection.State.Meta.AddMeta(&schema.Container{Ident:"b"})
 	for _, test := range tests {
 		p ,_ = NewPath(test.in)
 		rc := newPathController(p)
@@ -131,8 +131,8 @@ func TestPathControllerListIterator(t *testing.T) {
 		{"a/b=key",     		2, true},
 		{"a=key/b",		        2, false},
 	}
-	selection := &Selection{}
-	selection.Iterate = func([]string, bool) (bool, error) {
+	selection := &MySelection{}
+	selection.OnNext = func([]string, bool) (bool, error) {
 		return true, nil
 	}
 	var more bool

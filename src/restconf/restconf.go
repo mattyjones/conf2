@@ -59,7 +59,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var path *browse.Path
 	if path, err = browse.NewPath(r.URL.Path); err == nil {
-		var selection *browse.Selection
+		var selection browse.Selection
 		if selection, err = reg.browser.RootSelector(); err == nil {
 			if selection, err = browse.WalkPath(selection, path); err == nil {
 				var walkCntlr browse.WalkController
@@ -70,7 +70,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					case "GET":
 						w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
 						wtr := browse.NewJsonWriter(w)
-						var out *browse.Selection
+						var out browse.Selection
 						if out, err = wtr.GetSelector(); err == nil {
 							if walkCntlr, err = browse.NewWalkTargetController(r.URL.RawQuery); err == nil {
 								err = browse.Insert(selection, out, walkCntlr)
@@ -78,8 +78,8 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						}
 					case "POST":
 						rdr := browse.NewJsonReader(r.Body)
-						var in *browse.Selection
-						if in, err = rdr.GetSelector(selection.Meta); err == nil {
+						var in browse.Selection
+						if in, err = rdr.GetSelector(selection.WalkState().Meta); err == nil {
 							if walkCntlr, err = browse.NewWalkTargetController(r.URL.RawQuery); err == nil {
 								if err = browse.Insert(in, selection, walkCntlr); err == nil {
 									http.Error(w, "", http.StatusNoContent)
