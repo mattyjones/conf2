@@ -55,7 +55,7 @@ func enterRegistrations(registrations map[string]registration) (browse.Selection
 	var i int
 	var names []string
 	s := &browse.MySelection{}
-	s.OnNext = func(keys []string, isFirst bool) (bool, error) {
+	s.OnNext = func(keys []browse.Value, isFirst bool) (bool, error) {
 		if isFirst {
 			i = 0
 			names = make([]string, len(registrations))

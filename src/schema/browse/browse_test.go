@@ -9,17 +9,7 @@ import (
 )
 
 func LoadSampleModule(t *testing.T) (*schema.Module) {
-	f := &schema.FileStreamSource{Root:"../testdata"}
-	m, err:= yang.LoadModule(f, "romancing-the-stone.yang")
-	if err != nil {
-		t.Error(err.Error())
-	}
-	return m
-}
-
-func LoadYangModule(t *testing.T) (*schema.Module) {
-	f := &schema.FileStreamSource{Root:"../../../etc"}
-	m, err:= yang.LoadModule(f, "yang-1.0.yang")
+	m, err:= yang.LoadModule(schema.NewCwdSource(), "../testdata/romancing-the-stone.yang")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -55,11 +45,10 @@ func TestWalkJson(t *testing.T) {
 
 func TestWalkYang(t *testing.T) {
 	module := LoadSampleModule(t)
-	yang := LoadYangModule(t)
 	var actualBuff bytes.Buffer
 	outJson := NewJsonWriter(&actualBuff)
 	out, _ := outJson.GetSelector()
-	browser := YangBrowser{meta:yang, module:module}
+	browser := NewYangBrowser(module, true)
 	if root, err := browser.RootSelector(); err != nil {
 		t.Error(err)
 	} else {

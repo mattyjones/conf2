@@ -98,7 +98,7 @@ func (e *WalkTargetController) ListIterator(s Selection, level int, first bool) 
 	if level >= e.MaxDepth {
 		return false, nil
 	}
-	return s.Next([]string{}, first)
+	return s.Next(NO_KEYS, first)
 }
 
 func (e *WalkTargetController) ContainerIterator(s Selection, level int) schema.MetaIterator {
@@ -130,7 +130,16 @@ func (n *FindTargetController) ListIterator(s Selection, level int, first bool) 
 		}
 	}
 	if first && level > 0 && level <= len(n.path.Segments) {
-		return s.Next(n.path.Segments[level - 1].Keys, first)
+		keysAsStrings := n.path.Segments[level - 1].Keys
+		list, isList := s.WalkState().Meta.(*schema.List)
+		if !isList {
+
+		}
+		keys, err := CoerseKeys(list, keysAsStrings)
+		if err != nil {
+			return false, err
+		}
+		return s.Next(keys, first)
 	} else {
 		return false, nil
 	}

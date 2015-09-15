@@ -65,10 +65,11 @@ func edit(from Selection, dest Selection, strategy strategy, controller WalkCont
 func (e *editor) editTarget(from Selection, to Selection, strategy strategy) (Selection, error) {
 	var createdChild bool
 	var createdList bool
+	var createdListItem bool
 	s := &MySelection{}
 	s.State.insideList = from.WalkState().insideList
 	s.OnChoose = func(choice *schema.Choice) (schema.Meta, error) {
-		return from.Chooze(choice)
+		return from.Choose(choice)
 	}
 	s.OnSelect = func() (c Selection, err error) {
 		fromState := from.WalkState()
@@ -212,60 +213,43 @@ func (e *editor) editTarget(from Selection, to Selection, strategy strategy) (Se
 //		}
 		return
 	}
-	s.OnNext = func(fromKeys []string, first bool) (hasMore bool, err error) {
+	s.OnNext = func(fromKeys []Value, first bool) (hasMore bool, err error) {
 		from.WalkState().Meta = s.State.Meta
 		to.WalkState().Meta = s.State.Meta
-		hasMore, err = from.Next(fromKeys, first)
-
-		if err != nil {
-			return
-		}
-
-		if hasMore {
-			_, err = to.Next(fromKeys, first)
+		if createdListItem {
+			err = to.Write(POST_CREATE_LIST_ITEM, nil)
 			if err != nil {
-				return
+				return false, err
 			}
 		}
 
-		// TODO: Consider to.hasMore results on LIST_ITEM calls
-		if first && hasMore {
-			err = to.Write(CREATE_LIST_ITEM, nil)
-		} else if !first && hasMore {
-			err = to.Write(POST_CREATE_LIST_ITEM, nil)
-			if err == nil {
-				err = to.Write(CREATE_LIST_ITEM, nil)
+		hasMore, err = from.Next(fromKeys, first)
+		if err != nil {
+			return false, err
+		}
+
+		toHasMore := false
+		if hasMore {
+			var keys []Value
+			keys, err = ReadKeys(from)
+			if err != nil {
+				return false, err
 			}
-		} else if !first && !hasMore {
-			err = to.Write(POST_CREATE_LIST_ITEM, nil)
+			toHasMore, err = to.Next(keys, first)
+			if err != nil {
+				return false, err
+			}
+		}
+
+		if hasMore && !toHasMore {
+			err = to.Write(CREATE_LIST_ITEM, nil)
+			if err != nil {
+				return false, err
+			}
+			createdListItem = true
 		}
 
 		return
-
-// TODO assumption for now
-//			toKeys := fromKeys
-//			if len(toKeys) == 0 {
-//				keyIdents := s.Meta.(*schema.List).Keys
-//				toKeys = make([]string, len(keyIdents))
-//				for i, keyIdent := range keyIdents {
-//					v := &Value{}
-//					if _, err = from.Select(keyIdent); err != nil {
-//						return
-//					}
-//					if err = from.Read(v); err != nil {
-//						return
-//					}
-//					// TODO: don't assume key is a string
-//					toKeys[i] = v.Str
-//				}
-//			}
-//
-//			// ignore if exists or not, next Select will detect existance for lists and container
-//			// selections.
-//			_, err = to.Iterate(toKeys, true)
-//			if err != nil {
-//				return
-//			}
 	}
 
 	return s, nil

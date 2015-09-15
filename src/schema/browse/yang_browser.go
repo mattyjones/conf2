@@ -504,14 +504,14 @@ type listIterator struct {
 	resolve bool
 }
 
-func (i *listIterator) Iterate(keys []string, first bool) (bool, error) {
+func (i *listIterator) Iterate(keys []Value, first bool) (bool, error) {
 	i.data = nil
 	if i.dataList == nil {
 		return false, nil
 	}
 	if len(keys) > 0 {
 		if first {
-			i.data = schema.FindByIdent2(i.dataList, keys[0])
+			i.data = schema.FindByIdent2(i.dataList, keys[0].Str)
 		}
 	} else {
 		if first {

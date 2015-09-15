@@ -74,7 +74,7 @@ func (json *JsonWriter) selectJson() (Selection, error) {
 		json.firstWrite = false
 		return
 	}
-	s.OnNext = func(keys []string, first bool) (hasMore bool, err error) {
+	s.OnNext = func(keys []Value, first bool) (hasMore bool, err error) {
 		return false, nil
 	}
 	return s, nil

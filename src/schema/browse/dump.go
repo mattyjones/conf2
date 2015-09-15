@@ -46,7 +46,7 @@ func (d *Dumper) Enter(level int) (Selection, error) {
 		d.dumpValue(v, level)
 		return
 	}
-	s.OnNext = func(keys []string, first bool) (hasMore bool, err error) {
+	s.OnNext = func(keys []Value, first bool) (hasMore bool, err error) {
 		d.out.WriteString(fmt.Sprintf("%sITERATE row=%d, first=%v\n", Padding[:level], row, first))
 		row++
 		return false, nil
