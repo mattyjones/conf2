@@ -21,6 +21,25 @@ func FindByIdent2(parent MetaList, ident string) Meta {
 	return FindByIdent(i, ident)
 }
 
+var NO_KEYS = make([]interface{}, 0)
+
+func CoerseKeys(list List, keys []string) ([]interface{}, error) {
+	if len(keys) == 0 {
+		return NO_KEYS
+	}
+	keys := make([]interface{}, len(keys))
+	for i, keyStr := range keys {
+		keys[i] = coerseKey(keyStr)
+	}
+
+	if len
+	list.Keys
+}
+
+func coerseKey(key string, m Meta) interface{} {
+
+}
+
 func IsLeaf(m Meta) bool {
 	switch m.(type) {
 	case *Leaf, *LeafList:

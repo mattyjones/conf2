@@ -119,14 +119,14 @@ func enterJson(values map[string]interface{}, list []interface{}) (Selection, er
 		}
 		return
 	}
-	s.OnNext = func(searchKey []string, first bool) (hasMore bool, err error) {
+	s.OnNext = func(key []interface{}, first bool) (hasMore bool, err error) {
 		container = nil
-		if len(searchKey) > 0 {
+		if len(key) > 0 {
 			if first {
 				keyFields := s.State.Meta.(*schema.List).Keys
 				for ; i < len(list); i++ {
 					candidate := list[i].(map[string]interface{})
-					if jsonKeyMatches(keyFields, candidate, searchKey) {
+					if jsonKeyMatches(keyFields, candidate, key) {
 						container = candidate
 						break
 					}
@@ -147,9 +147,9 @@ func enterJson(values map[string]interface{}, list []interface{}) (Selection, er
 	return s, nil
 }
 
-func jsonKeyMatches(keyFields []string, candidate map[string]interface{}, target []string) bool {
+func jsonKeyMatches(keyFields []string, candidate map[string]interface{}, key []interface{}) bool {
 	for i, field := range keyFields {
-		if candidate[field] != target[i] {
+		if candidate[field] != key[i] {
 			return false
 		}
 	}

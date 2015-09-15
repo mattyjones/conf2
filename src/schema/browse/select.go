@@ -14,7 +14,7 @@ type WalkState struct {
 
 type Selection interface {
 	Select() (Selection, error)
-	Next(keys []string, isFirst bool) (hasMore bool, err error)
+	Next(keys []interface{}, isFirst bool) (hasMore bool, err error)
 	Read(val *Value) (error)
 	Write(op Operation, val *Value) (error)
 	Chooze(choice *schema.Choice) (m schema.Meta, err error)
@@ -58,7 +58,7 @@ func (s *MySelection) Unselect() error {
 	return nil
 }
 
-func (s *MySelection) Next(keys []string, isFirst bool) (bool, error) {
+func (s *MySelection) Next(keys []interface{}, isFirst bool) (bool, error) {
 	if s.OnNext == nil {
 		return false, &browseError{
 			Code:NOT_IMPLEMENTED,
@@ -112,7 +112,7 @@ func (s *MySelection) WalkState() *WalkState {
 	return &s.State
 }
 
-type NextFunc func(keys []string, first bool) (hasMore bool, err error)
+type NextFunc func(keys []interface{}, first bool) (hasMore bool, err error)
 type SelectFunc func() (child Selection, err error)
 type ReadFunc func(val *Value) (error)
 type WriteFunc func(op Operation, val *Value) (error)

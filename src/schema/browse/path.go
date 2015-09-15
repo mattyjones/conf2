@@ -94,11 +94,13 @@ func NewExhaustiveController() WalkController {
 	return &WalkTargetController{MaxDepth:32}
 }
 
+var NO_KEYS = make([]interface{}, 0)
+
 func (e *WalkTargetController) ListIterator(s Selection, level int, first bool) (hasMore bool, err error) {
 	if level >= e.MaxDepth {
 		return false, nil
 	}
-	return s.Next([]string{}, first)
+	return s.Next(NO_KEYS, first)
 }
 
 func (e *WalkTargetController) ContainerIterator(s Selection, level int) schema.MetaIterator {
@@ -130,9 +132,25 @@ func (n *FindTargetController) ListIterator(s Selection, level int, first bool) 
 		}
 	}
 	if first && level > 0 && level <= len(n.path.Segments) {
-		return s.Next(n.path.Segments[level - 1].Keys, first)
+		keysAsStrings := n.path.Segments[level - 1].Keys
+		list, isList := s.WalkState().Meta.(schema.List)
+		if !isList {
+
+		}
+		keys, err := schema.CoerseKeys(list, keysAsStrings)
+		return s.Next(keys, first)
 	} else {
 		return false, nil
+	}
+}
+
+func (n *FindTargetController) coerseKeys(keys []string) []interface{} {
+	if len(keys) == 0 {
+		return NO_KEYS
+	}
+	keys := make([]interface{}, len(keys))
+	for i, keyStr := range keys {
+		keys[i] = coerseKey(keyStr)
 	}
 }
 

@@ -212,7 +212,7 @@ func (e *editor) editTarget(from Selection, to Selection, strategy strategy) (Se
 //		}
 		return
 	}
-	s.OnNext = func(fromKeys []string, first bool) (hasMore bool, err error) {
+	s.OnNext = func(fromKeys []interface{}, first bool) (hasMore bool, err error) {
 		from.WalkState().Meta = s.State.Meta
 		to.WalkState().Meta = s.State.Meta
 		hasMore, err = from.Next(fromKeys, first)
