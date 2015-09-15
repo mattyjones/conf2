@@ -4,6 +4,7 @@ import (
 	"io"
 	"schema"
 	"encoding/json"
+	"fmt"
 )
 
 type JsonReader struct {
@@ -71,6 +72,33 @@ func enterJson(values map[string]interface{}, list []interface{}) (Selection, er
 	var value interface{}
 	var container = values
 	var i int
+	s.OnChoose = func(choice *schema.Choice) (m schema.Meta, err error) {
+		// go thru each case and if there are any properties in the data that are not
+		// part of the schema, that disqualifies that case and we move onto next case
+		// until one case aligns with data.  If no cases align then input in inconclusive
+		// i.e. non-discriminating and we should error out.
+		cases := schema.NewMetaListIterator(choice, false)
+		for cases.HasNextMeta() {
+			kase := cases.NextMeta().(*schema.ChoiceCase)
+			aligned := true
+			props := schema.NewMetaListIterator(kase, true)
+			for props.HasNextMeta() {
+				prop := props.NextMeta()
+				_, found := container[prop.GetIdent()]
+				if !found {
+					aligned = false
+					break;
+				} else {
+					m = prop
+				}
+			}
+			if aligned {
+				return m, nil
+			}
+		}
+		msg := fmt.Sprintf("No discriminating data for choice schema %s ", s.ToString())
+		return nil, &browseError{Msg:msg}
+	}
 	s.OnSelect = func() (child Selection, e error) {
 		state := s.WalkState()
 		value, state.Found = container[s.State.Position.GetIdent()]
@@ -91,14 +119,14 @@ func enterJson(values map[string]interface{}, list []interface{}) (Selection, er
 		}
 		return
 	}
-	s.OnNext = func(keys []string, first bool) (hasMore bool, err error) {
+	s.OnNext = func(searchKey []string, first bool) (hasMore bool, err error) {
 		container = nil
-		if len(keys) > 0 {
+		if len(searchKey) > 0 {
 			if first {
 				keyFields := s.State.Meta.(*schema.List).Keys
 				for ; i < len(list); i++ {
 					candidate := list[i].(map[string]interface{})
-					if jsonKeyMatches(keyFields, candidate, keys) {
+					if jsonKeyMatches(keyFields, candidate, searchKey) {
 						container = candidate
 						break
 					}

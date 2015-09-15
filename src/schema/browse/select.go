@@ -101,7 +101,7 @@ func (s *MySelection) Chooze(choice *schema.Choice) (m schema.Meta, err error) {
 func (s *MySelection) ToString() string {
 	if s.State.Meta != nil {
 		if s.State.Position != nil {
-			return fmt.Sprintf("%s, position %s", s.State.Meta.GetIdent(), s.State.Position.GetIdent())
+			return fmt.Sprintf("%s.%s", s.State.Meta.GetIdent(), s.State.Position.GetIdent())
 		}
 		return s.State.Meta.GetIdent()
 	}

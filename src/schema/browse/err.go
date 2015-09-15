@@ -30,7 +30,6 @@ func NotImplementedByName(ident string) error {
 }
 
 func NotImplemented(meta schema.Meta) error {
-	panic("STOP")
 	return &browseError{Code:NOT_IMPLEMENTED, Msg:fmt.Sprintf("browsing of \"%s.%s\" not implemented",
 		meta.GetParent().GetIdent(), meta.GetIdent())}
 }

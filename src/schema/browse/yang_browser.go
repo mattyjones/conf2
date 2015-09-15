@@ -47,12 +47,21 @@ func (self *YangBrowser) RootSelector() (Selection, error) {
 	s := &MySelection{}
 	s.State.Meta = self.meta
 	s.OnSelect = func() (Selection, error) {
-		s.State.Found = true
+		s.State.Found = self.module != nil
 		switch s.State.Position.GetIdent() {
 		case "module" :
-			return self.SelectModule(self.module)
+			if self.module != nil {
+				return self.SelectModule(self.module)
+			}
 		}
 		return nil, nil
+	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+			case CREATE_CHILD:
+				self.module = &schema.Module{}
+		}
+		return nil
 	}
 	return s, nil
 }
@@ -60,21 +69,39 @@ func (self *YangBrowser) RootSelector() (Selection, error) {
 func (self *YangBrowser) SelectModule(module *schema.Module) (Selection, error) {
 	s := &MySelection{}
 	s.OnSelect = func() (child Selection, err error) {
-		s.WalkState().Found = true
 		switch s.State.Position.GetIdent() {
 		case "revision":
-			return self.selectRevision(module.Revision)
+			s.State.Found = module.Revision != nil
+			if s.State.Found {
+				return self.selectRevision(module.Revision)
+			}
 		case "rpcs":
+			s.State.Found = module.GetRpcs().GetFirstMeta() != nil
 			return self.selectRpcs(module.GetRpcs())
 		case "notifications":
-			s.WalkState().Found = schema.ListLen(module.GetNotifications()) > 0
+			s.State.Found = module.GetNotifications().GetFirstMeta() != nil
 			return self.selectNotifications(module.GetNotifications())
 		default:
 			return self.GroupingsTypedefsDefinitions(s, s.State.Position, module)
 		}
+		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
 		return ReadField(s.State.Position.(schema.HasDataType), module, val)
+	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+			case CREATE_CHILD:
+				switch s.State.Position.GetIdent() {
+					case "revision":
+						module.Revision = &schema.Revision{}
+					default:
+						return EditNotImplemented(s.State.Position)
+				}
+			case UPDATE_VALUE:
+				return WriteField(s.State.Position, module, val)
+		}
+		return nil
 	}
 	return s, nil
 }
@@ -89,6 +116,18 @@ func (self *YangBrowser) selectRevision(rev *schema.Revision) (Selection, error)
 			return ReadField(s.State.Position.(schema.HasDataType), rev, val)
 		}
 	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+			case UPDATE_VALUE:
+				switch s.State.Position.GetIdent() {
+					case "rev-date":
+						rev.Ident = val.Str
+					default:
+						return WriteField(s.State.Position, rev, val)
+				}
+		}
+		return nil
+	}
 	return s, nil
 }
 
@@ -97,72 +136,138 @@ func (self *YangBrowser) selectType(typeData *schema.DataType) (Selection, error
 	s.OnRead = func(val *Value) (err error) {
 		return ReadField(s.State.Position.(schema.HasDataType), typeData, val)
 	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case UPDATE_VALUE:
+			return WriteField(s.State.Position, typeData, val)
+		}
+		return nil
+	}
 	return s, nil
 }
 
 func (self *YangBrowser) selectGroupings(groupings schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:groupings, resolve:self.resolve}
+	var created *schema.Grouping
 	s.OnSelect = func() (Selection, error) {
-		s.WalkState().Found = true
+		s.State.Found = true
 		return self.GroupingsTypedefsDefinitions(s, s.State.Position, i.data)
 	}
 	s.OnNext = i.Iterate
 	s.OnRead = func(val *Value) (err error) {
 		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
-	return s, nil
-}
-
-func (self *YangBrowser) selectRpcInput(rpc *schema.RpcInput) (Selection, error) {
-	s := &MySelection{}
-	s.OnSelect = func() (Selection, error) {
-		state := s.WalkState()
-		state.Found = rpc != nil
-		if state.Found {
-			return self.GroupingsTypedefsDefinitions(s, s.State.Position, rpc)
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case CREATE_LIST_ITEM:
+			created = &schema.Grouping{}
+			i.data = created
+		case POST_CREATE_LIST_ITEM:
+			groupings.AddMeta(created)
+		case UPDATE_VALUE:
+			return WriteField(s.State.Position, i.data, val)
 		}
-		return nil, nil
-	}
-	s.OnRead = func(val *Value) (err error) {
-		return ReadField(s.State.Position.(schema.HasDataType), rpc, val)
+		return nil
 	}
 	return s, nil
 }
 
-func (self *YangBrowser) selectRpcOutput(rpc *schema.RpcOutput) (Selection, error) {
+func (self *YangBrowser) selectRpcIO(i *schema.RpcInput, o *schema.RpcOutput) (Selection, error) {
 	s := &MySelection{}
+	var io schema.MetaList
+	if i != nil {
+		io = i
+	} else {
+		io = o
+	}
 	s.OnSelect = func() (Selection, error) {
 		state := s.WalkState()
-		state.Found = rpc != nil
+		state.Found = true
 		if state.Found {
-			return self.GroupingsTypedefsDefinitions(s, s.State.Position, rpc)
+			return self.GroupingsTypedefsDefinitions(s, s.State.Position, io)
 		}
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
-		return ReadField(s.State.Position.(schema.HasDataType), rpc, val)
+		return ReadField(s.State.Position.(schema.HasDataType), io, val)
+	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case UPDATE_VALUE:
+			return WriteField(s.State.Position, io, val)
+		}
+		return nil
 	}
 	return s, nil
+}
+
+func (self *YangBrowser) CreateGroupingsTypedefsDefinitions(parent schema.MetaList, childMeta schema.Meta) (schema.Meta, error) {
+	var child schema.Meta
+	switch childMeta.GetIdent() {
+		case "leaf":
+			child = &schema.Leaf{}
+		case "leaf-list":
+			child = &schema.LeafList{}
+		case "container":
+			child = &schema.Container{}
+		case "list":
+			child = &schema.List{}
+		case "uses":
+			child = &schema.Uses{}
+		case "grouping":
+			child = &schema.Grouping{}
+		case "typedef":
+			child = &schema.Typedef{}
+		default:
+			return nil, NotImplemented(childMeta)
+	}
+	parent.AddMeta(child)
+	return child, nil
 }
 
 func (self *YangBrowser) selectRpcs(rpcs schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:rpcs, resolve:self.resolve}
+	var created *schema.Rpc
 	s.OnSelect = func() (Selection, error) {
-		state := s.WalkState()
-		state.Found = true
+		rpc := i.data.(*schema.Rpc)
 		switch s.State.Position.GetIdent() {
 		case "input":
-			return self.selectRpcInput(i.data.(*schema.Rpc).Input)
+			s.State.Found = rpc.Input != nil
+			if s.State.Found {
+				return self.selectRpcIO(rpc.Input, nil)
+			}
 		case "output":
-			return self.selectRpcOutput(i.data.(*schema.Rpc).Output)
+			s.State.Found = rpc.Output != nil
+			if s.State.Found {
+				return self.selectRpcIO(nil, rpc.Output)
+			}
 		}
-
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
 		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
+	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+			case CREATE_LIST_ITEM:
+				created = &schema.Rpc{}
+				i.data = created
+			case POST_CREATE_LIST_ITEM:
+				rpcs.AddMeta(created)
+			case CREATE_CHILD:
+				rpc := i.data.(*schema.Rpc)
+				switch s.State.Position.GetIdent() {
+				case "input":
+					rpc.AddMeta(&schema.RpcInput{})
+				case "output":
+					rpc.AddMeta(&schema.RpcOutput{})
+				}
+			case UPDATE_VALUE:
+				return WriteField(s.State.Position, i.data, val)
+		}
+		return nil
 	}
 	s.OnNext = i.Iterate
 	return s, nil
@@ -171,19 +276,42 @@ func (self *YangBrowser) selectRpcs(rpcs schema.MetaList) (Selection, error) {
 func (self *YangBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:typedefs, resolve:self.resolve}
+	var created *schema.Typedef
 	s.OnSelect = func() (Selection, error) {
-		s.WalkState().Found = true
+		tdef := i.data.(*schema.Typedef)
 		switch s.State.Position.GetIdent() {
 		case "type":
-			return self.selectType(i.data.(*schema.Typedef).GetDataType())
+			s.State.Found = tdef.DataType != nil
+			if s.State.Found {
+				return self.selectType(tdef.DataType)
+			}
 		}
-
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
 		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
 	s.OnNext = i.Iterate
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case CREATE_CHILD:
+			tdef := i.data.(*schema.Typedef)
+			switch s.State.Position.GetIdent() {
+			case "type":
+				tdef.SetDataType(&schema.DataType{})
+			default:
+				return NotImplemented(s.State.Position)
+			}
+		case CREATE_LIST_ITEM:
+			created = &schema.Typedef{}
+			i.data = created
+		case POST_CREATE_LIST_ITEM:
+			typedefs.AddMeta(created)
+		case UPDATE_VALUE:
+			return WriteField(s.State.Position, i.data, val)
+		}
+		return nil
+	}
 	return s, nil
 }
 
@@ -209,13 +337,29 @@ func (self *YangBrowser) GroupingsTypedefsDefinitions(s Selection, meta schema.M
 func (self *YangBrowser) selectNotifications(notifications schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:notifications, resolve:self.resolve}
+	var created *schema.Notification
 	s.OnSelect = func() (Selection, error) {
-		s.WalkState().Found = true
-		return self.GroupingsTypedefsDefinitions(s, s.State.Position, i.data)
+		s.State.Found = i.data != nil
+		if s.State.Found {
+			return self.GroupingsTypedefsDefinitions(s, s.State.Position, i.data)
+		}
+		return nil, nil
 	}
 	s.OnNext = i.Iterate
 	s.OnRead = func(val *Value) (err error) {
 		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
+	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case CREATE_LIST_ITEM:
+			created = &schema.Notification{}
+			i.data = created
+		case POST_CREATE_LIST_ITEM:
+			notifications.AddMeta(created)
+		case UPDATE_VALUE:
+			return WriteField(s.State.Position, i.data, val)
+		}
+		return nil
 	}
 	return s, nil
 }
@@ -229,6 +373,13 @@ func (self *YangBrowser) selectMetaList(data *schema.List) (Selection, error) {
 	s.OnRead = func(val *Value) (err error) {
 		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case UPDATE_VALUE:
+			return WriteField(s.State.Position, data, val)
+		}
+		return nil
+	}
 	return s, nil
 }
 
@@ -241,37 +392,50 @@ func (self *YangBrowser) selectMetaContainer(data schema.MetaList) (Selection, e
 	s.OnRead = func(val *Value) (err error) {
 		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
-	return s, nil
-}
-
-func (self *YangBrowser) selectMetaLeaf(data *schema.Leaf) (Selection, error) {
-	s := &MySelection{}
-	s.OnSelect = func() (Selection, error) {
-		s.WalkState().Found = true
-		switch s.State.Position.GetIdent() {
-		case "type":
-			return self.selectType(data.DataType)
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case UPDATE_VALUE:
+			return WriteField(s.State.Position, data, val)
 		}
-		return nil, nil
-	}
-	s.OnRead = func(val *Value) (err error) {
-		return ReadField(s.State.Position.(schema.HasDataType), data, val)
+		return nil
 	}
 	return s, nil
 }
 
-func (self *YangBrowser) selectMetaLeafList(data *schema.LeafList) (Selection, error) {
+func (self *YangBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.LeafList) (Selection, error) {
 	s := &MySelection{}
+	var leafy schema.HasDataType
+	if leaf != nil {
+		leafy = leaf
+	} else {
+		leafy = leafList
+	}
 	s.OnSelect = func() (Selection, error) {
-		s.WalkState().Found = true
 		switch s.State.Position.GetIdent() {
 		case "type":
-			return self.selectType(data.DataType)
+			s.State.Found = leafy.GetDataType() != nil
+			if s.State.Found {
+				return self.selectType(leafy.GetDataType())
+			}
 		}
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
-		return ReadField(s.State.Position.(schema.HasDataType), data, val)
+		return ReadField(s.State.Position.(schema.HasDataType), leafy, val)
+	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case CREATE_CHILD:
+			switch s.State.Position.GetIdent() {
+			case "type":
+				leafy.SetDataType(&schema.DataType{})
+			default:
+				return NotImplemented(s.State.Position)
+			}
+		case UPDATE_VALUE:
+			return WriteField(s.State.Position, leafy, val)
+		}
+		return nil
 	}
 	return s, nil
 }
@@ -281,6 +445,13 @@ func (self *YangBrowser) selectMetaUses(data *schema.Uses) (Selection, error) {
 	// TODO: uses has refine container(s)
 	s.OnRead = func(val *Value) (err error) {
 		return ReadField(s.State.Position.(schema.HasDataType), data, val)
+	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case UPDATE_VALUE:
+			return WriteField(s.State.Position, data, val)
+		}
+		return nil
 	}
 	return s, nil
 }
@@ -315,6 +486,13 @@ func (self *YangBrowser) selectMetaChoice(data *schema.Choice) (Selection, error
 	}
 	s.OnRead = func(val *Value) (err error) {
 		return ReadField(s.State.Position.(schema.HasDataType), data, val)
+	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case UPDATE_VALUE:
+			return WriteField(s.State.Position, data, val)
+		}
+		return nil
 	}
 	return s, nil
 }
@@ -353,30 +531,37 @@ func (self *YangBrowser) selectDefinitionsList(dataList schema.MetaList) (Select
 		return self.resolveDefinitionCase(choice, i.data)
 	}
 	s.OnSelect = func() (Selection, error) {
-//		var e error
-//		choice := s.State.Position.(*schema.Choice) //s.State.Meta.GetFirstMeta().(*schema.Choice)
-//		if s.State.Position, e = self.resolveDefinitionCase(choice, i.data); e != nil {
-//			return nil, e
-//		}
-		s.WalkState().Found = true
-		switch s.State.Position.GetIdent() {
-		case "list":
-			return self.selectMetaList(i.data.(*schema.List))
-		case "leaf":
-			return self.selectMetaLeaf(i.data.(*schema.Leaf))
-		case "leaf-list":
-			return self.selectMetaLeafList(i.data.(*schema.LeafList))
-		case "uses":
-			return self.selectMetaUses(i.data.(*schema.Uses))
-		case "choice":
-			return self.selectMetaChoice(i.data.(*schema.Choice))
-		default:
-			return self.selectMetaContainer(i.data.(schema.MetaList))
+		s.State.Found = i.data != nil
+		if s.State.Found {
+			switch s.State.Position.GetIdent() {
+			case "list":
+				return self.selectMetaList(i.data.(*schema.List))
+			case "leaf":
+				return self.selectMetaLeafy(i.data.(*schema.Leaf), nil)
+			case "leaf-list":
+				return self.selectMetaLeafy(nil, i.data.(*schema.LeafList))
+			case "uses":
+				return self.selectMetaUses(i.data.(*schema.Uses))
+			case "choice":
+				return self.selectMetaChoice(i.data.(*schema.Choice))
+			default:
+				return self.selectMetaContainer(i.data.(schema.MetaList))
+			}
 		}
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) error {
 		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
+	}
+	s.OnWrite = func(op Operation, val *Value) error {
+		switch op {
+		case CREATE_CHILD:
+			var err error
+			if i.data, err = self.CreateGroupingsTypedefsDefinitions(dataList, s.State.Position); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	s.OnNext = i.Iterate
 	return s, nil

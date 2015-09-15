@@ -90,15 +90,6 @@ func tojson(t *testing.T, s *MySelection) string {
 	return string(actual.Bytes())
 }
 
-func TestYangMeta(t *testing.T) {
-	ds := &schema.FileStreamSource{Root:"../../../etc"}
-	if yangModule, err := yang.LoadModule(ds, "yang-1.0.yang"); err != nil {
-		t.Error("yang module", err)
-	} else {
-		printMeta(yangModule, "")
-	}
-}
-
 func TestYangBrowse(t *testing.T) {
 	moduleStr := `
 module json-test {
@@ -123,43 +114,66 @@ module json-test {
 	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr), nil); err != nil {
 		t.Error("bad module", err)
 	} else {
-		ds := &schema.FileStreamSource{Root:"../../../etc"}
-		if yangModule, err := yang.LoadModule(ds, "yang-1.0.yang"); err != nil {
-			t.Error("yang module", err)
+		var actual bytes.Buffer
+		json := NewJsonWriter(&actual)
+		out, _ := json.GetSelector()
+		metaTx := NewYangBrowser(module, false)
+		in, err := metaTx.RootSelector()
+		if err != nil {
+			t.Error(err)
+		}
+		if err = Insert(in, out, NewExhaustiveController()); err != nil {
+			t.Error("failed to transmit json", err)
 		} else {
-			var actual bytes.Buffer
-			json := NewJsonWriter(&actual)
-			out, _ := json.GetSelector()
-			metaTx := &YangBrowser{meta:yangModule, module:module}
-			in, err := metaTx.RootSelector()
+			t.Log("Round Trip:", string(actual.Bytes()))
+		}
+	}
+}
+
+func TestYangWrite(t *testing.T) {
+	simple, err := yang.LoadModule(schema.NewCwdSource(), "../testdata/simple.yang")
+	if err != nil {
+		t.Error(err)
+	} else {
+		fromBrowser := NewYangBrowser(simple, false)
+		from, _ := fromBrowser.RootSelector()
+		toBrowser := NewYangBrowser(nil, false)
+		to, _ := toBrowser.RootSelector()
+		err = Insert(from, to, NewExhaustiveController())
+		if err != nil {
+			t.Error(err)
+		} else {
+			// dump original and clone to see if anything is missing
+			var expected string
+			var actual string
+			expected, err = DumpModule(fromBrowser)
 			if err != nil {
 				t.Error(err)
 			}
-			if err = Insert(in, out, NewExhaustiveController()); err != nil {
-				t.Error("failed to transmit json", err)
-			} else {
-				t.Log("Round Trip:", string(actual.Bytes()))
+			actual, err = DumpModule(toBrowser)
+			if err != nil {
+				t.Error(err)
+			}
+			if actual != expected {
+				t.Log("Expected")
+				t.Log(expected)
+				t.Log("Actual")
+				t.Log(actual)
+				t.Fail()
 			}
 		}
 	}
 }
 
-//func TestYangDump(t *testing.T) {
-//	yang := NewYangBrowser(getYangModule())
-//	var actual bytes.Buffer
-//	dumper := NewDumper(&actual)
-//	var err error
-//	var in *MySelection
-//	var out *MySelection
-//	if in, err = schema.RootSelector(); err != nil {
-//		t.Error("failed to dump yang", err)
-//	}
-//	if out, err = dumper.GetSelector(); err != nil {
-//		t.Error("failed to dump yang", err)
-//	}
-//	if err = Insert(in, out); err != nil {
-//		t.Error("failed to dump yang", err)
-//	} else {
-//		fmt.Print(string(actual.Bytes()))
-//	}
-//}
+func DumpModule(b *YangBrowser) (string, error) {
+	var buff bytes.Buffer
+	dumper := NewDumper(&buff)
+	s, _ := b.RootSelector()
+	ds, _ := dumper.GetSelector()
+	err := Insert(s, ds, NewExhaustiveController())
+	if err != nil {
+		return "", err
+	}
+	return string(buff.Bytes()), nil
+}
+

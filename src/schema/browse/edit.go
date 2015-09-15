@@ -129,6 +129,7 @@ func (e *editor) editTarget(from Selection, to Selection, strategy strategy) (Se
 
 				if err == nil {
 					toChild, err = to.Select()
+					toChild.WalkState().Meta = fromChild.WalkState().Meta
 					if err == nil && toChild == nil {
 						err = &browseError{Msg:"Could not select object that was just created"}
 					}

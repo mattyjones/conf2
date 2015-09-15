@@ -1,0 +1,25 @@
+module test {
+    namespace "http://yang.org/yang";
+    prefix "test";
+    description "Functional tests used in test harness to verify driver's compliance";
+    revision 2015-07-11 {
+        description "Yang 1.0";
+    }
+
+    container one {
+        leaf e {
+            type enumeration {
+                enum a;
+                enum b;
+            }
+        }
+    }
+    container two {
+        leaf-list e {
+            type enumeration {
+                enum a;
+                enum b;
+            }
+        }
+    }
+}

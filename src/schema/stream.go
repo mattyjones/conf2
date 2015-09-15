@@ -18,6 +18,11 @@ type FileStreamSource struct {
 	Root string
 }
 
+func NewCwdSource() StreamSource {
+	cwd,_ := os.Getwd()
+	return &FileStreamSource{Root:cwd}
+}
+
 type StringSource struct {
 	Streamer StringStreamer
 }

@@ -3,6 +3,7 @@ package browse
 import (
 	"schema"
 	"reflect"
+	"fmt"
 )
 
 type Browser interface {
@@ -154,6 +155,9 @@ func WriteField(meta schema.Meta, obj interface{}, v *Value) error {
 
 func WriteFieldWithFieldName(fieldName string, meta schema.Meta, obj interface{}, v *Value) error {
 	objType := reflect.ValueOf(obj).Elem()
+	if ! objType.IsValid() {
+		return &browseError{Msg:fmt.Sprintf("Cannot find property \"%s\" on invalid or nil %s", fieldName, reflect.TypeOf(obj))}
+	}
 	value := objType.FieldByName(fieldName)
 	switch tmeta := meta.(type) {
 		case *schema.Leaf:
