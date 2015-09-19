@@ -15,26 +15,40 @@ func NewJsonReader(in io.Reader) *JsonReader {
 	return &JsonReader{in:in}
 }
 
-func (self *JsonReader) GetSelector(meta schema.MetaList) (s Selection, err error) {
+// need to pass in walk state so it knows what to look for in initial data
+// particularly when in the middle of a list
+func (self *JsonReader) GetSelector(meta schema.MetaList, insideList bool) (s Selection, err error) {
 	var values map[string]interface{}
 	d := json.NewDecoder(self.in)
 	if err = d.Decode(&values); err != nil {
 		return
 	}
 	if schema.IsList(meta) {
-		list := values[meta.GetIdent()]
-		s, err = enterJson(nil, list.([]interface{}))
+		if insideList {
+			singletonList := []interface{} {
+				values,
+			}
+			s, err = self.enterJson(nil, singletonList, insideList)
+		} else {
+			list, found := values[meta.GetIdent()]
+			if !found {
+				msg := fmt.Sprintf("Could not find json data %s", meta.GetIdent())
+				return nil, &browseError{Msg:msg}
+			}
+			s, err = self.enterJson(nil, list.([]interface{}), false)
+		}
 	} else {
-		s, err = enterJson(values, nil)
+		s, err = self.enterJson(values, nil, false)
 	}
 	s.WalkState().Meta = meta
 	return
 }
 
-func readLeafOrLeafList(meta schema.Meta, data interface{}, val *Value) (err error) {
-	switch tmeta := meta.(type) {
+func (self *JsonReader) readLeafOrLeafList(meta schema.Meta, data interface{}, val *Value) (err error) {
+	val.Type = meta.(schema.HasDataType).GetDataType()
+	switch meta.(type) {
 	case *schema.Leaf:
-		switch tmeta.DataType.Format {
+		switch val.Type.Format {
 		case schema.FMT_INT32:
 			val.Int = int(data.(float64))
 		case schema.FMT_STRING:
@@ -45,7 +59,7 @@ func readLeafOrLeafList(meta schema.Meta, data interface{}, val *Value) (err err
 			val.Bool = ("true" == s)
 		}
 	case *schema.LeafList:
-		switch tmeta.DataType.Format {
+		switch val.Type.Format {
 		case schema.FMT_INT32:
 			a := data.([]float64)
 			val.Intlist = make([]int, len(a))
@@ -67,7 +81,7 @@ func readLeafOrLeafList(meta schema.Meta, data interface{}, val *Value) (err err
 	return
 }
 
-func enterJson(values map[string]interface{}, list []interface{}) (Selection, error) {
+func (self *JsonReader) enterJson(values map[string]interface{}, list []interface{}, insideList bool) (Selection, error) {
 	s := &MySelection{}
 	var value interface{}
 	var container = values
@@ -104,9 +118,9 @@ func enterJson(values map[string]interface{}, list []interface{}) (Selection, er
 		value, state.Found = container[s.State.Position.GetIdent()]
 		if state.Found {
 			if schema.IsList(s.State.Position) {
-				return enterJson(nil, value.([]interface{}))
+				return self.enterJson(nil, value.([]interface{}), false)
 			} else {
-				return enterJson(value.(map[string]interface{}), nil)
+				return self.enterJson(value.(map[string]interface{}), nil, false)
 			}
 		}
 		return
@@ -115,18 +129,25 @@ func enterJson(values map[string]interface{}, list []interface{}) (Selection, er
 		state := s.WalkState()
 		value, state.Found = container[s.State.Position.GetIdent()]
 		if state.Found {
-			return readLeafOrLeafList(s.State.Position, value, val)
+			return self.readLeafOrLeafList(s.State.Position, value, val)
 		}
 		return
 	}
 	s.OnNext = func(key []Value, first bool) (hasMore bool, err error) {
 		container = nil
 		if len(key) > 0 {
-			if first {
+			if insideList {
+				if first && len(list) > 0 {
+					container = list[0].(map[string]interface{})
+					return true, nil
+				} else {
+					return false, nil
+				}
+			} else if first {
 				keyFields := s.State.Meta.(*schema.List).Keys
 				for ; i < len(list); i++ {
 					candidate := list[i].(map[string]interface{})
-					if jsonKeyMatches(keyFields, candidate, key) {
+					if self.jsonKeyMatches(keyFields, candidate, key) {
 						container = candidate
 						break
 					}
@@ -147,7 +168,7 @@ func enterJson(values map[string]interface{}, list []interface{}) (Selection, er
 	return s, nil
 }
 
-func jsonKeyMatches(keyFields []string, candidate map[string]interface{}, key []Value) bool {
+func (self *JsonReader) jsonKeyMatches(keyFields []string, candidate map[string]interface{}, key []Value) bool {
 	for i, field := range keyFields {
 		if candidate[field] != key[i].String() {
 			return false

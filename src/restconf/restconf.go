@@ -76,12 +76,20 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								err = browse.Insert(selection, out, walkCntlr)
 							}
 						}
-					case "POST":
+					case "POST", "PUT":
 						rdr := browse.NewJsonReader(r.Body)
 						var in browse.Selection
-						if in, err = rdr.GetSelector(selection.WalkState().Meta); err == nil {
-							if walkCntlr, err = browse.NewWalkTargetController(r.URL.RawQuery); err == nil {
-								if err = browse.Insert(in, selection, walkCntlr); err == nil {
+						state := selection.WalkState()
+						if in, err = rdr.GetSelector(state.Meta, state.InsideList); err == nil {
+							if walkCntlr, err = path.WalkTargetController(); err == nil {
+								switch r.Method {
+								case "POST":
+									err = browse.Insert(in, selection, walkCntlr)
+								case "PUT":
+									err = browse.Upsert(in, selection, walkCntlr)
+								}
+
+								if err == nil {
 									http.Error(w, "", http.StatusNoContent)
 								}
 							}

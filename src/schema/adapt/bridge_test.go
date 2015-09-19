@@ -25,7 +25,7 @@ func TestBridge(t *testing.T) {
 		var actualBuff bytes.Buffer
 		jsonWtr := browse.NewJsonWriter(&actualBuff)
 		var from browse.Selection
-		from, err = jsonRdr.GetSelector(m1)
+		from, err = jsonRdr.GetSelector(m1, false)
 		if err != nil {
 			t.Error(err)
 		} else {

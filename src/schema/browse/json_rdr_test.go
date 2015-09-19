@@ -52,7 +52,7 @@ module json-test {
 			if err != nil {
 				t.Error(err)
 			}
-			in, err := NewJsonReader(inIo).GetSelector(module)
+			in, err := NewJsonReader(inIo).GetSelector(module, false)
 			if err != nil {
 				t.Error(err)
 			}

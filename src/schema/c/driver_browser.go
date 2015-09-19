@@ -62,7 +62,7 @@ func conf2_load_module(
 		fmt.Println("Error loading module", err.Error())
 		return nil
 	}
-	module_browser := browse.NewYangBrowser(module, false)
+	module_browser := browse.NewSchemaBrowser(module, false)
 
 	browser_hnd, browser_found := ApiHandles()[browser_hnd_id]
 	if ! browser_found {

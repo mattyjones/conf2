@@ -3,10 +3,11 @@ import (
 	"strings"
 	"strconv"
 	"schema"
+	"fmt"
 )
 
 type Path struct {
-	Segments []PathSegment
+	Segments []*PathSegment
 	URL string
 	query string
 }
@@ -16,6 +17,7 @@ type PathSegment struct {
 	Index int
 	Ident string
 	Keys []string
+	Key []Value
 }
 
 func NewPath(path string) (p *Path, err error) {
@@ -33,9 +35,9 @@ func NewPath(path string) (p *Path, err error) {
 		p.URL = path
 	}
 	segments := strings.Split(p.URL, "/")
-	p.Segments = make([]PathSegment, len(segments))
+	p.Segments = make([]*PathSegment, len(segments))
 	for i, segment := range segments {
-		p.Segments[i] = PathSegment{Path:p, Index:i}
+		p.Segments[i] = &PathSegment{Path:p, Index:i}
 		p.Segments[i].parseSegment(segment)
 	}
 	return
@@ -55,15 +57,22 @@ func (p *Path) FindTargetController() *FindTargetController {
 	return &FindTargetController{path:p}
 }
 
-func (p *Path) WalkTargetController() (WalkController, error) {
-	if len(p.query) > 0 {
-		return NewWalkTargetController(p.query)
-	}
-	return NewExhaustiveController(), nil
+func (p *Path) LastSegment() *PathSegment {
+	return p.Segments[len(p.Segments) - 1]
 }
 
 type WalkTargetController struct {
 	MaxDepth int
+	InitialKey []Value
+}
+
+func (p *Path) WalkTargetController() (WalkController, error) {
+	wtc, err := NewWalkTargetController(p.query)
+	if err != nil {
+		return nil, err
+	}
+	wtc.InitialKey = p.LastSegment().Key
+	return wtc, err
 }
 
 func NewWalkTargetController(query string) (*WalkTargetController, error) {
@@ -98,7 +107,13 @@ func (e *WalkTargetController) ListIterator(s Selection, level int, first bool) 
 	if level >= e.MaxDepth {
 		return false, nil
 	}
-	return s.Next(NO_KEYS, first)
+	var key []Value
+	if level == 0 {
+		key = e.InitialKey
+	} else {
+		key = NO_KEYS
+	}
+	return s.Next(key, first)
 }
 
 func (e *WalkTargetController) ContainerIterator(s Selection, level int) schema.MetaIterator {
@@ -118,6 +133,7 @@ func newPathController(p *Path) *FindTargetController {
 	return &FindTargetController{path:p}
 }
 
+
 func (n *FindTargetController) ListIterator(s Selection, level int, first bool) (hasMore bool, err error) {
 	if level == len(n.path.Segments) {
 		if len(n.path.Segments[level - 1].Keys) == 0 {
@@ -130,16 +146,17 @@ func (n *FindTargetController) ListIterator(s Selection, level int, first bool) 
 		}
 	}
 	if first && level > 0 && level <= len(n.path.Segments) {
-		keysAsStrings := n.path.Segments[level - 1].Keys
+		segment := n.path.Segments[level - 1]
+		keysAsStrings := segment.Keys
 		list, isList := s.WalkState().Meta.(*schema.List)
 		if !isList {
-
+			return false, &browseError{Msg:fmt.Sprintf("Key \"%s\" specified when not a list", keysAsStrings)}
 		}
-		keys, err := CoerseKeys(list, keysAsStrings)
+		segment.Key, err = CoerseKeys(list, keysAsStrings)
 		if err != nil {
 			return false, err
 		}
-		return s.Next(keys, first)
+		return s.Next(segment.Key, first)
 	} else {
 		return false, nil
 	}
@@ -160,6 +177,7 @@ func (n *FindTargetController) setTarget(s *MySelection) {
 }
 
 func (n *FindTargetController) ContainerIterator(s Selection, level int) schema.MetaIterator {
+	//n.path.Key = nil
 	if level >= len(n.path.Segments) {
 		n.target = s
 		return schema.EmptyInterator(0)

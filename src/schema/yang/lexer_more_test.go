@@ -1,7 +1,6 @@
 package yang
 import (
 	"testing"
-	"yang"
 	"io/ioutil"
 	"container/list"
 	"fmt"

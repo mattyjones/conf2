@@ -18,7 +18,7 @@ func NewBrowser(restconf *serviceImpl) (rcb *RestconfBrowser, err error) {
 	if err == nil {
 		parent := schema.FindByPath(module, "modules").(*schema.List)
 		placeholder := schema.FindByPath(parent, "module")
-		targetParent := browse.GetYangModule()
+		targetParent := browse.GetSchemaSchema()
 		targetMaster := schema.FindByPath(targetParent, "module").(*schema.Container)
 		// shallow clone target otherwise we alter browser's schema
 		target := *targetMaster
@@ -78,7 +78,7 @@ func enterRegistrations(registrations map[string]registration) (browse.Selection
 			state := s.WalkState()
 			reg, state.Found = registrations[names[i]]
 			if state.Found {
-				browser := browse.NewYangBrowser(reg.browser.Module(), true)
+				browser := browse.NewSchemaBrowser(reg.browser.Module(), true)
 				return browser.SelectModule(reg.browser.Module())
 			}
 		}

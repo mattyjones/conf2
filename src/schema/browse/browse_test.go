@@ -32,7 +32,7 @@ func TestWalkJson(t *testing.T) {
 	var actualBuff bytes.Buffer
 	outJson := NewJsonWriter(&actualBuff)
 	out, _ := outJson.GetSelector()
-	if root, err := json.GetSelector(module); err != nil {
+	if root, err := json.GetSelector(module, false); err != nil {
 		t.Error(err)
 	} else {
 		var err error
@@ -48,7 +48,7 @@ func TestWalkYang(t *testing.T) {
 	var actualBuff bytes.Buffer
 	outJson := NewJsonWriter(&actualBuff)
 	out, _ := outJson.GetSelector()
-	browser := NewYangBrowser(module, true)
+	browser := NewSchemaBrowser(module, true)
 	if root, err := browser.RootSelector(); err != nil {
 		t.Error(err)
 	} else {

@@ -8,7 +8,7 @@ import (
 type WalkState struct {
 	Meta schema.MetaList
 	Position schema.Meta
-	insideList bool
+	InsideList bool
 	Found bool
 }
 

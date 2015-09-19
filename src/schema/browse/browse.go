@@ -30,7 +30,7 @@ func WalkExhaustive(selection Selection, controller WalkController) (err error) 
 
 func walk(selection Selection, controller WalkController, level int) (err error) {
 	state := selection.WalkState()
-	if schema.IsList(state.Meta) && !state.insideList {
+	if schema.IsList(state.Meta) && !state.InsideList {
 		var hasMore bool
 		if hasMore, err = controller.ListIterator(selection, level, true); err != nil {
 			return
@@ -38,7 +38,7 @@ func walk(selection Selection, controller WalkController, level int) (err error)
 		for i := 0; hasMore; i++ {
 
 			// important flag, otherwise we recurse indefinitely
-			state.insideList = true
+			state.InsideList = true
 
 			if err = walk(selection, controller, level); err != nil {
 				return

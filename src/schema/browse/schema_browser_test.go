@@ -117,7 +117,7 @@ module json-test {
 		var actual bytes.Buffer
 		json := NewJsonWriter(&actual)
 		out, _ := json.GetSelector()
-		metaTx := NewYangBrowser(module, false)
+		metaTx := NewSchemaBrowser(module, false)
 		in, err := metaTx.RootSelector()
 		if err != nil {
 			t.Error(err)
@@ -135,9 +135,9 @@ func TestYangWrite(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	} else {
-		fromBrowser := NewYangBrowser(simple, false)
+		fromBrowser := NewSchemaBrowser(simple, false)
 		from, _ := fromBrowser.RootSelector()
-		toBrowser := NewYangBrowser(nil, false)
+		toBrowser := NewSchemaBrowser(nil, false)
 		to, _ := toBrowser.RootSelector()
 		err = Insert(from, to, NewExhaustiveController())
 		if err != nil {
@@ -165,7 +165,7 @@ func TestYangWrite(t *testing.T) {
 	}
 }
 
-func DumpModule(b *YangBrowser) (string, error) {
+func DumpModule(b *SchemaBrowser) (string, error) {
 	var buff bytes.Buffer
 	dumper := NewDumper(&buff)
 	s, _ := b.RootSelector()

@@ -18,6 +18,35 @@ type Value struct {
 	Keys []string
 }
 
+func (v *Value) Value() interface{} {
+	if v.IsList {
+		switch v.Type.Format {
+		case schema.FMT_BOOLEAN:
+			return v.Boollist
+		case schema.FMT_INT32:
+			return v.Intlist
+		case schema.FMT_STRING:
+			return v.Strlist
+		default:
+			panic("Not implemented")
+		}
+	} else {
+		switch v.Type.Format {
+		case schema.FMT_BOOLEAN:
+			return v.Bool
+		case schema.FMT_INT32:
+			return v.Int
+		case schema.FMT_STRING:
+			return v.Str
+		default:
+			panic("Not implemented")
+		}
+	}
+}
+
+func (a *Value) Equal(b *Value) bool {
+	return a.Value() == b.Value()
+}
 
 func (v *Value) SetEnumList(intlist []int) {
 	v.Strlist = make([]string, len(intlist))

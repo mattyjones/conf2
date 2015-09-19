@@ -1,6 +1,7 @@
 package browse
 import (
 	"schema"
+	"fmt"
 )
 
 type Operation int
@@ -49,8 +50,9 @@ func Update(from Selection, to Selection, controller WalkController) error {
 func edit(from Selection, dest Selection, strategy strategy, controller WalkController) (err error) {
 	e := editor{}
 	var s Selection
-	s, err = e.editTarget(from, dest, strategy)
+	s, err = e.editTarget(from, dest, false, dest.WalkState().InsideList, strategy)
 	if err == nil {
+		// sync dest and from
 		s.WalkState().Meta = from.WalkState().Meta
 		dest.WalkState().Meta = s.WalkState().Meta
 		if err = dest.Write(BEGIN_EDIT, nil); err == nil {
@@ -62,14 +64,36 @@ func edit(from Selection, dest Selection, strategy strategy, controller WalkCont
 	return
 }
 
-func (e *editor) editTarget(from Selection, to Selection, strategy strategy) (Selection, error) {
-	var createdChild bool
+func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsideList bool, strategy strategy) (Selection, error) {
+	var createdContainer bool
 	var createdList bool
 	var createdListItem bool
+	var autoCreateListItems bool
+	var listIterationInitialized bool
 	s := &MySelection{}
-	s.State.insideList = from.WalkState().insideList
+	s.State.InsideList = from.WalkState().InsideList
 	s.OnChoose = func(choice *schema.Choice) (schema.Meta, error) {
 		return from.Choose(choice)
+	}
+	createList := func(to Selection) (toChild Selection, sube error) {
+		if sube = to.Write(CREATE_LIST, nil); sube != nil {
+			return
+		}
+		if toChild, sube = to.Select(); sube != nil {
+			return
+		}
+		createdList = true
+		return
+	}
+	createContainer := func(to Selection) (toChild Selection, sube error) {
+		if sube = to.Write(CREATE_CHILD, nil); sube != nil {
+			return
+		}
+		if toChild, sube = to.Select(); sube != nil {
+			return
+		}
+		createdContainer = true
+		return
 	}
 	s.OnSelect = func() (c Selection, err error) {
 		fromState := from.WalkState()
@@ -96,72 +120,50 @@ func (e *editor) editTarget(from Selection, to Selection, strategy strategy) (Se
 		if err != nil {
 			return
 		}
+		isList := schema.IsList(s.State.Position)
+		found := to.WalkState().Found
 
-		s.State.Found = fromState.Found
-		if fromChild == nil || (!fromState.Found && !toState.Found) {
-			return
-		}
-
-		nextStrategy := strategy
-//		if from.Found && to.Found {
-//			switch strategy {
-//			case INSERT:
-//				err = &browseError{Msg:"Duplicate object found"}
-//			case UPDATE:
-//				strategy = CLEAR
-//			case DELETE:
-//				if schema.IsList(s.Position) {
-//					err = to.DeleteList()
-//				} else {
-//					err = to.DeleteChild()
-//				}
-//				s.Found = false
-//			}
-//		} else if from.Found && !to.Found {
-			switch strategy {
-			case UPSERT, INSERT, CLEAR:
-				if schema.IsList(s.State.Position) {
-					err = to.Write(CREATE_LIST, nil)
-					createdList = true
-				} else {
-					err = to.Write(CREATE_CHILD, nil)
-					createdChild = true
-				}
-
-				if err == nil {
-					toChild, err = to.Select()
-					toChild.WalkState().Meta = fromChild.WalkState().Meta
-					if err == nil && toChild == nil {
-						err = &browseError{Msg:"Could not select object that was just created"}
-					}
-				}
-			case UPDATE, DELETE:
-				err = &browseError{Msg:"No such object"}
+		switch strategy {
+		case INSERT:
+			if found {
+				msg := fmt.Sprintf("Found existing container %s", s.ToString())
+				return nil, &browseError{Code:DUPLICATE_FOUND, Msg:msg}
 			}
-//		} else if !from.Found && to.Found {
-//			switch strategy {
-//			case DELETE, CLEAR:
-//				if schema.IsList(s.Position) {
-//					err = to.DeleteList()
-//				} else {
-//					err = to.DeleteChild()
-//				}
-//				s.Found = false
-//			}
-//		}
-
-		if err == nil && s.State.Found {
-			return e.editTarget(fromChild, toChild, nextStrategy)
+			if isList {
+				toChild, err = createList(to)
+			} else {
+				toChild, err = createContainer(to)
+			}
+		case UPSERT:
+			if !found {
+				if isList {
+					toChild, err = createList(to)
+				} else {
+					toChild, err = createContainer(to)
+				}
+			}
+		case UPDATE:
+			if !found {
+				msg := fmt.Sprintf("Container not found in list %s", s.ToString())
+				return nil, &browseError{Code:NOT_FOUND, Msg:msg}
+			}
+		default:
+			return nil, &browseError{Msg:"Stratgey not implmented"}
 		}
 
-		return
+		if err != nil {
+			return nil, err
+		}
+		s.State.Found = true
+		return e.editTarget(fromChild, toChild, createdList, false, UPSERT)
 	}
+
 	s.OnUnselect = func() (err error) {
-		if createdChild {
+		if createdContainer {
 			if err = to.Write(POST_CREATE_CHILD, nil); err != nil {
 				return
 			}
-			createdChild = false
+			createdContainer = false
 		}
 		if createdList {
 			if err = to.Write(POST_CREATE_LIST, nil); err != nil {
@@ -183,74 +185,90 @@ func (e *editor) editTarget(from Selection, to Selection, strategy strategy) (Se
 		if err = from.Read(v); err != nil {
 			return
 		}
-		if err = to.Write(UPDATE_VALUE, v); err != nil {
-			return
+		if from.WalkState().Found {
+			if err = to.Write(UPDATE_VALUE, v); err != nil {
+				return
+			}
 		}
-
-// TODO: support strategies
-//		var copy bool
-//		var clear bool
-//		if from.Found && to.Found {
-//			switch strategy {
-//			case UPSERT, UPDATE, CLEAR:
-//				copy = true
-//			}
-//		} else if from.Found && !to.Found {
-//			switch strategy {
-//			case INSERT, UPSERT, CLEAR:
-//				copy = true
-//			}
-//		} else if !from.Found && to.Found {
-//			switch strategy {
-//			case UPDATE, CLEAR:
-//				clear = true
-//			}
-//		}
-//		if copy || clear {
-//			if err = to.SetValue(v); err != nil {
-//				return
-//			}
-//		}
 		return
 	}
-	s.OnNext = func(fromKeys []Value, first bool) (hasMore bool, err error) {
+	createListItem := func() (sube error) {
+		sube = to.Write(CREATE_LIST_ITEM, nil)
+		createdListItem = true
+		return
+	}
+
+	// List Edit - See "List Edit State Machine" diagram for additional documentation
+	s.OnNext = func(key []Value, first bool) (hasMore bool, err error) {
 		from.WalkState().Meta = s.State.Meta
 		to.WalkState().Meta = s.State.Meta
 		if createdListItem {
 			err = to.Write(POST_CREATE_LIST_ITEM, nil)
+			createdListItem = false
 			if err != nil {
 				return false, err
 			}
 		}
 
-		hasMore, err = from.Next(fromKeys, first)
-		if err != nil {
+		hasMore, err = from.Next(key, first)
+		if err != nil || ! hasMore {
+			return hasMore, err
+		}
+
+		if !listIterationInitialized {
+			listIterationInitialized = true
+			if isNewList {
+				autoCreateListItems = true
+			} else {
+				var isListNotEmpty bool
+				if isListNotEmpty, err = to.Next(NO_KEYS, true); err != nil {
+					return false, err
+				}
+				if ! isListNotEmpty { // is empty
+					autoCreateListItems = true
+				}
+			}
+		}
+		if autoCreateListItems {
+			return true, createListItem()
+		}
+
+		var toKey []Value
+		var foundItem bool
+		if toKey, err = e.loadKey(key, from); err != nil {
 			return false, err
 		}
-
-		toHasMore := false
-		if hasMore {
-			var keys []Value
-			keys, err = ReadKeys(from)
-			if err != nil {
-				return false, err
-			}
-			toHasMore, err = to.Next(keys, first)
-			if err != nil {
-				return false, err
-			}
+		if foundItem, err = to.Next(toKey, true); err != nil {
+			return false, err
 		}
-
-		if hasMore && !toHasMore {
-			err = to.Write(CREATE_LIST_ITEM, nil)
-			if err != nil {
-				return false, err
+		switch strategy {
+		case UPDATE:
+			if !foundItem {
+				msg := fmt.Sprintf("No item found with given key in list %s", s.ToString())
+				return false, &browseError{Code:NOT_FOUND, Msg:msg}
 			}
-			createdListItem = true
+		case UPSERT:
+			if !foundItem {
+				return true, createListItem()
+			}
+		case INSERT:
+			if foundItem {
+				msg := fmt.Sprintf("Duplicate item found with same key in list %s", s.ToString())
+				return false, &browseError{Code:DUPLICATE_FOUND, Msg:msg}
+			}
+			return true, createListItem()
+		default:
+			return false, &browseError{Msg:"Stratgey not implmented"}
 		}
-
-		return
+		return true, nil
 	}
 
 	return s, nil
+}
+
+func (e *editor) loadKey(explictKey []Value, whereToFindKey Selection) ([]Value, error) {
+	if len(explictKey) > 0 {
+		return explictKey, nil
+	}
+	return ReadKeys(whereToFindKey)
 }

@@ -33,6 +33,7 @@ GO_ARCH = linux_amd64
 
 PKGS = \
 	schema \
+	schema/yang \
 	schema/browse \
 	schema/adapt \
 	restconf

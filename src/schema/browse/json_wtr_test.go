@@ -59,7 +59,7 @@ module json-test {
 			p, _ := NewPath(test.path)
 			inIo := strings.NewReader(json)
 			var actualBuff bytes.Buffer
-			in, err := NewJsonReader(inIo).GetSelector(module)
+			in, err := NewJsonReader(inIo).GetSelector(module, false)
 			if err != nil {
 				t.Error(err)
 			}
@@ -70,6 +70,7 @@ module json-test {
 				to, _ := out.GetSelector()
 				var cntlr WalkController
 				if cntlr, err = p.WalkTargetController(); err != nil {
+					t.Error(err)
 				} else {
 					err = Insert(ref, to, cntlr)
 					if err != nil {

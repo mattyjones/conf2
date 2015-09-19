@@ -19,6 +19,7 @@ const (
 	NOT_IMPLEMENTED
 	NOT_FOUND
 	MISSING_KEY
+	DUPLICATE_FOUND
 )
 
 func EditNotImplemented(meta schema.Meta) error {

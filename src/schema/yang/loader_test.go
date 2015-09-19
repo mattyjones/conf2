@@ -6,7 +6,7 @@ import (
 )
 
 func LoadSampleModule(t *testing.T) (*schema.Module) {
-	f := &FileStreamSource{Root:"testdata"}
+	f := &schema.FileStreamSource{Root:"testdata"}
 	m, err:= LoadModule(f, "romancing-the-stone.yang")
 	if err != nil {
 		t.Error(err.Error())
@@ -69,7 +69,7 @@ func AssertProxies(t *testing.T, teams schema.MetaList) {
 	if def := schema.FindByPath(teams, "team"); def != nil {
 		i := schema.NewMetaListIterator(def.(schema.MetaList), true)
 		t.Log("first team child", i.NextMeta().GetIdent())
-		i = schema.NewMetaListIterator(def.(MetaList), true)
+		i = schema.NewMetaListIterator(def.(schema.MetaList), true)
 		c := schema.FindByIdent(i, "color")
 		t.Log("color", c)
 

@@ -10,7 +10,7 @@ import (
  * which is the YANG YANG model.  It can be confusing which is the data and which is the
  * meta.
  */
-type YangBrowser struct {
+type SchemaBrowser struct {
 	module *schema.Module  // read: data
 	meta *schema.Module    // read: meta-data
 
@@ -19,17 +19,17 @@ type YangBrowser struct {
 	resolve bool
 }
 
-func (self *YangBrowser) Module() *schema.Module {
+func (self *SchemaBrowser) Module() *schema.Module {
 	return self.meta
 }
 
-func NewYangBrowser(module *schema.Module, resolve bool) *YangBrowser {
-	browser := &YangBrowser{module:module, meta:GetYangModule(), resolve:resolve}
+func NewSchemaBrowser(module *schema.Module, resolve bool) *SchemaBrowser {
+	browser := &SchemaBrowser{module:module, meta:GetSchemaSchema(), resolve:resolve}
 	return browser
 }
 
 var yang1_0 *schema.Module
-func GetYangModule() *schema.Module {
+func GetSchemaSchema() *schema.Module {
 	if yang1_0 == nil {
 		var err error
 		yang1_0, err = yang.LoadModuleFromByteArray([]byte(YANG_1_0), nil)
@@ -43,7 +43,7 @@ func GetYangModule() *schema.Module {
 
 type MetaListSelector func(m schema.Meta) (Selection, error)
 
-func (self *YangBrowser) RootSelector() (Selection, error) {
+func (self *SchemaBrowser) RootSelector() (Selection, error) {
 	s := &MySelection{}
 	s.State.Meta = self.meta
 	s.OnSelect = func() (Selection, error) {
@@ -66,7 +66,7 @@ func (self *YangBrowser) RootSelector() (Selection, error) {
 	return s, nil
 }
 
-func (self *YangBrowser) SelectModule(module *schema.Module) (Selection, error) {
+func (self *SchemaBrowser) SelectModule(module *schema.Module) (Selection, error) {
 	s := &MySelection{}
 	s.OnSelect = func() (child Selection, err error) {
 		switch s.State.Position.GetIdent() {
@@ -87,6 +87,7 @@ func (self *YangBrowser) SelectModule(module *schema.Module) (Selection, error) 
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), module, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -106,9 +107,10 @@ func (self *YangBrowser) SelectModule(module *schema.Module) (Selection, error) 
 	return s, nil
 }
 
-func (self *YangBrowser) selectRevision(rev *schema.Revision) (Selection, error) {
+func (self *SchemaBrowser) selectRevision(rev *schema.Revision) (Selection, error) {
 	s := &MySelection{}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		switch s.State.Position.GetIdent() {
 		case "rev-date":
 			return ReadFieldWithFieldName("Ident", s.State.Position.(schema.HasDataType), rev, val)
@@ -131,9 +133,10 @@ func (self *YangBrowser) selectRevision(rev *schema.Revision) (Selection, error)
 	return s, nil
 }
 
-func (self *YangBrowser) selectType(typeData *schema.DataType) (Selection, error) {
+func (self *SchemaBrowser) selectType(typeData *schema.DataType) (Selection, error) {
 	s := &MySelection{}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), typeData, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -146,7 +149,7 @@ func (self *YangBrowser) selectType(typeData *schema.DataType) (Selection, error
 	return s, nil
 }
 
-func (self *YangBrowser) selectGroupings(groupings schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) selectGroupings(groupings schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:groupings, resolve:self.resolve}
 	var created *schema.Grouping
@@ -156,6 +159,7 @@ func (self *YangBrowser) selectGroupings(groupings schema.MetaList) (Selection, 
 	}
 	s.OnNext = i.Iterate
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -173,7 +177,7 @@ func (self *YangBrowser) selectGroupings(groupings schema.MetaList) (Selection, 
 	return s, nil
 }
 
-func (self *YangBrowser) selectRpcIO(i *schema.RpcInput, o *schema.RpcOutput) (Selection, error) {
+func (self *SchemaBrowser) selectRpcIO(i *schema.RpcInput, o *schema.RpcOutput) (Selection, error) {
 	s := &MySelection{}
 	var io schema.MetaList
 	if i != nil {
@@ -190,6 +194,7 @@ func (self *YangBrowser) selectRpcIO(i *schema.RpcInput, o *schema.RpcOutput) (S
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), io, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -202,7 +207,7 @@ func (self *YangBrowser) selectRpcIO(i *schema.RpcInput, o *schema.RpcOutput) (S
 	return s, nil
 }
 
-func (self *YangBrowser) CreateGroupingsTypedefsDefinitions(parent schema.MetaList, childMeta schema.Meta) (schema.Meta, error) {
+func (self *SchemaBrowser) CreateGroupingsTypedefsDefinitions(parent schema.MetaList, childMeta schema.Meta) (schema.Meta, error) {
 	var child schema.Meta
 	switch childMeta.GetIdent() {
 		case "leaf":
@@ -226,7 +231,7 @@ func (self *YangBrowser) CreateGroupingsTypedefsDefinitions(parent schema.MetaLi
 	return child, nil
 }
 
-func (self *YangBrowser) selectRpcs(rpcs schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) selectRpcs(rpcs schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:rpcs, resolve:self.resolve}
 	var created *schema.Rpc
@@ -247,6 +252,7 @@ func (self *YangBrowser) selectRpcs(rpcs schema.MetaList) (Selection, error) {
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -273,7 +279,7 @@ func (self *YangBrowser) selectRpcs(rpcs schema.MetaList) (Selection, error) {
 	return s, nil
 }
 
-func (self *YangBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:typedefs, resolve:self.resolve}
 	var created *schema.Typedef
@@ -289,6 +295,7 @@ func (self *YangBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, er
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
 	s.OnNext = i.Iterate
@@ -315,7 +322,7 @@ func (self *YangBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, er
 	return s, nil
 }
 
-func (self *YangBrowser) GroupingsTypedefsDefinitions(s Selection, meta schema.Meta, data schema.Meta) (Selection, error) {
+func (self *SchemaBrowser) GroupingsTypedefsDefinitions(s Selection, meta schema.Meta, data schema.Meta) (Selection, error) {
 	state := s.WalkState()
 	switch meta.GetIdent() {
 	case "groupings":
@@ -334,7 +341,7 @@ func (self *YangBrowser) GroupingsTypedefsDefinitions(s Selection, meta schema.M
 	return nil, nil
 }
 
-func (self *YangBrowser) selectNotifications(notifications schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) selectNotifications(notifications schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:notifications, resolve:self.resolve}
 	var created *schema.Notification
@@ -347,6 +354,7 @@ func (self *YangBrowser) selectNotifications(notifications schema.MetaList) (Sel
 	}
 	s.OnNext = i.Iterate
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -364,13 +372,14 @@ func (self *YangBrowser) selectNotifications(notifications schema.MetaList) (Sel
 	return s, nil
 }
 
-func (self *YangBrowser) selectMetaList(data *schema.List) (Selection, error) {
+func (self *SchemaBrowser) selectMetaList(data *schema.List) (Selection, error) {
 	s := &MySelection{}
 	s.WalkState().Found = true
 	s.OnSelect = func() (Selection, error) {
 		return self.GroupingsTypedefsDefinitions(s, s.State.Position, data)
 	}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -383,13 +392,14 @@ func (self *YangBrowser) selectMetaList(data *schema.List) (Selection, error) {
 	return s, nil
 }
 
-func (self *YangBrowser) selectMetaContainer(data schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) selectMetaContainer(data schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	s.OnSelect = func() (Selection, error) {
 		s.WalkState().Found = true
 		return self.GroupingsTypedefsDefinitions(s, s.State.Position, data)
 	}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -402,7 +412,7 @@ func (self *YangBrowser) selectMetaContainer(data schema.MetaList) (Selection, e
 	return s, nil
 }
 
-func (self *YangBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.LeafList) (Selection, error) {
+func (self *SchemaBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.LeafList) (Selection, error) {
 	s := &MySelection{}
 	var leafy schema.HasDataType
 	if leaf != nil {
@@ -421,6 +431,7 @@ func (self *YangBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.Lea
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), leafy, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -440,10 +451,11 @@ func (self *YangBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.Lea
 	return s, nil
 }
 
-func (self *YangBrowser) selectMetaUses(data *schema.Uses) (Selection, error) {
+func (self *SchemaBrowser) selectMetaUses(data *schema.Uses) (Selection, error) {
 	s := &MySelection{}
 	// TODO: uses has refine container(s)
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -456,7 +468,7 @@ func (self *YangBrowser) selectMetaUses(data *schema.Uses) (Selection, error) {
 	return s, nil
 }
 
-func (self *YangBrowser) selectMetaCases(choice *schema.Choice) (Selection, error) {
+func (self *SchemaBrowser) selectMetaCases(choice *schema.Choice) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:choice, resolve:self.resolve}
 	s.OnNext = i.Iterate
@@ -469,12 +481,13 @@ func (self *YangBrowser) selectMetaCases(choice *schema.Choice) (Selection, erro
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), choice, val)
 	}
 	return s, nil
 }
 
-func (self *YangBrowser) selectMetaChoice(data *schema.Choice) (Selection, error) {
+func (self *SchemaBrowser) selectMetaChoice(data *schema.Choice) (Selection, error) {
 	s := &MySelection{}
 	s.OnSelect = func() (Selection, error) {
 		s.WalkState().Found = true
@@ -485,6 +498,7 @@ func (self *YangBrowser) selectMetaChoice(data *schema.Choice) (Selection, error
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) (err error) {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), data, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -524,7 +538,7 @@ func (i *listIterator) Iterate(keys []Value, first bool) (bool, error) {
 	return i.data != nil, nil
 }
 
-func (self *YangBrowser) selectDefinitionsList(dataList schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) selectDefinitionsList(dataList schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:dataList, resolve:self.resolve}
 	s.OnChoose = func(choice *schema.Choice) (m schema.Meta, err error) {
@@ -551,6 +565,7 @@ func (self *YangBrowser) selectDefinitionsList(dataList schema.MetaList) (Select
 		return nil, nil
 	}
 	s.OnRead = func(val *Value) error {
+		s.State.Found = true
 		return ReadField(s.State.Position.(schema.HasDataType), i.data, val)
 	}
 	s.OnWrite = func(op Operation, val *Value) error {
@@ -562,13 +577,14 @@ func (self *YangBrowser) selectDefinitionsList(dataList schema.MetaList) (Select
 			}
 		}
 		return nil
+		return nil
 	}
 	s.OnNext = i.Iterate
 	return s, nil
 
 }
 
-func (self *YangBrowser) resolveDefinitionCase(choice *schema.Choice, data schema.Meta) (caseMeta schema.MetaList, err error) {
+func (self *SchemaBrowser) resolveDefinitionCase(choice *schema.Choice, data schema.Meta) (caseMeta schema.MetaList, err error) {
 	caseType := self.definitionType(data)
 	if caseMeta, ok := choice.GetCase(caseType).GetFirstMeta().(*schema.Container); !ok {
 		msg := fmt.Sprint("Could not find case meta for ", caseType)
@@ -578,7 +594,7 @@ func (self *YangBrowser) resolveDefinitionCase(choice *schema.Choice, data schem
 	}
 }
 
-func (self *YangBrowser) definitionType(data schema.Meta) string {
+func (self *SchemaBrowser) definitionType(data schema.Meta) string {
 	switch data.(type) {
 	case *schema.List:
 		return "list"
