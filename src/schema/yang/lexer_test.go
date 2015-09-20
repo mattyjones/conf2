@@ -169,6 +169,20 @@ func TestModule(t *testing.T) {
 	}
 }
 
+func TestChoice(t *testing.T) {
+	l := lex("choice foo { } ", nil)
+	expecteds := [...]int{kywd_choice, token_ident, token_curly_open, token_curly_close}
+	for _, expected := range expecteds {
+		token, err := l.nextToken()
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+		if token.typ != expected {
+			t.Errorf("expected %d but got %d, %s", expected, token.typ, token.String())
+		}
+	}
+}
+
 func TestBasicYang(t *testing.T) {
 	yang := `
 module foo {

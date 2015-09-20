@@ -30,7 +30,7 @@ module food {
 func TestEditListItem(t *testing.T) {
 	var err error
 	var b *BucketBrowser
-	if b, err = LoadTestData(); err != nil {
+	if b, err = LoadEditTestData(); err != nil {
 		t.Fatal(err)
 	}
 	var s Selection
@@ -46,7 +46,7 @@ func TestEditListItem(t *testing.T) {
 	}
 	var edit Selection
 	log.Println("Testing edit\n")
-	edit, err = LoadTestEdit(target, `{"origin":{"country":"Canada"}}`)
+	edit, err = NewEditTestEdit(target, `{"origin":{"country":"Canada"}}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestEditListItem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	edit, err = LoadTestEdit(target, `{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`)
+	edit, err = NewEditTestEdit(target, `{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`)
 	err = Insert(edit, target, wc)
 	if err != nil {
 		t.Error(err)
@@ -97,12 +97,12 @@ func TestEditListItem(t *testing.T) {
 	}
 }
 
-func LoadTestEdit(target Selection, edit string) (Selection, error) {
+func NewEditTestEdit(target Selection, edit string) (Selection, error) {
 	r := NewJsonReader(strings.NewReader(edit))
 	return r.GetSelector(target.WalkState().Meta, target.WalkState().InsideList)
 }
 
-func LoadTestData() (*BucketBrowser, error) {
+func LoadEditTestData() (*BucketBrowser, error) {
 	m, err := yang.LoadModuleFromByteArray([]byte(EDIT_TEST_MODULE), nil)
 	if err != nil {
 		return nil, err

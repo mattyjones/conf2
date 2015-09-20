@@ -7,7 +7,7 @@ import (
 
 /**
  * This is used to encode YANG models. In order to navigate the YANG model it needs a model
- * which is the YANG YANG model.  It can be confusing which is the data and which is the
+ * which is the YANG YANG model.  Note: It can be confusing which is the data and which is the
  * meta.
  */
 type SchemaBrowser struct {
@@ -335,7 +335,8 @@ func (self *SchemaBrowser) GroupingsTypedefsDefinitions(s Selection, meta schema
 		return self.selectTypedefs(typedefs)
 	case "definitions":
 		defs := data.(schema.MetaList)
-		state.Found = schema.ListLen(defs) > 0
+		//state.Found = schema.ListLen(defs) > 0
+		state.Found = true
 		return self.selectDefinitionsList(defs)
 	}
 	return nil, nil
@@ -576,7 +577,6 @@ func (self *SchemaBrowser) selectDefinitionsList(dataList schema.MetaList) (Sele
 				return err
 			}
 		}
-		return nil
 		return nil
 	}
 	s.OnNext = i.Iterate

@@ -224,9 +224,8 @@ case_stmts :
     case_stmt | case_stmts case_stmt;
 
 case_stmt :
-    case_def
-    token_curly_open
-    optional_body_stmts
+    case_def token_curly_open
+    container_body_stmts
     token_curly_close {
       if HasError(yylex, popAndAddMeta(&yylval)) {
         goto ret1

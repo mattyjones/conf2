@@ -21,6 +21,32 @@ func FindByIdent2(parent MetaList, ident string) Meta {
 	return FindByIdent(i, ident)
 }
 
+func FindByIdentExpandChoices(parent MetaList, ident string) Meta {
+	i := NewMetaListIterator(parent, true)
+	var choice *Choice
+	var isChoice bool
+	for i.HasNextMeta() {
+		child := i.NextMeta()
+		choice, isChoice = child.(*Choice)
+		if isChoice {
+			cases := NewMetaListIterator(choice, false)
+			for cases.HasNextMeta() {
+				ccase := cases.NextMeta().(*ChoiceCase)
+				found := FindByIdentExpandChoices(ccase, ident)
+				if found != nil {
+					return found
+				}
+			}
+		} else {
+			if child.GetIdent() == ident {
+				return child
+			}
+		}
+		//child = i.NextMeta()
+	}
+	return nil
+}
+
 func IsLeaf(m Meta) bool {
 	switch m.(type) {
 	case *Leaf, *LeafList:
