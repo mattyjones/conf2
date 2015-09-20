@@ -225,7 +225,6 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 					return false, err
 				}
 				if ! isListNotEmpty { // is empty
-fmt.Printf("edit - Autocreate on\n")
 					autoCreateListItems = true
 				}
 			}
