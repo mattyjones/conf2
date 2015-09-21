@@ -48,6 +48,7 @@ func TestYangBrowserRead(t *testing.T) {
 	for _, test := range tests {
 		s := makeMySelection(t, test.yang)
 		s.OnRead = test.read
+		s.State.Found = true
 		actual := tojson(t, s)
 		if actual != test.expected {
 			msg := fmt.Sprintf("Expected:\"%s\" Actual:\"%s\"", test.expected, actual)

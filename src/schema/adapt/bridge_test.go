@@ -18,9 +18,9 @@ func TestBridge(t *testing.T) {
 	} else if m2, err = yang.LoadModuleFromByteArray([]byte(m2Str), nil); err != nil {
 		t.Error(err)
 	} else {
-		mapp := NewMap()
-		mapp.Mappings["a"] = Mapping{To:"x"}
-		mapp.Mappings["b"] = Mapping{To:"y"}
+		mapping := NewMetaListMapping("")
+		a := mapping.AddMetaListMapping("a", "x")
+		a.AddMetaMapping("b", "y")
 		jsonRdr := browse.NewJsonReader(strings.NewReader(json))
 		var actualBuff bytes.Buffer
 		jsonWtr := browse.NewJsonWriter(&actualBuff)
@@ -31,13 +31,17 @@ func TestBridge(t *testing.T) {
 		} else {
 			toJson, _ := jsonWtr.GetSelector()
 			toJson.WalkState().Meta = m2
-			b := &Bridge{Map: mapp}
-			to, _ := b.enterBridge(toJson)
-			browse.Insert(from, to, browse.NewExhaustiveController())
-			actual := string(actualBuff.Bytes())
-			expected := `{"x":{"y":"hi","c":"bye"}}`
-			if actual != expected {
-				t.Errorf("\nExpected:\"%s\"\n  Actual:\"%s\"", expected, actual)
+			b := &BridgeBrowser{}
+			to, _ := b.selectBridge(toJson, mapping)
+			err = browse.Insert(from, to, browse.NewExhaustiveController())
+			if err != nil {
+				t.Error(err)
+			} else {
+				actual := string(actualBuff.Bytes())
+				expected := `{"x":{"y":"hi","c":"bye"}}`
+				if actual != expected {
+					t.Errorf("\nExpected:\"%s\"\n  Actual:\"%s\"", expected, actual)
+				}
 			}
 		}
 	}

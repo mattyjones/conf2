@@ -7,7 +7,7 @@ import (
 
 func TestSimpleParse(t *testing.T) {
 	//yyDebug = 4
-	yang, err := ioutil.ReadFile("testdata/simple.yang")
+	yang, err := ioutil.ReadFile("../testdata/simple.yang")
 	if err != nil {
 		t.Error(err)
 	}
@@ -20,7 +20,7 @@ func TestSimpleParse(t *testing.T) {
 
 func TestStoneParse(t *testing.T) {
 	//yyDebug = 4
-	yang, err := ioutil.ReadFile("testdata/romancing-the-stone.yang")
+	yang, err := ioutil.ReadFile("../testdata/romancing-the-stone.yang")
 	if err != nil {
 		t.Error(err)
 	}

@@ -21,7 +21,9 @@ func (p *Path) WalkTargetController() (WalkController, error) {
 	if err != nil {
 		return nil, err
 	}
-	wtc.InitialKey = p.LastSegment().Key
+	if len(p.Segments) > 0 {
+		wtc.InitialKey = p.LastSegment().Key
+	}
 	return wtc, err
 }
 
