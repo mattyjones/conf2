@@ -7,7 +7,6 @@ import (
 )
 
 type Browser interface {
-	schema.Resource
 	RootSelector() (Selection, error)
 	Module() (*schema.Module)
 }

@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-type BridgeBrowser struct {
+type Bridge struct {
 	Actual browse.Browser
 	Emulate *schema.Module
 	Mapping *MetaListMapping
@@ -88,15 +88,15 @@ func (m *MetaListMapping) MapMeta(from schema.Meta, toParent schema.MetaList) (s
 	return to, nil
 }
 
-func (bb *BridgeBrowser) RootSelector() (browse.Selection, error) {
-	root, err := bb.Actual.RootSelector()
+func (b *Bridge) RootSelector() (browse.Selection, error) {
+	root, err := b.Actual.RootSelector()
 	if err != nil {
 		return nil, err
 	}
-	return bb.selectBridge(root, bb.Mapping)
+	return b.selectBridge(root, b.Mapping)
 }
 
-func (bb *BridgeBrowser) selectBridge(to browse.Selection, mapping *MetaListMapping) (browse.Selection, error) {
+func (b *Bridge) selectBridge(to browse.Selection, mapping *MetaListMapping) (browse.Selection, error) {
 	s := &browse.MySelection{}
 	s.OnSelect = func() (child browse.Selection, err error) {
 		toState := to.WalkState()
@@ -107,7 +107,7 @@ func (bb *BridgeBrowser) selectBridge(to browse.Selection, mapping *MetaListMapp
 				s.WalkState().Found = to.WalkState().Found
 				if toChild != nil {
 					toChild.WalkState().Meta = toState.Position.(schema.MetaList)
-					return bb.selectBridge(toChild, childMapping)
+					return b.selectBridge(toChild, childMapping)
 				}
 			}
 		}
@@ -134,7 +134,7 @@ func (bb *BridgeBrowser) selectBridge(to browse.Selection, mapping *MetaListMapp
 	return s, nil
 }
 
-func (b *BridgeBrowser) Module() *schema.Module {
+func (b *Bridge) Module() *schema.Module {
 	return b.Emulate
 }
 

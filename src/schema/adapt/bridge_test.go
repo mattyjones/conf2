@@ -31,7 +31,7 @@ func TestBridge(t *testing.T) {
 		} else {
 			toJson, _ := jsonWtr.GetSelector()
 			toJson.WalkState().Meta = m2
-			b := &BridgeBrowser{}
+			b := &Bridge{}
 			to, _ := b.selectBridge(toJson, mapping)
 			err = browse.Insert(from, to, browse.NewExhaustiveController())
 			if err != nil {

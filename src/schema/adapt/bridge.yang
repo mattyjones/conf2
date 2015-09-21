@@ -2,19 +2,25 @@ module bridge {
     prefix "bridge";
     namespace "conf2.org/bridge";
     revision 0000-00-00;
-    grouping map {
-        container map {
-            list mappings {
-                key "from";
-                leaf-list left {
-                    type string;
-                }
-                leaf-list right {
-                    type string;
-                }
+
+    grouping meta-mapping {
+        list mapping {
+            key "from";
+            leaf from {
+                type string;
             }
-            uses map;
+            leaf to {
+                type string;
+            }
+            uses meta-mapping;
         }
     }
-    uses map;
+
+    list bridges {
+        key "name"
+        leaf name {
+            type string;
+        }
+        uses meta-mapping;
+    }
 }
