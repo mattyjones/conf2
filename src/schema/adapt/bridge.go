@@ -2,140 +2,116 @@ package adapt
 import (
 	"schema"
 	"schema/browse"
-	"errors"
-	"fmt"
 )
 
 type Bridge struct {
-	Actual browse.Browser
-	Emulate *schema.Module
-	Mapping *MetaListMapping
+	internal browse.Browser
+	path string
+	external *schema.Module
+	Mapping *BridgeMapping
 }
 
-type BridgeMapping interface {
-	ToIdent() string
+func NewBridge(internal browse.Browser, external *schema.Module) *Bridge {
+	bridge := &Bridge{
+		internal: internal,
+		external: external,
+		Mapping: NewBridgeMapping(external.GetIdent()),
+	}
+	return bridge
 }
 
-type MetaMapping struct {
-	To string
+type BridgeMapping struct {
+	InternalIdent string
+	Children map[string]*BridgeMapping
 }
 
-func (mm *MetaMapping) ToIdent() string {
-	return mm.To
-}
-
-type MetaListMapping struct {
-	To string
-	Mapping map[string]BridgeMapping
-}
-
-func (mlm *MetaListMapping) ToIdent() string {
-	return mlm.To
-}
-
-func (m *MetaListMapping) AddMetaMapping(from string, to string) *MetaMapping {
-	mapping := &MetaMapping{To : to}
-	m.Mapping[from] = mapping
+func (m *BridgeMapping) AddMapping(externalIdent string, internalIdent string) *BridgeMapping {
+	mapping := NewBridgeMapping(internalIdent)
+	m.Children[externalIdent] = mapping
 	return mapping
 }
 
-func (m *MetaListMapping) AddMetaListMapping(from string, to string) *MetaListMapping {
-	mapping := NewMetaListMapping(to)
-	m.Mapping[from] = mapping
-	return mapping
-}
-
-func NewMetaListMapping(to string) *MetaListMapping {
-	return &MetaListMapping{
-		To: to,
-		Mapping : make(map[string]BridgeMapping, 10),
+func NewBridgeMapping(internalIdent string) *BridgeMapping {
+	return &BridgeMapping{
+		InternalIdent: internalIdent,
+		Children : make(map[string]*BridgeMapping, 0),
 	}
 }
 
-func (m *MetaListMapping) MapMetaList(from schema.Meta, toParent schema.MetaList) (schema.Meta, *MetaListMapping, error) {
-	if from == nil {
-		return nil, nil, nil
-	}
-	ident := from.GetIdent()
-	var listMapping *MetaListMapping
-	if m != nil {
-		if mapping, found := m.Mapping[ident]; found {
-			ident = mapping.ToIdent()
-			listMapping = mapping.(*MetaListMapping)
-		}
-	}
-	to := schema.FindByIdent2(toParent, ident)
-	if to == nil {
-		return nil, nil, errors.New(fmt.Sprint("No meta list mapping found for ", ident))
-	}
-	return to, listMapping, nil
-}
-
-func (m *MetaListMapping) MapMeta(from schema.Meta, toParent schema.MetaList) (schema.Meta, error) {
-	if from == nil {
+func (m *BridgeMapping) SelectMap(externalMeta schema.Meta, internalParentMeta schema.MetaList) (schema.Meta, *BridgeMapping) {
+	if externalMeta == nil {
 		return nil, nil
 	}
-	ident := from.GetIdent()
+	ident := externalMeta.GetIdent()
+	var mapping *BridgeMapping
+	var found bool
 	if m != nil {
-		if mapping, found := m.Mapping[ident]; found {
-			ident = mapping.ToIdent()
+		if mapping, found = m.Children[ident]; found {
+			ident = mapping.InternalIdent
 		}
 	}
-	to := schema.FindByIdent2(toParent, ident)
-	if to == nil {
-		return nil, errors.New(fmt.Sprint("No meta mapping found for ", ident))
-	}
-	return to, nil
+	internalMeta := schema.FindByIdent2(internalParentMeta, ident)
+	return internalMeta, mapping
 }
 
 func (b *Bridge) RootSelector() (browse.Selection, error) {
-	root, err := b.Actual.RootSelector()
+	internalRoot, err := b.internal.RootSelector()
 	if err != nil {
 		return nil, err
 	}
-	return b.selectBridge(root, b.Mapping)
+	var bridged browse.Selection
+	bridged, err = b.selectBridge(internalRoot, b.Mapping)
+	bridged.WalkState().Meta = b.external
+	return bridged, err
 }
 
-func (b *Bridge) selectBridge(to browse.Selection, mapping *MetaListMapping) (browse.Selection, error) {
+func (b *Bridge) selectBridge(internalSelection browse.Selection, mapping *BridgeMapping) (browse.Selection, error) {
 	s := &browse.MySelection{}
 	s.OnSelect = func() (child browse.Selection, err error) {
-		toState := to.WalkState()
-		var childMapping *MetaListMapping
-		if toState.Position, childMapping, err = mapping.MapMetaList(s.State.Position, toState.Meta); err == nil {
-			var toChild browse.Selection
-			if toChild, err = to.Select(); err == nil {
-				s.WalkState().Found = to.WalkState().Found
-				if toChild != nil {
-					toChild.WalkState().Meta = toState.Position.(schema.MetaList)
-					return b.selectBridge(toChild, childMapping)
+		internalState := internalSelection.WalkState()
+		var childMapping *BridgeMapping
+		if internalState.Position, childMapping = mapping.SelectMap(s.State.Position, internalState.Meta); internalState.Position != nil {
+			var internalChild browse.Selection
+			if internalChild, err = internalSelection.Select(); err == nil {
+				s.WalkState().Found = internalSelection.WalkState().Found
+				if internalChild != nil {
+					internalChild.WalkState().Meta = internalState.Position.(schema.MetaList)
+					return b.selectBridge(internalChild, childMapping)
 				}
 			}
 		}
 		return
 	}
 	s.OnWrite = func(op browse.Operation, val *browse.Value) (err error) {
-		toState := to.WalkState()
-		if toState.Position, err = mapping.MapMeta(s.State.Position, toState.Meta); err == nil {
-			return to.Write(op, val)
+		internalState := internalSelection.WalkState()
+		internalState.Position, _ = mapping.SelectMap(s.State.Position, internalState.Meta)
+		if internalState.Position == nil && op == browse.UPDATE_VALUE {
+			return nil
 		}
-		return
+		return internalSelection.Write(op, val)
 	}
 	s.OnRead = func(val *browse.Value) (err error) {
-		toState := to.WalkState()
-		if toState.Position, err = mapping.MapMeta(s.State.Position, toState.Meta); err == nil {
+		internalState := internalSelection.WalkState()
+		internalPosition, _ := mapping.SelectMap(s.State.Position, internalState.Meta)
+		if internalPosition != nil {
 			// TODO: txlate val
-			return to.Write(browse.UPDATE_VALUE, val)
+			internalSelection.WalkState().Position = internalPosition
+			err = internalSelection.Read(val)
+			s.State.Found = internalSelection.WalkState().Found
+		} else {
+			s.State.Found = false
 		}
 		return
 	}
 	s.OnNext = func(key []browse.Value, first bool) (bool, error) {
-		return to.Next(key, first)
+		// TODO: need to translate keys?
+		return internalSelection.Next(key, first)
 	}
 	return s, nil
 }
 
 func (b *Bridge) Module() *schema.Module {
-	return b.Emulate
+	return b.external
 }
 
 

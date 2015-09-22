@@ -1,5 +1,7 @@
 package browse
-import "sort"
+import (
+	"sort"
+)
 
 type StringIndexBuilder interface {
 	Select(key string) bool
@@ -10,6 +12,10 @@ type StringIndex struct {
 	Position int
 	Keys []string
 	Builder StringIndexBuilder
+}
+
+func (i *StringIndex) CurrentKey() string {
+	return i.Keys[i.Position]
 }
 
 func (i *StringIndex) OnNext(key []Value, first bool) (bool, error) {

@@ -24,13 +24,14 @@ func (err *restconfError) Error() string {
 type Service interface {
 	Listen()
 	RegisterBrowser(browser browse.Browser) error
+	RegisterBrowserWithName(browser browse.Browser, name string) error
 	SetDocRoot(schema.StreamSource)
 	Stop()
 }
 
 func NewService() (Service, error) {
 	service := &serviceImpl{restconfPath:"/restconf/"}
-	service.registrations = make(map[string]registration, 5)
+	service.registrations = make(map[string]*registration, 5)
 	service.mux = http.NewServeMux()
 	service.mux.HandleFunc("/.well-known/host-meta", service.resources)
 	// always add browser for restconf server itself
@@ -46,7 +47,7 @@ func NewService() (Service, error) {
 
 type serviceImpl struct {
 	restconfPath string
-	registrations map[string]registration
+	registrations map[string]*registration
 	mux *http.ServeMux
 	docroot *docRootImpl
 }
@@ -112,12 +113,16 @@ type docRootImpl struct {
 }
 
 func (service *serviceImpl) RegisterBrowser(browser browse.Browser) error {
-	reg := registration{browser}
 	ident := browser.Module().GetIdent()
+	return service.RegisterBrowserWithName(browser, ident)
+}
+
+func (service *serviceImpl) RegisterBrowserWithName(browser browse.Browser, ident string) error {
+	reg := &registration{browser}
 	service.registrations[ident] = reg
 	fullPath := fmt.Sprint(service.restconfPath, ident, "/")
 	log.Println("registering browser at path ", fullPath)
-	service.mux.Handle(fullPath,  http.StripPrefix(fullPath, &reg))
+	service.mux.Handle(fullPath,  http.StripPrefix(fullPath, reg))
 	return nil
 }
 

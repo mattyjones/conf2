@@ -560,7 +560,6 @@ func (self *SchemaBrowser) selectDefinitionsList(dataList schema.MetaList) (Sele
 			case "choice":
 				return self.selectMetaChoice(i.data.(*schema.Choice))
 			default:
-fmt.Printf("schema_browser - ident = %s\n", s.State.Position.GetIdent())
 				return self.selectMetaContainer(i.data.(schema.MetaList))
 			}
 		}

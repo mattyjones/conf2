@@ -4,7 +4,6 @@ import (
 	"schema"
 	"schema/yang"
 	"schema/browse"
-	"sort"
 )
 
 type RestconfBrowser struct {
@@ -51,35 +50,19 @@ func (rcb *RestconfBrowser) RootSelector() (browse.Selection, error) {
 	return s, nil
 }
 
-func enterRegistrations(registrations map[string]registration) (browse.Selection, error) {
-	var i int
-	var names []string
+func enterRegistrations(registrations map[string]*registration) (browse.Selection, error) {
 	s := &browse.MySelection{}
-	s.OnNext = func(keys []browse.Value, isFirst bool) (bool, error) {
-		if isFirst {
-			i = 0
-			names = make([]string, len(registrations))
-			var j int
-			for name, _ := range registrations {
-				names[j] = name
-				j++
-			}
-			sort.Strings(names)
-		} else {
-			i++
-		}
-		return i < len(names), nil
-	}
+	index := newRegIndex(registrations)
+	s.OnNext = index.Index.OnNext
 	s.OnSelect = func() (browse.Selection, error) {
 		ident := s.State.Position.GetIdent()
 		switch ident {
 		case "module":
-			var reg registration
 			state := s.WalkState()
-			reg, state.Found = registrations[names[i]]
+			state.Found = index.Selected != nil
 			if state.Found {
-				browser := browse.NewSchemaBrowser(reg.browser.Module(), true)
-				return browser.SelectModule(reg.browser.Module())
+				browser := browse.NewSchemaBrowser(index.Selected.browser.Module(), true)
+				return browser.SelectModule(index.Selected.browser.Module())
 			}
 		}
 		return nil, nil
@@ -89,11 +72,38 @@ func enterRegistrations(registrations map[string]registration) (browse.Selection
 		switch ident {
 			case "name":
 				val.Type = s.State.Position.(schema.HasDataType).GetDataType()
-				val.Str = names[i]
+				val.Str = index.Index.CurrentKey()
 		}
 		return nil
 	}
 	return s, nil
+}
+
+type regIndex struct {
+	Index browse.StringIndex
+	Selected *registration
+	Data map[string]*registration
+}
+
+func newRegIndex(registrations map[string]*registration) *regIndex {
+	ndx := &regIndex{Data:registrations}
+	ndx.Index.Builder = ndx
+	return ndx
+}
+
+func (ndx *regIndex) Select(key string) (found bool) {
+	ndx.Selected, found = ndx.Data[key]
+	return
+}
+
+func (ndx *regIndex) Build() []string {
+	names := make([]string, len(ndx.Data))
+	var j int
+	for name, _ := range ndx.Data {
+		names[j] = name
+		j++
+	}
+	return names
 }
 
 var restconfYang = `
