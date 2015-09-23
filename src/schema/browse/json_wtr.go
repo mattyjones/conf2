@@ -36,10 +36,13 @@ func (json *JsonWriter) GetSelector() (Selection, error) {
 
 func (json *JsonWriter) selectJson() (Selection, error) {
 	s := &MySelection{}
-	s.OnSelect = func() (child Selection, err error) {
-		return json.selectJson()
+	var created Selection
+	s.OnSelect = func(meta schema.MetaList) (child Selection, err error) {
+		nest := created
+		created = nil
+		return nest, nil
 	}
-	s.OnWrite = func(op Operation, v *Value) (err error) {
+	s.OnWrite = func(meta schema.Meta, op Operation, v *Value) (err error) {
 		switch op {
 		case BEGIN_EDIT:
 			_, err = json.out.WriteRune(OPEN_OBJ)
@@ -53,17 +56,20 @@ func (json *JsonWriter) selectJson() (Selection, error) {
 				}
 			}
 		case CREATE_CHILD:
-			err = json.beginContainer(s.State.Position)
+			err = json.beginContainer(meta)
+			created, _ = json.selectJson()
 		case POST_CREATE_CHILD:
 			err = json.endContainer()
 		case CREATE_LIST_ITEM:
 			if err = json.conditionallyOpenArrayOnFirstWrite(s); err == nil {
 				err = json.beginArrayItem()
 			}
+			created, _ = json.selectJson()
 		case POST_CREATE_LIST_ITEM:
 			err = json.endArrayItem()
 		case CREATE_LIST:
-			err = json.beginList(s.State.Position)
+			err = json.beginList(meta)
+			created, _ = json.selectJson()
 		case POST_CREATE_LIST:
 			return json.endList()
 		case UPDATE_VALUE:
@@ -74,7 +80,7 @@ func (json *JsonWriter) selectJson() (Selection, error) {
 		json.firstWrite = false
 		return
 	}
-	s.OnNext = func(keys []Value, first bool) (hasMore bool, err error) {
+	s.OnNext = func(keys []*Value, first bool) (hasMore bool, err error) {
 		return false, nil
 	}
 	return s, nil

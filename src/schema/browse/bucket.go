@@ -55,10 +55,8 @@ func (bb *BucketBrowser) Read(path string) (interface{}, error) {
 
 func (bb *BucketBrowser) selectContainer(container map[string]interface{}) (Selection, error) {
 	s := &MySelection{}
-	s.OnSelect = func() (Selection, error) {
-		var data interface{}
-		data, s.State.Found = container[s.State.Position.GetIdent()]
-		if s.State.Found {
+	s.OnSelect = func(meta schema.MetaList) (Selection, error) {
+		if data, found := container[meta.GetIdent()]; found {
 			if schema.IsList(s.State.Position) {
 				return bb.enterList(container, data.([]map[string]interface{}))
 			}
@@ -66,19 +64,19 @@ func (bb *BucketBrowser) selectContainer(container map[string]interface{}) (Sele
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(op Operation, val *Value) error {
+	s.OnWrite = func(meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case UPDATE_VALUE:
-			bb.updateLeaf(s.State.Position.(schema.HasDataType), container, val)
+			bb.updateLeaf(meta.(schema.HasDataType), container, val)
 		case CREATE_CHILD:
-			container[s.State.Position.GetIdent()] = make(map[string]interface{}, 10)
+			container[meta.GetIdent()] = make(map[string]interface{}, 10)
 		case CREATE_LIST:
-			container[s.State.Position.GetIdent()] = make([]map[string]interface{}, 0, 10)
+			container[meta.GetIdent()] = make([]map[string]interface{}, 0, 10)
 		}
 		return nil
 	}
-	s.OnRead = func(val *Value) error {
-		return bb.readLeaf(s.State.Position.(schema.HasDataType), container, val)
+	s.OnRead = func(meta schema.HasDataType) (*Value, error) {
+		return bb.readLeaf(meta, container)
 	}
 	return s, nil
 }
@@ -87,9 +85,8 @@ func (bb *BucketBrowser) enterList(parent map[string]interface{}, initialList []
 	var i int
 	list := initialList
 	s := &MySelection{}
-	s.OnNext = func(keys []Value, isFirst bool) (bool, error) {
+	s.OnNext = func(keys []*Value, isFirst bool) (bool, error) {
 		if len(keys) > 0 {
-fmt.Printf("bucket - OnNext keys=%v\n", keys)
 			keyFieldNames := s.State.Meta.(*schema.List).Keys
 			//var candidate map[string]interface{}
 			// looping not very efficient, but we do not have an index
@@ -101,13 +98,11 @@ fmt.Printf("bucket - OnNext keys=%v\n", keys)
 						lastKey := (k == len(keyFieldNames) - 1)
 						if lastKey {
 							i = j
-fmt.Printf("bucket - OnNext MATCH\n")
 							return true, nil
 						}
 					}
 				}
 			}
-fmt.Printf("bucket - OnNext NO MATCH\n")
 			return false, nil
 		} else {
 			if isFirst {
@@ -118,10 +113,8 @@ fmt.Printf("bucket - OnNext NO MATCH\n")
 		}
 		return len(list) > i, nil
 	}
-	s.OnSelect = func() (Selection, error) {
-		var data interface{}
-		data, s.State.Found = list[i][s.State.Position.GetIdent()]
-		if s.State.Found {
+	s.OnSelect = func(meta schema.MetaList) (Selection, error) {
+		if data, found := list[i][s.State.Position.GetIdent()]; found {
 			if schema.IsList(s.State.Position) {
 				return bb.enterList(list[i], data.([]map[string]interface{}))
 			}
@@ -129,10 +122,10 @@ fmt.Printf("bucket - OnNext NO MATCH\n")
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(op Operation, val *Value) error {
+	s.OnWrite = func(meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case UPDATE_VALUE:
-			bb.updateLeaf(s.State.Position.(schema.HasDataType), list[i], val)
+			bb.updateLeaf(meta.(schema.HasDataType), list[i], val)
 		case CREATE_LIST_ITEM:
 			created := make(map[string]interface{}, 10)
 			list = append(list, created)
@@ -143,35 +136,34 @@ fmt.Printf("bucket - OnNext NO MATCH\n")
 			list[i][s.State.Meta.GetIdent()] = make([]map[string]interface{}, 0, 10)
 		case CREATE_CHILD:
 			child := make(map[string]interface{}, 10)
-			list[i][s.State.Position.GetIdent()] = child
+			list[i][meta.GetIdent()] = child
 		}
 		return nil
 	}
-	s.OnRead = func(val *Value) error {
-		return bb.readLeaf(s.State.Position.(schema.HasDataType), list[i], val)
+	s.OnRead = func(meta schema.HasDataType) (*Value, error) {
+		return bb.readLeaf(meta, list[i])
 	}
 
 	return s, nil
 }
 
-func (bb *BucketBrowser) readLeaf(m schema.HasDataType, container map[string]interface{}, v *Value) error {
-	v.IsList = ! schema.IsLeaf(m)
-	v.Type = m.GetDataType()
-	switch v.Type.Format {
+func (bb *BucketBrowser) readLeaf(m schema.HasDataType, container map[string]interface{}) (*Value, error) {
+	IsList := ! schema.IsLeaf(m)
+	switch m.GetDataType().Format {
 	case schema.FMT_STRING:
-		if v.IsList {
-			v.Strlist = container[m.GetIdent()].([]string)
+		if IsList {
+			return &Value{Strlist : container[m.GetIdent()].([]string), IsList:true}, nil
 		} else {
-			v.Str = container[m.GetIdent()].(string)
+			return &Value{Str :container[m.GetIdent()].(string)}, nil
 		}
 	case schema.FMT_INT32:
-		if v.IsList {
-			v.Intlist = container[m.GetIdent()].([]int)
+		if IsList {
+			return &Value{Intlist : container[m.GetIdent()].([]int), IsList:true}, nil
 		} else {
-			v.Int = container[m.GetIdent()].(int)
+			return &Value{Int : container[m.GetIdent()].(int)}, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (bb *BucketBrowser) updateLeaf(m schema.HasDataType, container map[string]interface{}, v *Value) (error) {

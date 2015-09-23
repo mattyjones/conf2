@@ -57,101 +57,89 @@ func walk(selection Selection, controller WalkController, level int) (err error)
 				}
 			}
 			if schema.IsLeaf(state.Position) {
-				val := &Value{}
-				if err = selection.Read(val); err != nil {
+				// only walking here, not interested in value
+				if _, err = selection.Read(state.Position.(schema.HasDataType)); err != nil {
 					return err
 				}
 			} else {
-				child, err = selection.Select()
-				if child != nil {
-					child.WalkState().Meta = state.Position.(schema.MetaList)
-					defer schema.CloseResource(child)
-				}
+				metaList := state.Position.(schema.MetaList)
+				child, err = selection.Select(metaList)
 				if err != nil {
 					return
-				}
-				if !state.Found {
+				} else if child == nil {
 					continue
 				}
+				child.WalkState().Meta = metaList
+				defer schema.CloseResource(child)
 
 				if err = walk(child, controller, level + 1); err != nil {
 					return
 				}
 
-				err = selection.Unselect()
+				err = selection.Unselect(metaList)
 			}
 		}
 	}
 	return
 }
 
-func ReadField(meta schema.HasDataType, obj interface{}, v *Value) error {
-	return ReadFieldWithFieldName(schema.MetaNameToFieldName(meta.GetIdent()), meta, obj, v)
+func ReadField(meta schema.HasDataType, obj interface{}) (*Value, error) {
+	return ReadFieldWithFieldName(schema.MetaNameToFieldName(meta.GetIdent()), meta, obj)
 }
 
-func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}, v *Value) error {
+func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}) (*Value, error) {
 	objType := reflect.ValueOf(obj).Elem()
 	value := objType.FieldByName(fieldName)
-	v.Type = meta.GetDataType()
-	switch tmeta := meta.(type) {
-	case *schema.Leaf:
-		switch tmeta.GetDataType().Resolve().Ident {
-		case "boolean":
-			if value.Bool() {
-				v.Bool = true
-			}
-			v.Bool = false
-		case "int32":
-			v.Int = int(value.Int())
-		default:
-			v.Str = value.String()
+	_, isList := meta.(*schema.LeafList)
+	switch meta.GetDataType().Format {
+	case schema.FMT_BOOLEAN:
+		if isList {
+			return &Value{Boollist:value.Interface().([]bool)}, nil
 		}
-	case *schema.LeafList:
-		v.IsList = true
-		switch tmeta.GetDataType().Resolve().Ident {
-		case "boolean":
-			v.Boollist = value.Interface().([]bool)
-		case "int32":
-			v.Intlist = value.Interface().([]int)
-		default:
-			v.Strlist = value.Interface().([]string)
+		return &Value{Bool:value.Bool()}, nil
+	case schema.FMT_INT32:
+		if isList {
+			return &Value{Intlist:value.Interface().([]int), IsList:true}, nil
 		}
+		return &Value{Int:int(value.Int())}, nil
 	default:
-		return NotImplemented(meta)
+		if isList {
+			return &Value{Strlist:value.Interface().([]string), IsList:true}, nil
+		}
+		return &Value{Str:value.String()}, nil
 	}
-	return nil
 }
 
-func WriteField(meta schema.Meta, obj interface{}, v *Value) error {
+func WriteField(meta schema.HasDataType, obj interface{}, v *Value) error {
 	return WriteFieldWithFieldName(schema.MetaNameToFieldName(meta.GetIdent()), meta, obj, v)
 }
 
-func WriteFieldWithFieldName(fieldName string, meta schema.Meta, obj interface{}, v *Value) error {
+func WriteFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}, v *Value) error {
 	objType := reflect.ValueOf(obj).Elem()
 	if ! objType.IsValid() {
 		return &browseError{Msg:fmt.Sprintf("Cannot find property \"%s\" on invalid or nil %s", fieldName, reflect.TypeOf(obj))}
 	}
 	value := objType.FieldByName(fieldName)
-	switch tmeta := meta.(type) {
-		case *schema.Leaf:
-		switch tmeta.GetDataType().Resolve().Ident {
-		case "boolean":
+	switch v.Type.Format {
+	case schema.FMT_BOOLEAN:
+		if v.IsList {
+			value.Set(reflect.ValueOf(v.Boollist))
+		} else {
 			value.SetBool(v.Bool)
-		case "int32":
+		}
+	case schema.FMT_INT32:
+		if v.IsList {
+			value.Set(reflect.ValueOf(v.Intlist))
+		} else {
 			value.SetInt(int64(v.Int))
-		default:
+		}
+	case schema.FMT_STRING:
+		if v.IsList {
+			value.Set(reflect.ValueOf(v.Strlist))
+		} else {
 			value.SetString(v.Str)
 		}
-		case *schema.LeafList:
-		switch tmeta.GetDataType().Resolve().Ident {
-		case "boolean":
-			value.Set(reflect.ValueOf(v.Boollist))
-		case "int32":
-			value.Set(reflect.ValueOf(v.Intlist))
-		default:
-			value.Set(reflect.ValueOf(v.Strlist))
-		}
-		default:
+	default:
 		return NotImplemented(meta)
 	}
 	return nil

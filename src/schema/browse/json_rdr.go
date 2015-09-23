@@ -44,41 +44,39 @@ func (self *JsonReader) GetSelector(meta schema.MetaList, insideList bool) (s Se
 	return
 }
 
-func (self *JsonReader) readLeafOrLeafList(meta schema.Meta, data interface{}, val *Value) (err error) {
-	val.Type = meta.(schema.HasDataType).GetDataType()
+func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *Value, err error) {
 	switch meta.(type) {
 	case *schema.Leaf:
-		switch val.Type.Format {
+		switch meta.GetDataType().Format {
 		case schema.FMT_INT32:
-			val.Int = int(data.(float64))
+			v = &Value{Int : int(data.(float64))}
 		case schema.FMT_STRING:
-			s := data.(string)
-			val.Str = s
+			v = &Value{Str:data.(string)}
 		case schema.FMT_BOOLEAN:
 			s := data.(string)
-			val.Bool = ("true" == s)
+			v = &Value{Bool:("true" == s)}
 		}
 	case *schema.LeafList:
-		switch val.Type.Format {
+		v = &Value{IsList:true}
+		switch meta.GetDataType().Format {
 		case schema.FMT_INT32:
 			a := data.([]float64)
-			val.Intlist = make([]int, len(a))
+			v.Intlist = make([]int, len(a))
 			for i, f := range a {
-				val.Intlist[i] = int(f)
+				v.Intlist[i] = int(f)
 			}
 		case schema.FMT_STRING:
 			a := data.([]string)
-			val.Strlist = a
+			v.Strlist = a
 		case schema.FMT_BOOLEAN:
 			a := data.([]string)
-			val.Boollist = make([]bool, len(a))
+			v.Boollist = make([]bool, len(a))
 			for i, s := range a {
-				val.Boollist[i] = ("true" == s)
+				v.Boollist[i] = ("true" == s)
 			}
 		}
-		val.Strlist = data.([]string)
 	}
-	return
+	return v, nil
 }
 
 func (self *JsonReader) enterJson(values map[string]interface{}, list []interface{}, insideList bool) (Selection, error) {
@@ -113,11 +111,10 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 		msg := fmt.Sprintf("No discriminating data for choice schema %s ", s.ToString())
 		return nil, &browseError{Msg:msg}
 	}
-	s.OnSelect = func() (child Selection, e error) {
-		state := s.WalkState()
-		value, state.Found = container[s.State.Position.GetIdent()]
-		if state.Found {
-			if schema.IsList(s.State.Position) {
+	s.OnSelect = func(meta schema.MetaList) (child Selection, e error) {
+		var found bool
+		if value, found = container[meta.GetIdent()]; found {
+			if schema.IsList(meta) {
 				return self.enterJson(nil, value.([]interface{}), false)
 			} else {
 				return self.enterJson(value.(map[string]interface{}), nil, false)
@@ -125,15 +122,14 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 		}
 		return
 	}
-	s.OnRead = func (val *Value) (err error) {
-		state := s.WalkState()
-		value, state.Found = container[s.State.Position.GetIdent()]
-		if state.Found {
-			return self.readLeafOrLeafList(s.State.Position, value, val)
+	s.OnRead = func (meta schema.HasDataType) (val *Value, err error) {
+		var found bool
+		if value, found = container[s.State.Position.GetIdent()]; found {
+			return self.readLeafOrLeafList(meta, value)
 		}
 		return
 	}
-	s.OnNext = func(key []Value, first bool) (hasMore bool, err error) {
+	s.OnNext = func(key []*Value, first bool) (hasMore bool, err error) {
 		container = nil
 		if len(key) > 0 {
 			if insideList {
@@ -168,7 +164,7 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 	return s, nil
 }
 
-func (self *JsonReader) jsonKeyMatches(keyFields []string, candidate map[string]interface{}, key []Value) bool {
+func (self *JsonReader) jsonKeyMatches(keyFields []string, candidate map[string]interface{}, key []*Value) bool {
 	for i, field := range keyFields {
 		if candidate[field] != key[i].String() {
 			return false

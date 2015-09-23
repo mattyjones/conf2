@@ -13,7 +13,7 @@ func (p *Path) FindTargetController() *FindTargetController {
 
 type WalkTargetController struct {
 	MaxDepth int
-	InitialKey []Value
+	InitialKey []*Value
 }
 
 func (p *Path) WalkTargetController() (WalkController, error) {
@@ -59,7 +59,7 @@ func (e *WalkTargetController) ListIterator(s Selection, level int, first bool) 
 	if level >= e.MaxDepth {
 		return false, nil
 	}
-	var key []Value
+	var key []*Value
 	if level == 0 {
 		key = e.InitialKey
 	} else {

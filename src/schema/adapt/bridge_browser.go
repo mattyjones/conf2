@@ -32,10 +32,9 @@ func (bb *BridgeBrowser) AddBridge(name string, bridge *Bridge) {
 func (bb *BridgeBrowser) RootSelector() (browse.Selection, error) {
 	s := &browse.MySelection{}
 	s.State.Meta = bb.Meta
-	s.OnSelect = func () (browse.Selection, error) {
-		switch s.State.Position.GetIdent() {
+	s.OnSelect = func (meta schema.MetaList) (browse.Selection, error) {
+		switch meta.GetIdent() {
 			case "bridges":
-				s.State.Found = true
 				return bb.selectBridges(bb.Bridges)
 		}
 		return nil, nil
@@ -47,32 +46,25 @@ func (bb *BridgeBrowser) selectBridges(bridges map[string]*Bridge) (browse.Selec
 	s := &browse.MySelection{}
 	index := newBridgeIndex(bridges)
 	s.OnNext = index.Index.OnNext
-	s.OnSelect = func() (browse.Selection, error) {
+	s.OnSelect = func(meta schema.MetaList) (browse.Selection, error) {
 		internal := index.Selected.internal.Module()
 		external := index.Selected.external
 		switch s.State.Position.GetIdent() {
 		case "mapping":
-			s.State.Found = true
 			return bb.selectMapping(index.Selected.Mapping, external, internal)
 		case "externalOptions":
-			s.State.Found = true
 			return bb.selectFieldOptions(external)
 		case "internalOptions":
-			s.State.Found = true
 			return bb.selectFieldOptions(internal)
 		}
 		return nil, nil
 	}
-	s.OnRead = func(val *browse.Value) error {
-		val.Type = s.State.Position.(schema.HasDataType).GetDataType()
-		s.State.Found = true
-		switch s.State.Position.GetIdent() {
+	s.OnRead = func(meta schema.HasDataType) (*browse.Value, error) {
+		switch meta.GetIdent() {
 			case "name":
-				val.Str = index.Index.CurrentKey()
-			default:
-				return browse.ReadField(s.State.Position.(schema.HasDataType), index.Selected, val)
+				return &browse.Value{Str : index.Index.CurrentKey()}, nil
 		}
-		return nil
+		return browse.ReadField(meta, index.Selected)
 	}
 
 	return s, nil
@@ -83,39 +75,30 @@ func (bb *BridgeBrowser) selectMapping(mapping *BridgeMapping, external schema.M
 	s := &browse.MySelection{}
 	index := newMappingIndex(mapping.Children)
 	s.OnNext = index.Index.OnNext
-	s.OnSelect = func() (browse.Selection, error) {
+	s.OnSelect = func(meta schema.MetaList) (browse.Selection, error) {
 		externalChild := bb.findMetaList(external, index.Index.CurrentKey())
 		if externalChild == nil {
-			s.State.Found = false
 			return nil, nil
 		}
-		s.State.Found = true
 		internalChild := bb.findMetaList(internal, index.Selected.InternalIdent)
 		switch s.State.Position.GetIdent() {
 		case "mapping":
 			return bb.selectMapping(index.Selected, externalChild, internalChild)
 		case "externalOptions":
-			s.State.Found = true
 			return bb.selectFieldOptions(externalChild)
 		case "internalOptions":
-			s.State.Found = true
 			return bb.selectFieldOptions(internalChild)
 		}
 		return nil, nil
 	}
-	s.OnRead = func(val *browse.Value) error {
-		s.State.Found = true
-		val.Type = s.State.Position.(schema.HasDataType).GetDataType()
-		switch s.State.Position.GetIdent() {
+	s.OnRead = func(meta schema.HasDataType) (*browse.Value, error) {
+		switch meta.GetIdent() {
 		case "externalIdent":
-			val.Str = index.Index.CurrentKey()
-		default:
-			return browse.ReadField(s.State.Position.(schema.HasDataType), index.Selected, val)
-
+			return &browse.Value{Str:index.Index.CurrentKey()}, nil
 		}
-		return nil
+		return browse.ReadField(meta, index.Selected)
 	}
-	s.OnWrite = func(op browse.Operation, val *browse.Value) error {
+	s.OnWrite = func(meta schema.Meta, op browse.Operation, val *browse.Value) error {
 		switch op {
 		case browse.CREATE_LIST_ITEM:
 			index.Selected = NewBridgeMapping("")
@@ -125,7 +108,7 @@ func (bb *BridgeBrowser) selectMapping(mapping *BridgeMapping, external schema.M
 				mapping.Children[val.Str] = index.Selected
 			default:
 				// case "internalIdent":
-				err := browse.WriteField(s.State.Position.(schema.HasDataType), index.Selected, val)
+				err := browse.WriteField(meta.(schema.HasDataType), index.Selected, val)
 				return err
 			}
 		}
@@ -146,32 +129,31 @@ func (bb *BridgeBrowser) findMetaList(parent schema.MetaList, ident string) (chi
 	return nil
 }
 
-func (bb *BridgeBrowser) selectFieldOptions(meta schema.MetaList) (browse.Selection, error) {
+func (bb *BridgeBrowser) selectFieldOptions(field schema.MetaList) (browse.Selection, error) {
 	s := &browse.MySelection{}
-	s.OnRead = func(val *browse.Value) error {
-		s.State.Found = true
-		val.Type = s.State.Position.(schema.HasDataType).GetDataType()
-		i := schema.NewMetaListIterator(meta, true)
-		val.Strlist = make([]string, 0, 10)
-		ident := s.State.Position.GetIdent()
+	s.OnRead = func(meta schema.HasDataType) (*browse.Value, error) {
+		i := schema.NewMetaListIterator(field, true)
+		v := &browse.Value{IsList:true}
+		v.Strlist = make([]string, 0, 10)
+		ident := meta.GetIdent()
 		for i.HasNextMeta() {
 			m := i.NextMeta()
 			switch ident {
 			case "leafs":
 				if schema.IsLeaf(m) {
-					val.Strlist = append(val.Strlist, m.GetIdent())
+					v.Strlist = append(v.Strlist, m.GetIdent())
 				}
 			case "lists":
 				if schema.IsList(m) {
-					val.Strlist = append(val.Strlist, m.GetIdent())
+					v.Strlist = append(v.Strlist, m.GetIdent())
 				}
 			default:
 				if ! schema.IsLeaf(m) && ! schema.IsList(m) {
-					val.Strlist = append(val.Strlist, m.GetIdent())
+					v.Strlist = append(v.Strlist, m.GetIdent())
 				}
 			}
 		}
-		return nil
+		return v, nil
 	}
 
 	return s, nil

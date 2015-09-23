@@ -135,7 +135,7 @@ func TestPathControllerListIterator(t *testing.T) {
 	listMeta := &schema.List{Ident:"path-test", Keys:[]string{"x"}}
 	listMeta.AddMeta(&schema.Leaf{Ident:"x", DataType:schema.NewDataType("string")})
 	selection.WalkState().Meta = listMeta
-	selection.OnNext = func([]Value, bool) (bool, error) {
+	selection.OnNext = func([]*Value, bool) (bool, error) {
 		return true, nil
 	}
 	var more bool

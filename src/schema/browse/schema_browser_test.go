@@ -29,26 +29,27 @@ func TestYangBrowserRead(t *testing.T) {
 		{
 			`leaf c { type enumeration { enum a; enum b; } }`,
 			`{"c":"a"}`,
-			func(v *Value) error {
-				v.Int = 0
-				v.Str = "a"
-				return nil
+			func(meta schema.HasDataType) (*Value, error) {
+				return &Value{
+					Int : 0,
+					Str : "a",
+				}, nil
 			},
     	},
 		{
 			`leaf-list c { type enumeration { enum a; enum b; } }`,
 			`{"c":["a","b"]}`,
-			func(v *Value) error {
-				v.Intlist = []int {0, 1}
-				v.Strlist = []string {"a", "b"}
-				return nil
+			func(meta schema.HasDataType) (*Value, error) {
+				return &Value{
+					Intlist : []int{0, 1},
+					Strlist : []string {"a", "b"},
+				}, nil
 			},
 		},
 	}
 	for _, test := range tests {
 		s := makeMySelection(t, test.yang)
 		s.OnRead = test.read
-		s.State.Found = true
 		actual := tojson(t, s)
 		if actual != test.expected {
 			msg := fmt.Sprintf("Expected:\"%s\" Actual:\"%s\"", test.expected, actual)

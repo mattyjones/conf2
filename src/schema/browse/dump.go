@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"strconv"
+	"schema"
 )
 
 var editOps = map[Operation]string {
@@ -38,15 +39,22 @@ func (d *Dumper) GetSelector() (Selection, error) {
 func (d *Dumper) Enter(level int) (Selection, error) {
 	row := 0
 	s := &MySelection{}
-	s.OnSelect = func() (child Selection, err error) {
-		return d.Enter(level + 1)
+	var created Selection
+	s.OnSelect = func(meta schema.MetaList) (child Selection, err error) {
+		nest := created
+		created = nil
+		return nest, nil
 	}
-	s.OnWrite = func(op Operation, v *Value) (err error) {
+	s.OnWrite = func(meta schema.Meta, op Operation, v *Value) (err error) {
+		switch op {
+			case CREATE_CHILD, CREATE_LIST, CREATE_LIST_ITEM:
+				created, _ = d.Enter(level + 1)
+		}
 		d.dumpEditOp(s, op, level)
 		d.dumpValue(v, level)
 		return
 	}
-	s.OnNext = func(keys []Value, first bool) (hasMore bool, err error) {
+	s.OnNext = func(keys []*Value, first bool) (hasMore bool, err error) {
 		d.out.WriteString(fmt.Sprintf("%sITERATE row=%d, first=%v\n", Padding[:level], row, first))
 		row++
 		return false, nil
@@ -61,21 +69,21 @@ func (d *Dumper) dumpValue(v *Value, level int) {
 	s := "?"
 	t := v.Type.Ident
 	if v.IsList {
-		switch v.Type.Ident {
-		case "string":
+		switch v.Type.Format {
+		case schema.FMT_STRING:
 			s = fmt.Sprintf("%v", v.Strlist)
-		case "int32":
+		case schema.FMT_INT32:
 			s = fmt.Sprintf("%v", v.Intlist)
-		case "boolean":
+		case schema.FMT_BOOLEAN:
 			s = fmt.Sprintf("%v", v.Boollist)
 		}
 	} else {
-		switch v.Type.Ident {
-		case "string":
+		switch v.Type.Format {
+		case schema.FMT_STRING:
 			s = v.Str
-		case "int32":
+		case schema.FMT_INT32:
 			s = strconv.Itoa(v.Int)
-		case "boolean":
+		case schema.FMT_BOOLEAN:
 			if v.Bool {
 				s = "true"
 			} else {

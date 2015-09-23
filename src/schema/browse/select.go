@@ -9,16 +9,15 @@ type WalkState struct {
 	Meta schema.MetaList
 	Position schema.Meta
 	InsideList bool
-	Found bool
 }
 
 type Selection interface {
-	Select() (Selection, error)
-	Next(keys []Value, isFirst bool) (hasMore bool, err error)
-	Read(val *Value) (error)
-	Write(op Operation, val *Value) (error)
+	Select(meta schema.MetaList) (Selection, error)
+	Next(keys []*Value, isFirst bool) (hasMore bool, err error)
+	Read(meta schema.HasDataType) (*Value, error)
+	Write(meta schema.Meta, op Operation, val *Value) (error)
 	Choose(choice *schema.Choice) (m schema.Meta, err error)
-	Unselect() error
+	Unselect(meta schema.MetaList) error
 	WalkState() *WalkState
 }
 
@@ -41,24 +40,24 @@ func (s *MySelection) Close() (err error) {
 	return
 }
 
-func (s *MySelection) Select() (Selection, error) {
+func (s *MySelection) Select(meta schema.MetaList) (Selection, error) {
 	if s.OnSelect == nil {
 		return nil, &browseError{
 			Code: NOT_IMPLEMENTED,
 			Msg: fmt.Sprint("Select not implemented on node ", s.ToString()),
 		}
 	}
-	return s.OnSelect()
+	return s.OnSelect(meta)
 }
 
-func (s *MySelection) Unselect() error {
+func (s *MySelection) Unselect(meta schema.MetaList) error {
 	if s.OnUnselect != nil {
-		return s.OnUnselect()
+		return s.OnUnselect(meta)
 	}
 	return nil
 }
 
-func (s *MySelection) Next(keys []Value, isFirst bool) (bool, error) {
+func (s *MySelection) Next(keys []*Value, isFirst bool) (bool, error) {
 	if s.OnNext == nil {
 		return false, &browseError{
 			Code:NOT_IMPLEMENTED,
@@ -68,24 +67,24 @@ func (s *MySelection) Next(keys []Value, isFirst bool) (bool, error) {
 	return s.OnNext(keys, isFirst)
 }
 
-func (s *MySelection) Read(val *Value) error {
+func (s *MySelection) Read(meta schema.HasDataType) (*Value, error) {
 	if s.OnRead == nil {
-		return &browseError{
+		return nil, &browseError{
 			Code: NOT_IMPLEMENTED,
 			Msg: fmt.Sprint("Read not implemented on node ", s.ToString()),
 		}
 	}
-	return s.OnRead(val)
+	return s.OnRead(meta)
 }
 
-func (s *MySelection) Write(op Operation, val *Value) error {
+func (s *MySelection) Write(meta schema.Meta, op Operation, val *Value) error {
 	if s.OnWrite == nil {
 		return &browseError{
 			Code: NOT_IMPLEMENTED,
 			Msg: fmt.Sprint("Write not implemented on node ", s.ToString()),
 		}
 	}
-	return s.OnWrite(op, val)
+	return s.OnWrite(meta, op, val)
 }
 
 func (s *MySelection) Choose(choice *schema.Choice) (m schema.Meta, err error) {
@@ -112,9 +111,9 @@ func (s *MySelection) WalkState() *WalkState {
 	return &s.State
 }
 
-type NextFunc func(keys []Value, first bool) (hasMore bool, err error)
-type SelectFunc func() (child Selection, err error)
-type ReadFunc func(val *Value) (error)
-type WriteFunc func(op Operation, val *Value) (error)
-type UnselectFunc func() (error)
+type NextFunc func(keys []*Value, first bool) (hasMore bool, err error)
+type SelectFunc func(meta schema.MetaList) (child Selection, err error)
+type ReadFunc func(meta schema.HasDataType) (*Value, error)
+type WriteFunc func(meta schema.Meta, op Operation, val *Value) (error)
+type UnselectFunc func(meta schema.MetaList) (error)
 type ChooseFunc func(choice *schema.Choice) (m schema.Meta, err error)

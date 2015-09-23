@@ -55,7 +55,7 @@ module json-test {
 			{ "birding/reference", `{"name":"Peterson's Guide"}` },
 		}
 
-		for _, test := range tests {
+		for i, test := range tests {
 			p, _ := NewPath(test.path)
 			inIo := strings.NewReader(json)
 			var actualBuff bytes.Buffer
@@ -72,13 +72,14 @@ module json-test {
 				if cntlr, err = p.WalkTargetController(); err != nil {
 					t.Error(err)
 				} else {
-					err = Insert(ref, to, cntlr)
+					err = Upsert(ref, to, cntlr)
 					if err != nil {
 						t.Error("failed to transmit json", err)
 					} else {
 						actual := string(actualBuff.Bytes())
 						if actual != test.expected {
-							msg := fmt.Sprintf("For path %s\nExpected:'%s'\n  Actual:'%s'", test.path, test.expected, actual)
+							msg := fmt.Sprintf("Failed subtest #%d - '%s'\nExpected:'%s'\n  Actual:'%s'",
+								i + 1, test.path, test.expected, actual)
 							t.Error(msg)
 						}
 					}

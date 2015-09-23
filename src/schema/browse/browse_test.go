@@ -36,7 +36,7 @@ func TestWalkJson(t *testing.T) {
 		t.Error(err)
 	} else {
 		var err error
-		if err = Insert(root, out, NewExhaustiveController()); err != nil {
+		if err = Upsert(root, out, NewExhaustiveController()); err != nil {
 			t.Error(err)
 		}
 		t.Log(string(actualBuff.Bytes()))
@@ -52,7 +52,7 @@ func TestWalkYang(t *testing.T) {
 	if root, err := browser.RootSelector(); err != nil {
 		t.Error(err)
 	} else {
-		if err = Insert(root, out, NewExhaustiveController()); err != nil {
+		if err = Upsert(root, out, NewExhaustiveController()); err != nil {
 			t.Error(err)
 		}
 		t.Log(string(actualBuff.Bytes()))

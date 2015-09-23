@@ -55,9 +55,9 @@ func edit(from Selection, dest Selection, strategy strategy, controller WalkCont
 		// sync dest and from
 		s.WalkState().Meta = from.WalkState().Meta
 		dest.WalkState().Meta = s.WalkState().Meta
-		if err = dest.Write(BEGIN_EDIT, nil); err == nil {
+		if err = dest.Write(dest.WalkState().Meta, BEGIN_EDIT, nil); err == nil {
 			if err = WalkExhaustive(s, controller); err == nil {
-				err = dest.Write(END_EDIT, nil)
+				err = dest.Write(dest.WalkState().Meta, END_EDIT, nil)
 			}
 		}
 	}
@@ -76,38 +76,40 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 		return from.Choose(choice)
 	}
 	createList := func(to Selection) (toChild Selection, sube error) {
-		if sube = to.Write(CREATE_LIST, nil); sube != nil {
+		metaList := s.State.Position.(schema.MetaList)
+		if sube = to.Write(metaList, CREATE_LIST, nil); sube != nil {
 			return
 		}
-		if toChild, sube = to.Select(); sube != nil {
+		if toChild, sube = to.Select(metaList); sube != nil {
 			return
 		}
 		createdList = true
 		return
 	}
 	createContainer := func(to Selection) (toChild Selection, sube error) {
-		if sube = to.Write(CREATE_CHILD, nil); sube != nil {
+		metaList := s.State.Position.(schema.MetaList)
+		if sube = to.Write(metaList, CREATE_CHILD, nil); sube != nil {
 			return
 		}
-		if toChild, sube = to.Select(); sube != nil {
+		if toChild, sube = to.Select(metaList); sube != nil {
 			return
 		}
 		createdContainer = true
 		return
 	}
-	s.OnSelect = func() (c Selection, err error) {
+	s.OnSelect = func(meta schema.MetaList) (c Selection, err error) {
 		fromState := from.WalkState()
 		fromState.Meta = s.State.Meta
 		fromState.Position = s.State.Position
 		var fromChild Selection
-		fromChild, err = from.Select()
+		metaList := s.State.Position.(schema.MetaList)
+		fromChild, err = from.Select(metaList)
 		if err != nil {
 			return
-		}
-		if !fromState.Found {
-			s.State.Found = false
+		} else if fromChild == nil {
 			return
 		}
+
 		if fromChild.WalkState().Meta == nil {
 			fromChild.WalkState().Meta = s.State.Position.(schema.MetaList)
 		}
@@ -116,16 +118,15 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 		toState := to.WalkState()
 		toState.Meta = s.State.Meta
 		toState.Position = fromState.Position
-		toChild, err = to.Select()
+		toChild, err = to.Select(metaList)
 		if err != nil {
 			return
 		}
 		isList := schema.IsList(s.State.Position)
-		found := to.WalkState().Found
 
 		switch strategy {
 		case INSERT:
-			if found {
+			if toChild != nil {
 				msg := fmt.Sprintf("Found existing container %s", s.ToString())
 				return nil, &browseError{Code:DUPLICATE_FOUND, Msg:msg}
 			}
@@ -135,7 +136,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 				toChild, err = createContainer(to)
 			}
 		case UPSERT:
-			if !found {
+			if toChild == nil {
 				if isList {
 					toChild, err = createList(to)
 				} else {
@@ -143,7 +144,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 				}
 			}
 		case UPDATE:
-			if !found {
+			if toChild == nil {
 				msg := fmt.Sprintf("Container not found in list %s", s.ToString())
 				return nil, &browseError{Code:NOT_FOUND, Msg:msg}
 			}
@@ -154,56 +155,60 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 		if err != nil {
 			return nil, err
 		}
-		s.State.Found = true
+		if toChild == nil {
+			return nil, &browseError{Msg:fmt.Sprint("Unable to create edit destination item for ", s.ToString())}
+		}
 		return e.editTarget(fromChild, toChild, createdList, false, UPSERT)
 	}
 
-	s.OnUnselect = func() (err error) {
+	s.OnUnselect = func(meta schema.MetaList) (err error) {
+		metaList := s.State.Position.(schema.MetaList)
 		if createdContainer {
-			if err = to.Write(POST_CREATE_CHILD, nil); err != nil {
+			if err = to.Write(metaList, POST_CREATE_CHILD, nil); err != nil {
 				return
 			}
 			createdContainer = false
 		}
 		if createdList {
-			if err = to.Write(POST_CREATE_LIST, nil); err != nil {
+			if err = to.Write(metaList, POST_CREATE_LIST, nil); err != nil {
 				return
 			}
 			createdList = false
 		}
-		if err = from.Unselect(); err != nil  {
+		if err = from.Unselect(metaList); err != nil  {
 			return
 		}
-		if err = to.Unselect(); err != nil {
+		if err = to.Unselect(metaList); err != nil {
 			return
 		}
 		return
 	}
-	s.OnRead = func(v *Value) (err error) {
-		from.WalkState().Position = s.State.Position
-		to.WalkState().Position = s.State.Position
-		if err = from.Read(v); err != nil {
+	s.OnRead = func(meta schema.HasDataType) (v *Value, err error) {
+		from.WalkState().Position = meta
+		to.WalkState().Position = meta
+		if v, err = from.Read(meta); err != nil {
 			return
 		}
-		if from.WalkState().Found {
-			if err = to.Write(UPDATE_VALUE, v); err != nil {
+		if v != nil {
+			v.Type = meta.GetDataType()
+			if err = to.Write(meta, UPDATE_VALUE, v); err != nil {
 				return
 			}
 		}
 		return
 	}
 	createListItem := func() (sube error) {
-		sube = to.Write(CREATE_LIST_ITEM, nil)
+		sube = to.Write(s.State.Position, CREATE_LIST_ITEM, nil)
 		createdListItem = true
 		return
 	}
 
 	// List Edit - See "List Edit State Machine" diagram for additional documentation
-	s.OnNext = func(key []Value, first bool) (hasMore bool, err error) {
+	s.OnNext = func(key []*Value, first bool) (hasMore bool, err error) {
 		from.WalkState().Meta = s.State.Meta
 		to.WalkState().Meta = s.State.Meta
 		if createdListItem {
-			err = to.Write(POST_CREATE_LIST_ITEM, nil)
+			err = to.Write(s.State.Meta, POST_CREATE_LIST_ITEM, nil)
 			createdListItem = false
 			if err != nil {
 				return false, err
@@ -233,7 +238,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 			return true, createListItem()
 		}
 
-		var toKey []Value
+		var toKey []*Value
 		var foundItem bool
 		if toKey, err = e.loadKey(key, from); err != nil {
 			return false, err
@@ -266,7 +271,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 	return s, nil
 }
 
-func (e *editor) loadKey(explictKey []Value, whereToFindKey Selection) ([]Value, error) {
+func (e *editor) loadKey(explictKey []*Value, whereToFindKey Selection) ([]*Value, error) {
 	if len(explictKey) > 0 {
 		return explictKey, nil
 	}

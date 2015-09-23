@@ -18,9 +18,9 @@ func TestBridge(t *testing.T) {
 	} else if m2, err = yang.LoadModuleFromByteArray([]byte(m2Str), nil); err != nil {
 		t.Error(err)
 	} else {
-		mapping := NewMetaListMapping("")
-		a := mapping.AddMetaListMapping("a", "x")
-		a.AddMetaMapping("b", "y")
+		mapping := NewBridgeMapping("")
+		a := mapping.AddMapping("a", "x")
+		a.AddMapping("b", "y")
 		jsonRdr := browse.NewJsonReader(strings.NewReader(json))
 		var actualBuff bytes.Buffer
 		jsonWtr := browse.NewJsonWriter(&actualBuff)
