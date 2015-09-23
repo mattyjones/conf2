@@ -2,6 +2,7 @@ package schema
 import (
 	"strings"
 	"strconv"
+	"fmt"
 )
 
 ///////////////////
@@ -556,6 +557,12 @@ func (y *LeafList) GetDataType() *DataType {
 	return y.DataType
 }
 func (y *LeafList) SetDataType(dataType *DataType) {
+	if dataType != nil && dataType.Format < FMT_BINARY_LIST {
+fmt.Println("meta - adding 1024")
+fmt.Printf("meta - %d\n", dataType.Format)
+		dataType.Format = dataType.Format + 1024
+fmt.Printf("meta - %d\n", dataType.Format)
+	}
 	y.DataType = dataType
 }
 
@@ -923,51 +930,7 @@ func (y *DataType) DecodeLength(encoded string) (err error) {
 	return
 }
 
-type DataFormat int
-// matches list in browse.h
-const (
-	FMT_EMPTY DataFormat = iota
-	FMT_BINARY
-	FMT_BITS
-	FMT_BOOLEAN
-	FMT_DECIMAL64
-	FMT_ENUMERATION
-	FMT_IDENTITYREF
-	FMT_INSTANCE_IDENTIFIER
-	FMT_INT8
-	FMT_INT16
-	FMT_INT32
-	FMT_INT64
-	FMT_LEAFREF
-	FMT_STRING
-	FMT_UINT8
-	FMT_UINT16
-	FMT_UINT32
-	FMT_UINT64
-	FMT_UNION
-)
 
-var internalTypes = map[string]DataFormat{
-	"binary": FMT_BINARY,
-	"bits": FMT_BITS,
-	"boolean" : FMT_BOOLEAN,
-	"decimal64" : FMT_DECIMAL64,
-	"empty" : FMT_EMPTY,
-	"enumeration" : FMT_ENUMERATION,
-	"identitydef" : FMT_IDENTITYREF,
-	"instance-identifier" : FMT_INSTANCE_IDENTIFIER,
-	"int8" : FMT_INT8,
-	"int16" : FMT_INT16,
-	"int32" : FMT_INT32,
-	"int64" : FMT_INT64,
-	"leafref" : FMT_LEAFREF,
-	"string" : FMT_STRING,
-	"uint8" : FMT_UINT8,
-	"uint16" : FMT_UINT16,
-	"uint32" : FMT_UINT32,
-	"uint64" : FMT_UINT64,
-	"union" : FMT_UNION,
-}
 
 ////////////////////////////////////////////////////
 

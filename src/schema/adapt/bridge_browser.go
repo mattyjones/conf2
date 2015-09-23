@@ -133,7 +133,7 @@ func (bb *BridgeBrowser) selectFieldOptions(field schema.MetaList) (browse.Selec
 	s := &browse.MySelection{}
 	s.OnRead = func(meta schema.HasDataType) (*browse.Value, error) {
 		i := schema.NewMetaListIterator(field, true)
-		v := &browse.Value{IsList:true}
+		v := &browse.Value{}
 		v.Strlist = make([]string, 0, 10)
 		ident := meta.GetIdent()
 		for i.HasNextMeta() {

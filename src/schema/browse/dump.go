@@ -68,28 +68,23 @@ func (d *Dumper) dumpValue(v *Value, level int) {
 	}
 	s := "?"
 	t := v.Type.Ident
-	if v.IsList {
-		switch v.Type.Format {
-		case schema.FMT_STRING:
-			s = fmt.Sprintf("%v", v.Strlist)
-		case schema.FMT_INT32:
-			s = fmt.Sprintf("%v", v.Intlist)
-		case schema.FMT_BOOLEAN:
-			s = fmt.Sprintf("%v", v.Boollist)
+	switch v.Type.Format {
+	case schema.FMT_STRING:
+		s = v.Str
+	case schema.FMT_STRING_LIST:
+		s = fmt.Sprintf("%v", v.Strlist)
+	case schema.FMT_INT32:
+		s = strconv.Itoa(v.Int)
+	case schema.FMT_INT32_LIST:
+		s = fmt.Sprintf("%v", v.Intlist)
+	case schema.FMT_BOOLEAN:
+		if v.Bool {
+			s = "true"
+		} else {
+			s = "false"
 		}
-	} else {
-		switch v.Type.Format {
-		case schema.FMT_STRING:
-			s = v.Str
-		case schema.FMT_INT32:
-			s = strconv.Itoa(v.Int)
-		case schema.FMT_BOOLEAN:
-			if v.Bool {
-				s = "true"
-			} else {
-				s = "false"
-			}
-		}
+	case schema.FMT_BOOLEAN_LIST:
+		s = fmt.Sprintf("%v", v.Boollist)
 	}
 	line := fmt.Sprintf("%s-> \"%s\" type=%s\n", Padding[:level], s, t)
 	d.out.WriteString(line)

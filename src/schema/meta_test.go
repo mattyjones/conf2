@@ -1,6 +1,14 @@
 package schema
 import "testing"
 
+func TestLeafListFormatSetting(t *testing.T) {
+	leafList := LeafList{}
+	leafList.SetDataType(&DataType{Format:FMT_STRING})
+	if leafList.DataType.Format != FMT_STRING_LIST {
+		t.Error("Not converted to list")
+	}
+}
+
 func TestMetaList(t *testing.T) {
 	g1 := &Grouping{Ident:"G1"}
 	g2 := &Grouping{Ident:"G2"}

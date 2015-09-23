@@ -5,6 +5,7 @@ import (
 	"schema"
 	"encoding/json"
 	"fmt"
+	"errors"
 )
 
 type JsonReader struct {
@@ -45,38 +46,34 @@ func (self *JsonReader) GetSelector(meta schema.MetaList, insideList bool) (s Se
 }
 
 func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *Value, err error) {
-	switch meta.(type) {
-	case *schema.Leaf:
-		switch meta.GetDataType().Format {
-		case schema.FMT_INT32:
-			v = &Value{Int : int(data.(float64))}
-		case schema.FMT_STRING:
-			v = &Value{Str:data.(string)}
-		case schema.FMT_BOOLEAN:
-			s := data.(string)
-			v = &Value{Bool:("true" == s)}
+	v = &Value{}
+	switch meta.GetDataType().Format {
+	case schema.FMT_INT32:
+		v.Int = int(data.(float64))
+	case schema.FMT_INT32_LIST:
+		a := data.([]float64)
+		v.Intlist = make([]int, len(a))
+		for i, f := range a {
+			v.Intlist[i] = int(f)
 		}
-	case *schema.LeafList:
-		v = &Value{IsList:true}
-		switch meta.GetDataType().Format {
-		case schema.FMT_INT32:
-			a := data.([]float64)
-			v.Intlist = make([]int, len(a))
-			for i, f := range a {
-				v.Intlist[i] = int(f)
-			}
-		case schema.FMT_STRING:
-			a := data.([]string)
-			v.Strlist = a
-		case schema.FMT_BOOLEAN:
-			a := data.([]string)
-			v.Boollist = make([]bool, len(a))
-			for i, s := range a {
-				v.Boollist[i] = ("true" == s)
-			}
+	case schema.FMT_STRING:
+		v.Str = data.(string)
+	case schema.FMT_STRING_LIST:
+		a := data.([]string)
+		v.Strlist = a
+	case schema.FMT_BOOLEAN:
+		s := data.(string)
+		v.Bool = ("true" == s)
+	case schema.FMT_BOOLEAN_LIST:
+		a := data.([]string)
+		v.Boollist = make([]bool, len(a))
+		for i, s := range a {
+			v.Boollist[i] = ("true" == s)
 		}
+	default:
+		return nil, errors.New("Not implemented")
 	}
-	return v, nil
+	return
 }
 
 func (self *JsonReader) enterJson(values map[string]interface{}, list []interface{}, insideList bool) (Selection, error) {

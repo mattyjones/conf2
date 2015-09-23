@@ -7,7 +7,6 @@ import (
 
 type Value struct {
 	Type *schema.DataType
-	IsList bool
 	Bool bool
 	Int int
 	Str string
@@ -19,28 +18,21 @@ type Value struct {
 }
 
 func (v *Value) Value() interface{} {
-	if v.IsList {
-		switch v.Type.Format {
-		case schema.FMT_BOOLEAN:
-			return v.Boollist
-		case schema.FMT_INT32:
-			return v.Intlist
-		case schema.FMT_STRING:
-			return v.Strlist
-		default:
-			panic("Not implemented")
-		}
-	} else {
-		switch v.Type.Format {
-		case schema.FMT_BOOLEAN:
-			return v.Bool
-		case schema.FMT_INT32:
-			return v.Int
-		case schema.FMT_STRING:
-			return v.Str
-		default:
-			panic("Not implemented")
-		}
+	switch v.Type.Format {
+	case schema.FMT_BOOLEAN:
+		return v.Bool
+	case schema.FMT_BOOLEAN_LIST:
+		return v.Boollist
+	case schema.FMT_INT32:
+		return v.Int
+	case schema.FMT_INT32_LIST:
+		return v.Intlist
+	case schema.FMT_STRING:
+		return v.Str
+	case schema.FMT_STRING_LIST:
+		return v.Strlist
+	default:
+		panic("Not implemented")
 	}
 }
 

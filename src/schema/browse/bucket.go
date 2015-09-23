@@ -148,20 +148,15 @@ func (bb *BucketBrowser) enterList(parent map[string]interface{}, initialList []
 }
 
 func (bb *BucketBrowser) readLeaf(m schema.HasDataType, container map[string]interface{}) (*Value, error) {
-	IsList := ! schema.IsLeaf(m)
 	switch m.GetDataType().Format {
 	case schema.FMT_STRING:
-		if IsList {
-			return &Value{Strlist : container[m.GetIdent()].([]string), IsList:true}, nil
-		} else {
-			return &Value{Str :container[m.GetIdent()].(string)}, nil
-		}
+		return &Value{Str :container[m.GetIdent()].(string)}, nil
+	case schema.FMT_STRING_LIST:
+		return &Value{Strlist : container[m.GetIdent()].([]string)}, nil
 	case schema.FMT_INT32:
-		if IsList {
-			return &Value{Intlist : container[m.GetIdent()].([]int), IsList:true}, nil
-		} else {
-			return &Value{Int : container[m.GetIdent()].(int)}, nil
-		}
+		return &Value{Int : container[m.GetIdent()].(int)}, nil
+	case schema.FMT_INT32_LIST:
+		return &Value{Intlist : container[m.GetIdent()].([]int)}, nil
 	}
 	return nil, nil
 }
@@ -169,17 +164,13 @@ func (bb *BucketBrowser) readLeaf(m schema.HasDataType, container map[string]int
 func (bb *BucketBrowser) updateLeaf(m schema.HasDataType, container map[string]interface{}, v *Value) (error) {
 	switch m.GetDataType().Format {
 	case schema.FMT_STRING:
-		if v.IsList {
-			container[m.GetIdent()] = v.Strlist
-		} else {
-			container[m.GetIdent()] = v.Str
-		}
+		container[m.GetIdent()] = v.Str
+	case schema.FMT_STRING_LIST:
+		container[m.GetIdent()] = v.Strlist
 	case schema.FMT_INT32:
-		if v.IsList {
-			container[m.GetIdent()] = v.Intlist
-		} else {
-			container[m.GetIdent()] = v.Int
-		}
+		container[m.GetIdent()] = v.Int
+	case schema.FMT_INT32_LIST:
+		container[m.GetIdent()] = v.Intlist
 	}
 	return nil
 }
