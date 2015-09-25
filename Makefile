@@ -36,6 +36,7 @@ PKGS = \
 	schema/yang \
 	schema/browse \
 	schema/adapt \
+	schema/comm \
 	restconf
 
 all : generate driver-java build test install

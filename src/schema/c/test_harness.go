@@ -50,17 +50,17 @@ func conf2_testharness_test_run(harness_hnd_id unsafe.Pointer, c_testname *C.cha
 	var root browse.Selection
 	if root, err = harness.browser.RootSelector(); err != nil {
 		harness.failure(testname, err.Error())
-		return C_FALSE
+		return FALSE_SHORT
 	}
 	var s browse.Selection
 	var path *browse.Path
 	if path, err = browse.NewPath(details[1]); err != nil {
 		harness.failure(testname, err.Error())
-		return C_FALSE
+		return FALSE_SHORT
 	}
 	if s, err = browse.WalkPath(root, path); err != nil {
 		harness.failure(testname, err.Error())
-		return C_FALSE
+		return FALSE_SHORT
 	}
 	var actual string
 	switch details[0] {
@@ -73,16 +73,16 @@ func conf2_testharness_test_run(harness_hnd_id unsafe.Pointer, c_testname *C.cha
 			if expected != actual {
 				failure := fmt.Sprintf("Expected\"%s\" Actual \"%s\"", expected, actual)
 				harness.failure(testname, failure)
-				return C_FALSE
+				return FALSE_SHORT
 			}
 		}
 	default:
 		harness.failure(testname, "Not a valid test")
-		return C_FALSE
+		return FALSE_SHORT
 	}
 
 	harness.passed = append(harness.passed, testname)
-	return C_TRUE
+	return TRUE_SHORT
 }
 
 //export conf2_testharness_report

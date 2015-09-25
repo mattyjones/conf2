@@ -64,118 +64,52 @@ void* conf2j_browse_enter(void *selection_handle, char *ident, short *found, voi
   return child_selector_hnd_id;
 }
 
-void conf2j_browse_read(void *selection_handle, char *ident, struct conf2_value *val, void *browse_err) {
+void *conf2j_browse_read(void *selection_handle, char *ident, void **val_data_ptr, int *val_data_len, void *browse_err) {
   GoInterface *err = (GoInterface *) browse_err;
   JNIEnv* env = getCurrentJniEnv();
   jobject j_selection = selection_handle;
   jobject j_ident = (*env)->NewStringUTF(env, ident);
+  void *handle = NULL;
 
-  conf2j_method read = conf2j_static_adapter_method(env, err, "read", "(Lorg/conf2/schema/browse/Selection;Ljava/lang/String;)Lorg/conf2/schema/browse/BrowseValue;");
+  conf2j_method read = conf2j_static_adapter_method(env, err, "read", "(Lorg/conf2/schema/browse/Selection;Ljava/lang/String;)Ljava/nio/ByteBuffer;");
   if (read.methodId == NULL) {
     return;
   }
 
-  jobject j_value = (*env)->CallStaticObjectMethod(env, read.cls, read.methodId, j_selection, j_ident);
-
-  jclass value_cls = (*env)->FindClass(env, "org/conf2/schema/browse/BrowseValue");
+  jobject j_value_buff = (*env)->CallStaticObjectMethod(env, read.cls, read.methodId, j_selection, j_ident);
   if (checkDriverError(env, err)) {
     return;
   }
 
-  jmethodID decode_value = (*env)->GetMethodID(env, value_cls, "decodeValueType", "()I");
-  if (checkDriverError(env, err)) {
-    return;
-  }
-
-  val->format = (*env)->CallIntMethod(env, j_value, decode_value);
-  if (checkDriverError(env, err)) {
-    return;
-  }
-
-  jfieldID is_list_field = (*env)->GetFieldID(env, value_cls, "isList", "Z");
-  if (checkDriverError(env, err)) {
-    return;
-  }
-  val->is_list = (short) (*env)->GetBooleanField(env, j_value, is_list_field);
-  if (val->is_list) {
-      jmethodID listLen = (*env)->GetMethodID(env, value_cls, "listLen", "()I");
-      if (listLen == NULL) {
-        return;
-      }
-      val->list_len = (*env)->CallIntMethod(env, j_value, listLen);
-      if (checkDriverError(env, err)) {
-        return;
-      }
-
-      jmethodID encode = (*env)->GetMethodID(env, value_cls, "encodeList", "()Ljava/nio/ByteBuffer;");
-      if (encode == NULL) {
-        return;
-      }
-      jobject j_buff = (*env)->CallObjectMethod(env, j_value, encode);
-      if (checkDriverError(env, err)) {
-        return;
-      }
-      jobject j_g_buff = (*env)->NewGlobalRef(env, j_buff);
-      val->data = (*env)->GetDirectBufferAddress(env, j_g_buff);
-      val->data_len = (*env)->GetDirectBufferCapacity(env, j_g_buff);
-      val->handle = conf2_handle_new(j_g_buff, &conf2j_release_global_ref);
+  if (j_value_buff == NULL) {
+    *val_data_ptr = NULL;
+    *val_data_len = 0;
   } else {
-      switch (val->format) {
-        case FMT_STRING: {
-          jfieldID s_val_field = (*env)->GetFieldID(env, value_cls, "str", "Ljava/lang/String;");
-          if (checkDriverError(env, err)) {
-            return;
-          }
-          jobject j_str = (*env)->GetObjectField(env, j_value, s_val_field);
-          if (j_str != NULL) {
-              conf2j_cstr* chars = conf2j_new_cstr(j_str);
-              val->handle = chars->handle;
-              val->cstr = (char *)chars->cstr;
-          }
-          break;
-        }
-        case FMT_ENUMERATION:
-        case FMT_INT32: {
-          jfieldID i_val_field = (*env)->GetFieldID(env, value_cls, "int32", "I");
-          if (checkDriverError(env, err)) {
-            return;
-          }
-          jint j_i = (*env)->GetIntField(env, j_value, i_val_field);
-          val->int32 = (int)j_i;
-          break;
-        }
-        case FMT_BOOLEAN: {
-          jfieldID b_val_field = (*env)->GetFieldID(env, value_cls, "bool", "Z");
-          if (checkDriverError(env, err)) {
-            return;
-          }
-          jboolean j_bool = (*env)->GetBooleanField(env, j_value, b_val_field);
-          val->boolean = (short)j_bool;
-          break;
-        }
-        case FMT_EMPTY:
-          break;
-        default: {
-          *err = conf2_new_driver_error("Unsupported type");
-          break;
-        }
-      }
+    jobject j_g_value_buff = (*env)->NewGlobalRef(env, j_value_buff);
+    *val_data_ptr = (*env)->GetDirectBufferAddress(env, j_g_value_buff);
+    *val_data_len = (*env)->GetDirectBufferCapacity(env, j_g_value_buff);
+    handle = conf2_handle_new(j_g_value_buff, &conf2j_release_global_ref);
   }
+  return handle;
 }
 
-short conf2j_browse_iterate(void *selection_handle, char *encodedKeys, short first, void *browse_err) {
+short conf2j_browse_iterate(void *selection_handle, void *key_data, int key_data_len, short first, void *browse_err) {
   GoInterface *err = (GoInterface *) browse_err;
   JNIEnv* env = getCurrentJniEnv();
   jobject j_selection = selection_handle;
-  jobject j_encoded_keys = (*env)->NewStringUTF(env, encodedKeys);
+  jobject j_encoded_key = NULL;
 
-  conf2j_method iterate = conf2j_static_adapter_method(env, err, "iterate", "(Lorg/conf2/schema/browse/Selection;Ljava/lang/String;Z)Z");
+  if (key_data != NULL && key_data_len > 0) {
+      jobject j_encoded_key = (*env)->NewDirectByteBuffer(env, key_data, key_data_len);
+  }
+
+  conf2j_method iterate = conf2j_static_adapter_method(env, err, "iterate", "(Lorg/conf2/schema/browse/Selection;Ljava/nio/ByteBuffer;Z)Z");
   if (iterate.methodId == NULL) {
     return false;
   }
 
   jboolean j_first = (jboolean) first;
-  jboolean j_has_more = (*env)->CallStaticBooleanMethod(env, iterate.cls, iterate.methodId, j_selection, j_encoded_keys, j_first);
+  jboolean j_has_more = (*env)->CallStaticBooleanMethod(env, iterate.cls, iterate.methodId, j_selection, j_encoded_key, j_first);
   if (checkDriverError(env, err)) {
     return;
   }
@@ -183,78 +117,7 @@ short conf2j_browse_iterate(void *selection_handle, char *encodedKeys, short fir
   return (short)j_has_more;
 }
 
-
-jobject conf2j_new_browsevalue(JNIEnv *env, struct conf2_value *val, GoInterface *err) {
-  jobject j_value = NULL;
-  jclass value_cls = (*env)->FindClass(env, "org/conf2/schema/browse/BrowseValue");
-  if (checkDriverError(env, err)) {
-    return NULL;
-  }
-  if (val->is_list) {
-      jobject j_buff = (*env)->NewDirectByteBuffer(env, val->data, val->data_len);
-
-      jmethodID factory_method = (*env)->GetStaticMethodID(env, value_cls, "decodeList", "(Ljava/nio/ByteBuffer;II)Lorg/conf2/schema/browse/BrowseValue;");
-      if (checkDriverError(env, err)) {
-        return NULL;
-      }
-
-      j_value = (*env)->CallStaticObjectMethod(env, value_cls, factory_method, j_buff, (jint) val->list_len,
-        (jint) val->format);
-      if (checkDriverError(env, err)) {
-        return NULL;
-      }
-
-  } else {
-      switch (val->format) {
-        case FMT_STRING: {
-          jobject s_value = (*env)->NewStringUTF(env, val->cstr);
-
-          jmethodID factoryMethod = (*env)->GetStaticMethodID(env, value_cls, "Str", "(Ljava/lang/String;)Lorg/conf2/schema/browse/BrowseValue;");
-          if (checkDriverError(env, err)) {
-            return NULL;
-          }
-
-          j_value = (*env)->CallStaticObjectMethod(env, value_cls, factoryMethod, s_value);
-          if (checkDriverError(env, err)) {
-            return NULL;
-          }
-          break;
-        }
-        case FMT_INT32: {
-          jmethodID factoryMethod = (*env)->GetStaticMethodID(env, value_cls, "Int32", "(I)Lorg/conf2/schema/browse/BrowseValue;");
-          if (checkDriverError(env, err)) {
-            return NULL;
-          }
-
-          j_value = (*env)->CallStaticObjectMethod(env, value_cls, factoryMethod, val->int32);
-          if (checkDriverError(env, err)) {
-            return NULL;
-          }
-          break;
-        }
-        case FMT_BOOLEAN: {
-          jmethodID factoryMethod = (*env)->GetStaticMethodID(env, value_cls, "Bool", "(Z)Lorg/conf2/schema/browse/BrowseValue;");
-          if (checkDriverError(env, err)) {
-            return NULL;
-          }
-
-          j_value = (*env)->CallStaticObjectMethod(env, value_cls, factoryMethod, (jboolean)val->boolean);
-          if (checkDriverError(env, err)) {
-            return NULL;
-          }
-          break;
-        }
-        case FMT_EMPTY:
-          break;
-        default:
-          *err = conf2_new_driver_error("Unsupported type");
-          return NULL;
-      }
-  }
-  return j_value;
-}
-
-void conf2j_browse_edit(void *selection_handle, char *ident, int op, struct conf2_value *val, void *browse_err) {
+void conf2j_browse_edit(void *selection_handle, char *ident, int op, void *val_data, int val_data_len, void *browse_err) {
   GoInterface *err = (GoInterface *) browse_err;
   JNIEnv* env = getCurrentJniEnv();
   jobject j_selection = selection_handle;
@@ -262,22 +125,22 @@ void conf2j_browse_edit(void *selection_handle, char *ident, int op, struct conf
   if (ident != NULL) {
     j_ident = (*env)->NewStringUTF(env, ident);
   }
-  jobject j_value = NULL;
+  jobject j_encoded_value = NULL;
   jint j_op = (jint) op;
 
-  if (val != NULL) {
-    j_value = conf2j_new_browsevalue(env, val, err);
-    if (j_value == NULL) {
+  if (val_data != NULL && val_data_len > 0) {
+      jobject j_encoded_value = (*env)->NewDirectByteBuffer(env, val_data, val_data_len);
+      if (checkDriverError(env, err)) {
         return;
-    }
+      }
   }
 
-  conf2j_method edit = conf2j_static_adapter_method(env, err, "edit", "(Lorg/conf2/schema/browse/Selection;Ljava/lang/String;ILorg/conf2/schema/browse/BrowseValue;)V");
+  conf2j_method edit = conf2j_static_adapter_method(env, err, "edit", "(Lorg/conf2/schema/browse/Selection;Ljava/lang/String;ILjava/nio/ByteBuffer;)V");
   if (edit.methodId == NULL) {
     return;
   }
 
-  (*env)->CallStaticVoidMethod(env, edit.cls, edit.methodId, j_selection, j_ident, j_op, j_value);
+  (*env)->CallStaticVoidMethod(env, edit.cls, edit.methodId, j_selection, j_ident, j_op, j_encoded_value);
   if (checkDriverError(env, err)) {
     return;
   }

@@ -1,5 +1,7 @@
 package org.conf2.schema.driver;
 
+import org.conf2.schema.DataType;
+import org.conf2.schema.HasDataType;
 import org.conf2.schema.ValueType;
 import org.conf2.schema.browse.*;
 import org.junit.AfterClass;
@@ -37,16 +39,30 @@ public class BrowserComplianceTest {
         selection = new Selection();
     }
 
+    BrowseValue enumValue(int eid) {
+        BrowseValue v = new BrowseValue();
+        DataType type = ((HasDataType) selection.position).getDataType();
+        v.setEnum(type, eid);
+        return v;
+    }
+
+    BrowseValue enumValues(int... eids) {
+        BrowseValue v = new BrowseValue();
+        DataType type = ((HasDataType) selection.position).getDataType();
+        v.setEnumList(type, eids);
+        return v;
+    }
+
     @Test
     public void readTest() {
-        readTest("read one a", (BrowseValue v) -> {
-            v.setEnum(selection.position, 0);
+        readTest("read one a", () -> {
+            return enumValue(0);
         });
-        readTest("read one b", (BrowseValue v) -> {
-            v.setEnum(selection.position, 1);
+        readTest("read one b", () -> {
+            return enumValue(1);
         });
-        readTest("read two a", (BrowseValue v) -> {
-            v.addEnum(selection.position, 0);
+        readTest("read two a", () -> {
+            return enumValues(0);
         });
         System.out.print(harness.getReport());
         assertTrue(passed);

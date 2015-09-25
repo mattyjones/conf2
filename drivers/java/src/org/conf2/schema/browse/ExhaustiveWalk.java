@@ -9,7 +9,7 @@ import java.util.Iterator;
  * Walk every node and every leaf given a selection.
  */
 public class ExhaustiveWalk implements WalkController {
-    private final static String[] NO_KEYS = new String[0];
+    private final static BrowseValue[] NO_KEYS = new BrowseValue[0];
 
     public boolean selectionIterator(Selection s, int level, boolean isFirst) {
         return s.Iterate.Iterate(NO_KEYS, isFirst);

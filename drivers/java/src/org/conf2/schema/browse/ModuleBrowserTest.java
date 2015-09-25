@@ -21,8 +21,7 @@ public class ModuleBrowserTest {
         assertNotNull(ms.meta);
         ms.position = MetaUtil.findByIdent(ms.meta, "prefix");
         assertNotNull(ms.position);
-        BrowseValue v = new BrowseValue();
-        ms.Read.Read(v);
+        BrowseValue v = ms.Read.Read();
         assertEquals("yang", v.str);
     }
 }

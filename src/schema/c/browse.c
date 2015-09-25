@@ -12,16 +12,16 @@ void *conf2_browse_enter(conf2_browse_enter_impl impl_func, void *selection_hand
     return (*impl_func)(selection_handle, ident, found, browse_err);
 }
 
-short conf2_browse_iterate(conf2_browse_iterate_impl impl_func, void *selection_handle, char *encodedKeys, short first, void *browse_err) {
-    return (*impl_func)(selection_handle, encodedKeys, first, browse_err);
+short conf2_browse_iterate(conf2_browse_iterate_impl impl_func, void *selection_handle, void *key_data, int key_data_len, short first, void *browse_err) {
+    return (*impl_func)(selection_handle, key_data, key_data_len, first, browse_err);
 }
 
-void conf2_browse_read(conf2_browse_read_impl impl_func, void *selection_handle, char *ident, struct conf2_value *val, void *browse_err) {
-    return (*impl_func)(selection_handle, ident, val, browse_err);
+void *conf2_browse_read(conf2_browse_read_impl impl_func, void *selection_handle, char *ident, void **val_data_ptr, int* val_data_len_ptr, void *browse_err) {
+    return (*impl_func)(selection_handle, ident, val_data_ptr, val_data_len_ptr, browse_err);
 }
 
-void conf2_browse_edit(conf2_browse_edit_impl impl_func, void *selection_handle, char *ident, int op, struct conf2_value *val, void *browse_err) {
-    return (*impl_func)(selection_handle, ident, op, val, browse_err);
+void conf2_browse_edit(conf2_browse_edit_impl impl_func, void *selection_handle, char *ident, int op, void *val_data, int val_data_len, void *browse_err) {
+    return (*impl_func)(selection_handle, ident, op, val_data, val_data_len, browse_err);
 }
 
 char *conf2_browse_choose(conf2_browse_choose_impl impl_func, void *selection_handle, char *ident, void *browse_err) {

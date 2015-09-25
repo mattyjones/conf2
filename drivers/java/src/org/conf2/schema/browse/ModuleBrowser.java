@@ -7,11 +7,10 @@ import org.conf2.schema.yang.YangModule;
  *
  */
 public class ModuleBrowser implements Browser {
-    Module yang = YangModule.YANG;
+    private Module yang = YangModule.YANG;
     public Module module;
 
     public ModuleBrowser(Module module) {
-        this.yang = yang;
         this.module = module;
     }
 
@@ -42,7 +41,7 @@ public class ModuleBrowser implements Browser {
 
     Selection enterModule(final Module module) {
         Selection s = new Selection();
-        s.Read = (BrowseValue v) -> BrowseUtil.getterMethod(s.position, module, v);
+        s.Read = () -> BrowseUtil.getterMethod(s.position, module);
         s.Enter = () -> {
             String ident = s.position.getIdent();
             if (ident.equals("revision")) {
@@ -85,7 +84,7 @@ public class ModuleBrowser implements Browser {
     Selection enterDefinitions(MetaCollection defs) {
         final Meta[] def = new Meta[1];
         Selection s = new Selection();
-        s.Iterate = (String[] keys, boolean isFirst) -> {
+        s.Iterate = (BrowseValue[] keys, boolean isFirst) -> {
             return false;
         };
         s.Enter = () -> {
@@ -252,7 +251,7 @@ public class ModuleBrowser implements Browser {
     Selection enterChoiceCases(MetaCollection cases) {
         final ChoiceCase[] choiceCase = new ChoiceCase[1];
         Selection s = new Selection();
-        s.Iterate = (String[] keys, boolean isFirst) -> {
+        s.Iterate = (BrowseValue[] key, boolean isFirst) -> {
             return false;
         };
         s.Enter = () -> {
@@ -282,7 +281,7 @@ public class ModuleBrowser implements Browser {
     Selection enterNotifications(MetaCollection notifications) {
         final Notification[] notification = new Notification[1];
         Selection s = new Selection();
-        s.Iterate = (String[] keys, boolean isFirst) -> {
+        s.Iterate = (BrowseValue[] key, boolean isFirst) -> {
             return false;
         };
         s.Enter = () -> {
@@ -342,7 +341,7 @@ public class ModuleBrowser implements Browser {
     Selection enterGroupings(MetaCollection groupings) {
         Selection s = new Selection();
         final Grouping[] grouping = new Grouping[1];
-        s.Iterate = (String[] keys, boolean isFirst) -> {
+        s.Iterate = (BrowseValue[] key, boolean isFirst) -> {
             return false;
         };
         s.Enter = () -> {
@@ -376,7 +375,7 @@ public class ModuleBrowser implements Browser {
     Selection enterTypedefs(MetaCollection typedefs) {
         Selection s = new Selection();
         final Typedef[] typedef = new Typedef[1];
-        s.Iterate = (String[] keys, boolean isFirst) -> {
+        s.Iterate = (BrowseValue[] key, boolean isFirst) -> {
             return false;
         };
         s.Enter = () -> {
@@ -438,7 +437,7 @@ public class ModuleBrowser implements Browser {
     Selection enterRpcCollection(MetaCollection rpcs) {
         final Rpc[] rpc = new Rpc[1];
         Selection s = new Selection();
-        s.Iterate = (String[] keys, boolean isFirst) -> {
+        s.Iterate = (BrowseValue[] key, boolean isFirst) -> {
             return false;
         };
         s.Enter = () -> {
@@ -508,7 +507,7 @@ System.out.println("ModuleBrowser.java: enterRpcBase op=" + op + " position=" + 
 
     Selection enterRevision(Revision rev) {
         Selection s = new Selection();
-        s.Read = (BrowseValue v) -> BrowseUtil.getterMethod(s.position, module, v);
+        s.Read = () -> BrowseUtil.getterMethod(s.position, module);
         s.Edit = (EditOperation op, BrowseValue val) -> {
             String ident = s.position.getIdent();
             if (ident.equals("rev-date")) {

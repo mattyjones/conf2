@@ -52,9 +52,9 @@ void conf2j_close_stream(void *stream_handle, void *errPtr);
 
 void* conf2j_browse_root_selector(void *browser_handle, void *browse_err);
 void* conf2j_browse_enter(void *selection_handle, char *ident, short *found, void *browse_err);
-short conf2j_browse_iterate(void *selection_handle, char *encodedKeys, short first, void *browse_err);
-void conf2j_browse_read(void *selection_handle, char *ident, struct conf2_value *val, void *browse_err);
-void conf2j_browse_edit(void *selection_handle, char *ident, int op, struct conf2_value *val, void *browse_err);
+short conf2j_browse_iterate(void *selection_handle, void *key_data, int key_data_len, short first, void *browse_err);
+void *conf2j_browse_read(void *selection_handle, char *ident, void **val_data_ptr, int *val_data_len_ptr, void *browse_err);
+void conf2j_browse_edit(void *selection_handle, char *ident, int op, void *val_data, int val_data_len, void *browse_err);
 char *conf2j_browse_choose(void *selection_handle, char *ident, void *browse_err);
 void conf2j_browse_exit(void *selection_handle, char *ident, void *browse_err);
 void *conf2j_browse_new(JNIEnv *env, jlong module_hnd_id, jobject j_browser);

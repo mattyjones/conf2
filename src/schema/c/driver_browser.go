@@ -1,11 +1,11 @@
 package c
 
 // #include "conf2/browse.h"
-// extern void* conf2_browse_root_selector(conf2_browse_root_selector_impl impl_func, void *browser_handle, void *browse_err);
-// extern void* conf2_browse_enter(conf2_browse_enter_impl impl_func, void *selection_handle, char *ident, short *found, void *browse_err);
-// extern short conf2_browse_iterate(conf2_browse_iterate_impl impl_func, void *selection_handle, char *encodedKeys, short first, void *browse_err);
-// extern void conf2_browse_read(conf2_browse_read_impl impl_func, void *selection_handle, char *ident, struct conf2_value *val, void *browse_err);
-// extern void conf2_browse_edit(conf2_browse_edit_impl impl_func, void *selection_handle, char *ident, int op, struct conf2_value *val, void *browse_err);
+// extern void *conf2_browse_root_selector(conf2_browse_root_selector_impl impl_func, void *browser_handle, void *browse_err);
+// extern void *conf2_browse_enter(conf2_browse_enter_impl impl_func, void *selection_handle, char *ident, short *found, void *browse_err);
+// extern short conf2_browse_iterate(conf2_browse_iterate_impl impl_func, void *selection_handle, void *key_data, int key_data_len, short first, void *browse_err);
+// extern void *conf2_browse_read(conf2_browse_read_impl impl_func, void *selection_handle, char *ident, void **val_data_ptr, int* val_data_len_ptr, void *browse_err);
+// extern void conf2_browse_edit(conf2_browse_edit_impl impl_func, void *selection_handle, char *ident, int op, void *val_data, int val_data_len, void *browse_err);
 // extern char *conf2_browse_choose(conf2_browse_choose_impl impl_func, void *selection_handle, char *ident, void *browse_err);
 // extern void conf2_browse_exit(conf2_browse_exit_impl impl_func, void *selection_handle, char *ident, void *browse_err);
 import "C"
@@ -13,12 +13,10 @@ import "C"
 import (
 	"schema"
 	"unsafe"
-	"strings"
 	"schema/browse"
 	"schema/yang"
+	"schema/comm"
 	"fmt"
-	"bytes"
-	"bufio"
 )
 
 type apiBrowser struct {
@@ -191,15 +189,17 @@ func (cb *apiSelector) selection(selectionHnd *ApiHandle) (browse.Selection, err
 	return s, nil
 }
 
-func encodeKey(key []*browse.Value) []byte {
-
-}
 
 func (cb *apiSelector) iterate(s browse.Selection, selectionHnd *ApiHandle, key []*browse.Value, first bool) (hasMore bool, err error) {
 	errPtr := unsafe.Pointer(&err)
-	var c_encoded_keys *C.char
+	var c_encoded_key unsafe.Pointer
+	var encoded_key_len C.int
 	if len(key) > 0 {
-		c_encoded_key = encodeKey(key) C.CString(strings.Join(keys, " "))
+		w := comm.NewWriter()
+		w.WriteValues(key)
+		data := w.Data()
+		encoded_key_len = C.int(len(data))
+		c_encoded_key = NewGoHandleByteArray(data).ID
 	}
 	var c_first C.short
 	if first {
@@ -208,7 +208,7 @@ func (cb *apiSelector) iterate(s browse.Selection, selectionHnd *ApiHandle, key 
 		c_first = C.short(0)
 
 	}
-	has_more := C.conf2_browse_iterate(cb.browser.iterate_impl, selectionHnd.ID, c_encoded_key, c_first, errPtr)
+	has_more := C.conf2_browse_iterate(cb.browser.iterate_impl, selectionHnd.ID, c_encoded_key, encoded_key_len, c_first, errPtr)
 
 	return has_more > 0, err
 }
@@ -242,42 +242,17 @@ func encodeIdent(position schema.Meta) *C.char {
 func (cb *apiSelector) read(meta schema.HasDataType, selectionHnd *ApiHandle) (val *browse.Value, err error) {
 	errPtr := unsafe.Pointer(&err)
 	ident := encodeIdent(meta)
-	var c_val C.struct_conf2_value
-	C.conf2_browse_read(cb.browser.read_impl, selectionHnd.ID, ident, &c_val, errPtr)
-	valType := meta.GetDataType()
-	c_val_format := int(c_val.format)
-	if int(valType.Format) != c_val_format {
-		e := fmt.Sprint("Invalid value, expected %d but got %d", valType.Format, c_val_format)
-		return nil, &driverError{e}
-	}
-	val = &browse.Value{IsList: (c_val.is_list > 0) }
-	if val.IsList {
-		var data []byte
-		data = C.GoBytes(c_val.data, c_val.data_len)
-		listLen := int(c_val.list_len)
-
-		switch val.Type.Format {
-		case schema.FMT_ENUMERATION:
-			intlist := getIntSlice(data, listLen)
-			val.SetEnumList(intlist)
-		case schema.FMT_STRING:
-			val.Strlist = getStringSlice(data, listLen, int(c_val.data_len))
-		case schema.FMT_INT32:
-			val.Intlist = getIntSlice(data, listLen)
-		case schema.FMT_BOOLEAN:
-			val.Boollist = getBoolSlice(data, listLen)
-		}
-	} else {
-		switch val.Type.Format {
-		case schema.FMT_ENUMERATION:
-			val.SetEnum(int(c_val.int32))
-		case schema.FMT_STRING:
-			val.Str = C.GoString(c_val.cstr)
-		case schema.FMT_INT32:
-			val.Int = int(c_val.int32)
-		case schema.FMT_BOOLEAN:
-			if c_val.boolean > C_FALSE {
-				val.Bool = true
+	var data_ptr unsafe.Pointer
+	var data_len C.int
+	value_hnd_id := C.conf2_browse_read(cb.browser.read_impl, selectionHnd.ID, ident, &data_ptr, &data_len, errPtr)
+	if data_ptr != nil && data_len > 0 {
+		data := C.GoBytes(data_ptr, data_len)
+		r := comm.NewReader(data)
+		expectedType := meta.GetDataType()
+		val, err = r.ReadValue(expectedType)
+		if value_hnd_id != nil {
+			if value_hnd, found := ApiHandles()[value_hnd_id]; found {
+				value_hnd.Close()
 			}
 		}
 	}
@@ -285,100 +260,25 @@ func (cb *apiSelector) read(meta schema.HasDataType, selectionHnd *ApiHandle) (v
 	return val, err
 }
 
-const (
-	C_TRUE = C.short(1)
-	C_FALSE = C.short(0)
-)
-
-func leafListValue(val *browse.Value) (*GoHandle, *C.struct_conf2_value, error) {
-	var c_val C.struct_conf2_value
-	var w := NewCWriter()
-	c_val.is_list, c_val.list_len = w.putValue(val)
-	data := w.Bytes()
-
-//	c_val.data, c_val.data_len =
-//	c_val.format = uint32(val.Type.Format)
-//	c_val.is_list = C_TRUE
-//	switch val.Type.Format {
-//	case schema.FMT_STRING:
-//		c_val.list_len = C.int(len(val.Strlist))
-//		for _, s := range val.Strlist {
-//			putString(buffer, s)
-//			buffer.WriteString(s)
-//			buffer.WriteByte(CSTR_TERM)
-//		}
-//	case schema.FMT_INT32, schema.FMT_ENUMERATION:
-//		bInt := [4]byte{}
-//		c_val.list_len = C.int(len(val.Intlist))
-//		for _, i := range val.Intlist {
-//			putInt(&bInt, i)
-//			buffer.Write(bInt[:])
-//		}
-//	case schema.FMT_BOOLEAN:
-//		// TODO: Performance - could make this smaller using bit field
-//		bShort := [2]byte{}
-//		c_val.list_len = C.int(len(val.Boollist))
-//		for _, b := range val.Boollist {
-//			if b {
-//				putShort(&bShort, C_TRUE)
-//			} else {
-//				putShort(&bShort, C_FALSE)
-//			}
-//			buffer.Write(bShort[:])
-//		}
-//	default:
-//		return nil, nil, &driverError{"Unsupported type"}
-//	}
-//	buffer.Flush()
-//	bytes := byteBuff.Bytes()
-	if len(data) > 0 {
-		c_val.data = unsafe.Pointer(&data[0])
-		c_val.data_len = C.int(len(data))
-	}
-	c_val.format = uint32(val.Type.Format)
-	// we return a handle to the bytes because nothing references the object leaving
-	// this function and in theory could be GC'ed.  Handle can be released when
-	// c_val is GC'ed
-	return NewGoHandle(bytes), &c_val, nil
-}
-
-func leafValue(val *browse.Value) (*C.struct_conf2_value, error) {
-	var c_val C.struct_conf2_value
-	switch val.Type.Format {
-	case schema.FMT_STRING:
-		c_val.cstr = C.CString(val.Str)
-	case schema.FMT_INT32, schema.FMT_ENUMERATION:
-		c_val.int32 = C.int(val.Int)
-	case schema.FMT_BOOLEAN:
-		if val.Bool {
-			c_val.boolean = C_TRUE
-		} else {
-			c_val.boolean = C_FALSE
-		}
-	default:
-		return nil, &driverError{"Unsupported type"}
-	}
-	c_val.format = uint32(val.Type.Format)
-	return &c_val, nil
-}
-
 func (cb *apiSelector) edit(s browse.Selection, selectionHnd *ApiHandle, op browse.Operation, val *browse.Value) (err error) {
 	errPtr := unsafe.Pointer(&err)
 	var ident *C.char;
-	var c_val *C.struct_conf2_value
 	var handle *GoHandle
 	if s.WalkState().Position != nil {
 		ident = encodeIdent(s.WalkState().Position)
 	}
+	var data_ptr unsafe.Pointer
+	var data_len C.int
 	if val != nil {
-		if val.IsList {
-			handle, c_val, err = leafListValue(val)
-		} else {
-			c_val, err = leafValue(val)
-		}
+		w := comm.NewWriter()
+		w.WriteValue(val)
+		data := w.Data()
+		data_len = C.int(len(data))
+		handle = NewGoHandleByteArray(data)
+		data_ptr = handle.ID
 	}
 
-	C.conf2_browse_edit(cb.browser.edit_impl, selectionHnd.ID, ident, C.int(op), c_val, errPtr)
+	C.conf2_browse_edit(cb.browser.edit_impl, selectionHnd.ID, ident, C.int(op), data_ptr, data_len, errPtr)
 
 	if handle != nil {
 		handle.Close()

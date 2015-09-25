@@ -10,7 +10,7 @@ import java.util.Iterator;
  *
  */
 class PathWalkController implements WalkController {
-    private static String[] NO_KEYS = new String[0];
+    private static BrowseValue[] NO_KEYS = new BrowseValue[0];
     BrowsePath path;
     Selection target;
 

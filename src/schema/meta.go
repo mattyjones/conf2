@@ -2,7 +2,6 @@ package schema
 import (
 	"strings"
 	"strconv"
-	"fmt"
 )
 
 ///////////////////
@@ -558,10 +557,7 @@ func (y *LeafList) GetDataType() *DataType {
 }
 func (y *LeafList) SetDataType(dataType *DataType) {
 	if dataType != nil && dataType.Format < FMT_BINARY_LIST {
-fmt.Println("meta - adding 1024")
-fmt.Printf("meta - %d\n", dataType.Format)
 		dataType.Format = dataType.Format + 1024
-fmt.Printf("meta - %d\n", dataType.Format)
 	}
 	y.DataType = dataType
 }

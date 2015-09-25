@@ -23,6 +23,12 @@ func NewGoHandle(data interface{}) *GoHandle {
 	return hnd
 }
 
+func NewGoHandleByteArray(data []byte) *GoHandle {
+	hnd := &GoHandle{ID:unsafe.Pointer(&data[0]), Data:data}
+	GoHandles()[hnd.ID] = hnd
+	return hnd
+}
+
 type GoHandle struct {
 	ID unsafe.Pointer
 	Data interface{}

@@ -1,6 +1,8 @@
 package org.conf2.schema.browse;
 
 import org.conf2.schema.*;
+import org.conf2.schema.driver.Driver;
+import org.conf2.schema.driver.DriverHandle;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -9,6 +11,19 @@ import java.util.Iterator;
  *
  */
 public class Walk {
+//    private Driver driver;
+//    public void insert(Selection from, Selection to) {
+//        DriverHandle dfrom = getSelectionHandle(from);
+//        DriverHandle dto = getSelectionHandle(from);
+//
+//
+//    }
+//
+//
+//    DriverHandle getSelectionHandle(Browser b, String path, Selection s) {
+//
+//
+//    }
 
     public static Selection walk(Selection selection, BrowsePath path) {
         PathWalkController controller = new PathWalkController(path);
@@ -39,7 +54,8 @@ public class Walk {
 
                 if (MetaUtil.isLeaf(s.position)) {
                     BrowseValue v = new BrowseValue();
-                    s.Read.Read(v);
+                    // just walking, not interested in value
+                    s.Read.Read();
                 } else {
                     child = s.Enter.Enter();
                     if (!s.found) {

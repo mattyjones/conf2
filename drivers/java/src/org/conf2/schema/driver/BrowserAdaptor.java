@@ -1,10 +1,9 @@
 package org.conf2.schema.driver;
 
 import org.conf2.schema.*;
-import org.conf2.schema.browse.BrowseValue;
-import org.conf2.schema.browse.Browser;
-import org.conf2.schema.browse.EditOperation;
-import org.conf2.schema.browse.Selection;
+import org.conf2.schema.browse.*;
+import org.conf2.schema.comm.DataReader;
+import org.conf2.schema.comm.DataWriter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -14,7 +13,7 @@ import java.nio.ByteBuffer;
  *
  */
 public class BrowserAdaptor {
-    private final static String[] NO_KEYS = new String[0];
+    private final static BrowseValue[] NO_KEYS = new BrowseValue[0];
 
     public static Selection getRootSelector(Browser browser) {
         return browser.getRootSelector();
@@ -29,21 +28,28 @@ public class BrowserAdaptor {
         return child;
     }
 
-    public static boolean iterate(Selection s, String encodedKeys, boolean first) {
-        String[] keys;
-        if (encodedKeys != null) {
-            keys = encodedKeys.split(" ");
+    public static boolean iterate(Selection s, ByteBuffer encodedKeyValues, boolean first) {
+        BrowseValue[] key;
+        if (encodedKeyValues != null) {
+            DataReader r = new DataReader(encodedKeyValues);
+            DataType[] keyTypes = ((MetaList)(s.meta)).getKeyDataTypes();
+            key = r.readValues(keyTypes);
         } else {
-            keys = NO_KEYS;
+            key = NO_KEYS;
         }
-        return s.Iterate.Iterate(keys, first);
+        return s.Iterate.Iterate(key, first);
     }
 
-    public static BrowseValue read(Selection s, String ident) {
+    public static ByteBuffer read(Selection s, String ident) {
         s.position = updatePosition(s.meta, ident);
-        BrowseValue val = new BrowseValue();
-        s.Read.Read(val);
-        return val;
+        BrowseValue val = s.Read.Read();
+        ByteBuffer data = null;
+        if (val != null) {
+            DataWriter w = new DataWriter();
+            w.writeValue(val);
+            data = w.getByteBuffer();
+        }
+        return data;
     }
 
     static Meta updatePosition(MetaCollection meta, String ident) {
@@ -71,9 +77,14 @@ public class BrowserAdaptor {
         return position;
     }
 
-    public static void edit(Selection s, String ident, int opCode, BrowseValue val) {
+    public static void edit(Selection s, String ident, int opCode, ByteBuffer encodedValue) {
         s.position = updatePosition(s.meta, ident);
         EditOperation op = EditOperation.values()[opCode];
+        BrowseValue val = null;
+        if (encodedValue != null) {
+            DataReader r = new DataReader(encodedValue);
+            val = r.readValue(((HasDataType) s.position).getDataType());
+        }
         s.Edit.Edit(op, val);
     }
 

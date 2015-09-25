@@ -2,6 +2,11 @@ package c
 
 import "C"
 
+const (
+	TRUE_SHORT = C.short(1)
+	FALSE_SHORT = C.short(0)
+)
+
 type driverError struct {
 	Msg string
 }
