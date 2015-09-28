@@ -52,7 +52,7 @@ func TestPathIntoListItemContainer(t *testing.T) {
 		t.Fatal(err)
 	}
 	var p *Path
-	p, err = NewPath("fruits=apple/origin")
+	p, err = ParsePath("fruits=apple/origin")
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -64,7 +64,7 @@ func TestPathIntoListItemContainer(t *testing.T) {
 		}
 	}
 
-	p, err = NewPath("fruits=apple/boat")
+	p, err = ParsePath("fruits=apple/boat")
 	if err != nil {
 		t.Error(err)
 	} else {

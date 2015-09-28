@@ -19,6 +19,25 @@ const (
 	POST_CREATE_LIST_ITEM             // 11
 )
 
+var operationNames = []string {
+	"N/A",
+	"CREATE_CHILD",
+	"POST_CREATE_CHILD",
+	"CREATE_LIST",
+	"POST_CREATE_LIST",
+	"UPDATE_VALUE",
+	"DELETE_CHILD",
+	"DELETE_LIST",
+	"BEGIN_EDIT",
+	"END_EDIT",
+	"CREATE_LIST_ITEM",
+	"POST_CREATE_LIST_ITEM",
+}
+
+func (op Operation) String() string {
+	return operationNames[op]
+}
+
 type strategy int
 const (
 	UPSERT strategy = iota + 1
@@ -45,6 +64,21 @@ func Delete(from Selection, to Selection, p *Path, controller WalkController) er
 
 func Update(from Selection, to Selection, controller WalkController) error {
 	return edit(from, to, UPDATE, controller)
+}
+
+func Action(impl Selection, rdr Selection, wtr Selection) (err error) {
+	meta := impl.WalkState().Position.(*schema.Rpc)
+	var input, output Selection
+	if input, output, err = impl.Action(meta); err != nil {
+		return err
+	}
+	if err = Insert(rdr, input, NewExhaustiveController()); err != nil {
+		return err
+	}
+	if err = Insert(output, wtr, NewExhaustiveController()); err != nil {
+		return err
+	}
+	return
 }
 
 func edit(from Selection, dest Selection, strategy strategy, controller WalkController) (err error) {

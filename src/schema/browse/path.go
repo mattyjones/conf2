@@ -17,7 +17,17 @@ type PathSegment struct {
 	Key []*Value
 }
 
-func NewPath(path string) (p *Path, err error) {
+func NewPath(path string) (p *Path) {
+	var err error
+	if p, err = ParsePath(path); err != nil {
+		if err != nil {
+			panic(err.Error())
+		}
+	}
+	return p
+}
+
+func ParsePath(path string) (p *Path, err error) {
 	p = &Path{}
 
 	if path == "" {

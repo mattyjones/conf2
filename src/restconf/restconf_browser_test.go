@@ -15,7 +15,7 @@ func TestRestMetaLoad(t *testing.T) {
 		if err != nil {
 			t.Error(err.Error())
 		} else {
-			p, _ := browse.NewPath("modules/module")
+			p, _ := browse.ParsePath("modules/module")
 			browse.WalkPath(s, p)
 		}
 	}

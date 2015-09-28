@@ -56,7 +56,7 @@ module json-test {
 			if err != nil {
 				t.Error(err)
 			}
-			p, _ := NewPath(test.path)
+			p, _ := ParsePath(test.path)
 			s, err := WalkPath(in, p)
 			if err != nil {
 				t.Error("failed to transmit json", err)

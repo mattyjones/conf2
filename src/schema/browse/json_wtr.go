@@ -64,7 +64,6 @@ func (json *JsonWriter) selectJson() (Selection, error) {
 			if err = json.conditionallyOpenArrayOnFirstWrite(s); err == nil {
 				err = json.beginArrayItem()
 			}
-			created, _ = json.selectJson()
 		case POST_CREATE_LIST_ITEM:
 			err = json.endArrayItem()
 		case CREATE_LIST:
@@ -135,64 +134,58 @@ func (json *JsonWriter) endContainer() (err error) {
 
 func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 	json.writeIdent(meta.GetIdent());
-	switch tmeta := meta.(type) {
-	case *schema.Leaf:
-		switch tmeta.GetDataType().Resolve().Ident {
-		case "boolean":
-			err = json.writeBool(v.Bool)
-		case "int32":
-			err = json.writeInt(v.Int)
-		case "string", "enumeration":
-			err = json.writeString(v.Str)
+	switch v.Type.Format {
+	case schema.FMT_BOOLEAN:
+		err = json.writeBool(v.Bool)
+	case schema.FMT_INT32:
+		err = json.writeInt(v.Int)
+	case schema.FMT_STRING, schema.FMT_ENUMERATION:
+		err = json.writeString(v.Str)
+	case schema.FMT_BOOLEAN_LIST:
+		if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
+			return
 		}
-	case *schema.LeafList:
-		switch tmeta.GetDataType().Resolve().Ident {
-		case "int32":
-			if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
-				return
-			}
-			for i, n := range v.Intlist {
-				if i > 0 {
-					if _, err = json.out.WriteRune(COMMA); err != nil {
-						return
-					}
-				}
-				if err = json.writeInt(n); err != nil {
+		for i, b := range v.Boollist {
+			if i > 0 {
+				if _,err = json.out.WriteRune(COMMA); err != nil {
 					return
 				}
 			}
-			_, err = json.out.WriteRune(CLOSE_ARRAY)
-		case "string", "enumeration":
-			if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
+			if err = json.writeBool(b); err != nil {
 				return
 			}
-			for i, s := range v.Strlist {
-				if i > 0 {
-					if _, err = json.out.WriteRune(COMMA); err != nil {
-						return
-					}
-				}
-				if err = json.writeString(s); err != nil {
-					return
-				}
-			}
-			_, err = json.out.WriteRune(CLOSE_ARRAY)
-		case "boolean":
-			if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
-				return
-			}
-			for i, b := range v.Boollist {
-				if i > 0 {
-					if _,err = json.out.WriteRune(COMMA); err != nil {
-						return
-					}
-				}
-				if err = json.writeBool(b); err != nil {
-					return
-				}
-			}
-			_, err = json.out.WriteRune(CLOSE_ARRAY)
 		}
+		_, err = json.out.WriteRune(CLOSE_ARRAY)
+	case schema.FMT_INT32_LIST:
+		if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
+			return
+		}
+		for i, n := range v.Intlist {
+			if i > 0 {
+				if _, err = json.out.WriteRune(COMMA); err != nil {
+					return
+				}
+			}
+			if err = json.writeInt(n); err != nil {
+				return
+			}
+		}
+		_, err = json.out.WriteRune(CLOSE_ARRAY)
+	case schema.FMT_STRING_LIST, schema.FMT_ENUMERATION_LIST:
+		if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
+			return
+		}
+		for i, s := range v.Strlist {
+			if i > 0 {
+				if _, err = json.out.WriteRune(COMMA); err != nil {
+					return
+				}
+			}
+			if err = json.writeString(s); err != nil {
+				return
+			}
+		}
+		_, err = json.out.WriteRune(CLOSE_ARRAY)
 	}
 	return
 }

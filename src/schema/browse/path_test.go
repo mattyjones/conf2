@@ -7,7 +7,7 @@ import (
 )
 
 func TestNullPath(t  *testing.T) {
-	p, _ := NewPath("")
+	p, _ := ParsePath("")
 	if len(p.Segments) > 0 {
 		t.Error("expected zero segments")
 	}
@@ -25,7 +25,7 @@ func TestPathSegment(t *testing.T) {
 		{"a/b?foo=1", []string{"a", "b"}},
 	}
 	for _, test := range tests {
-		p, _ := NewPath(test.in)
+		p, _ := ParsePath(test.in)
 		if len(test.expected) != len(p.Segments) {
 			t.Error("wrong number of expected segments for", test.in)
 		}
@@ -50,7 +50,7 @@ func TestPathSegmentKeys(t *testing.T) {
 		{"a/b/d=x", 		[][]string{none, none, []string{"x"}}},
 	}
 	for _, test := range tests {
-		p, _ := NewPath(test.in)
+		p, _ := ParsePath(test.in)
 		if len(test.expected) != len(p.Segments) {
 			t.Error("wrong number of expected segments for", test.in)
 		}
@@ -102,7 +102,7 @@ func TestPathControllerContainerIterator(t *testing.T) {
 	selection.State.Meta.AddMeta(&schema.Container{Ident:"a"})
 	selection.State.Meta.AddMeta(&schema.Container{Ident:"b"})
 	for _, test := range tests {
-		p ,_ = NewPath(test.in)
+		p ,_ = ParsePath(test.in)
 		rc := newPathController(p)
 
 		for i := 0; i < test.expected; i++ {
@@ -140,7 +140,7 @@ func TestPathControllerListIterator(t *testing.T) {
 	}
 	var more bool
 	for _, test := range tests {
-		p ,_ = NewPath(test.in)
+		p ,_ = ParsePath(test.in)
 		rc := newPathController(p)
 
 		for i := 1; i < test.expected; i++ {

@@ -59,7 +59,7 @@ type registration struct {
 func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var path *browse.Path
-	if path, err = browse.NewPath(r.URL.Path); err == nil {
+	if path, err = browse.ParsePath(r.URL.Path); err == nil {
 		var selection browse.Selection
 		if selection, err = reg.browser.RootSelector(); err == nil {
 			if selection, err = browse.WalkPath(selection, path); err == nil {
@@ -74,7 +74,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						var out browse.Selection
 						if out, err = wtr.GetSelector(); err == nil {
 							if walkCntlr, err = browse.NewWalkTargetController(r.URL.RawQuery); err == nil {
-								err = browse.Insert(selection, out, walkCntlr)
+								err = browse.Upsert(selection, out, walkCntlr)
 							}
 						}
 					case "POST", "PUT":

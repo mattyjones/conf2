@@ -37,7 +37,7 @@ func TestEditListItem(t *testing.T) {
 	if s, err = b.RootSelector(); err != nil {
 		t.Fatal(err)
 	}
-	p, _ := NewPath("fruits=apple")
+	p, _ := ParsePath("fruits=apple")
 	var target Selection
 	log.Printf("Walk path to find apple in list\n")
 	target, err = WalkPath(s, p)
@@ -71,7 +71,7 @@ func TestEditListItem(t *testing.T) {
 	}
 
 	// INSERT
-	p, _ = NewPath("fruits")
+	p, _ = ParsePath("fruits")
 	target, err = WalkPath(s, p)
 	if target == nil {
 		t.Fatal("Could not find target");

@@ -1,23 +1,8 @@
 module browse {
-
-    grouping value {
-        switch x {
-            case s {
-                leaf str {
-                    type string;
-                }
-            }
-                ...
-        }
-    }
-
-    grouping walkController {
-        leaf maxDepth {
-            type int32;
-        }
-        list initialKey {
-            uses value;
-        }
+    prefix "browse";
+    namespace "conf2.org/browse";
+    revision 0000-00-00 {
+        description "api to browse package";
     }
 
     grouping selection {
@@ -29,17 +14,31 @@ module browse {
         }
     }
 
+    grouping walking-params {
+        container from {
+             uses selection;
+        }
+        container to {
+             uses selection;
+        }
+        leaf path {
+            type string;
+        }
+    }
+
     rpc insert {
         input {
-            container from {
-                 uses selection;
-            }
-            container to {
-                 uses selection;
-            }
-            container controller {
-                uses walkController;
-            }
+            uses walking-params;
+        }
+    }
+    rpc upsert {
+        input {
+            uses walking-params;
+        }
+    }
+    rpc update {
+        input {
+            uses walking-params;
         }
     }
 }

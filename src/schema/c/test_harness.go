@@ -54,7 +54,7 @@ func conf2_testharness_test_run(harness_hnd_id unsafe.Pointer, c_testname *C.cha
 	}
 	var s browse.Selection
 	var path *browse.Path
-	if path, err = browse.NewPath(details[1]); err != nil {
+	if path, err = browse.ParsePath(details[1]); err != nil {
 		harness.failure(testname, err.Error())
 		return FALSE_SHORT
 	}

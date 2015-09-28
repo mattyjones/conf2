@@ -18,6 +18,7 @@ type Selection interface {
 	Write(meta schema.Meta, op Operation, val *Value) (error)
 	Choose(choice *schema.Choice) (m schema.Meta, err error)
 	Unselect(meta schema.MetaList) error
+	Action(meta *schema.Rpc) (input Selection, output Selection, err error)
 	WalkState() *WalkState
 }
 
@@ -28,6 +29,7 @@ type MySelection struct {
 	OnWrite WriteFunc
 	OnUnselect UnselectFunc
 	OnChoose ChooseFunc
+	OnAction ActionFunc
 	Resource schema.Resource
 	State WalkState
 }
@@ -111,9 +113,20 @@ func (s *MySelection) WalkState() *WalkState {
 	return &s.State
 }
 
+func (s *MySelection) Action(rpc *schema.Rpc) (input Selection, output Selection, err error) {
+	if s.OnAction == nil {
+		return nil, nil, &browseError{
+			Code:NOT_IMPLEMENTED,
+			Msg: fmt.Sprint("Action not implemented on node ", s.ToString()),
+		}
+	}
+	return s.OnAction(rpc)
+}
+
 type NextFunc func(keys []*Value, first bool) (hasMore bool, err error)
 type SelectFunc func(meta schema.MetaList) (child Selection, err error)
 type ReadFunc func(meta schema.HasDataType) (*Value, error)
 type WriteFunc func(meta schema.Meta, op Operation, val *Value) (error)
 type UnselectFunc func(meta schema.MetaList) (error)
 type ChooseFunc func(choice *schema.Choice) (m schema.Meta, err error)
+type ActionFunc func(rpc *schema.Rpc) (input Selection, output Selection, err error)
