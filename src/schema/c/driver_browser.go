@@ -79,14 +79,15 @@ func conf2_load_module(
 	}
 
 	var to browse.Selection
-	to, err = apiModuleBrowser.RootSelector()
+	to, _, err = apiModuleBrowser.RootSelector()
 	defer schema.CloseResource(to)
 	if err == nil {
 		var from browse.Selection
-		from, err = module_browser.RootSelector()
+		var state *browse.WalkState
+		from, state, err = module_browser.RootSelector()
 		defer schema.CloseResource(from)
 		if err == nil {
-			err = browse.Insert(from, to, browse.NewExhaustiveController())
+			err = browse.Insert(state, from, to, browse.WalkAll())
 			if err == nil {
 				moduleHnd := NewGoHandle(module)
 				return moduleHnd.ID
@@ -140,7 +141,7 @@ func conf2_new_browser(
 	return NewGoHandle(browser).ID
 }
 
-func (cb *apiBrowser) RootSelector() (s browse.Selection, err error) {
+func (cb *apiBrowser) RootSelector() (s browse.Selection, state *browse.WalkState, err error) {
 	errPtr := unsafe.Pointer(&err)
 	selector := &apiSelector{browser:cb}
 	root_selection_hnd_id := C.conf2_browse_root_selector(cb.root_selector_impl, cb.browser_hnd.ID, errPtr)
@@ -149,7 +150,7 @@ func (cb *apiBrowser) RootSelector() (s browse.Selection, err error) {
 		panic(fmt.Sprint("Root selector handle not found", root_selection_hnd_id))
 	}
 	s, err = selector.selection(root_selection_hnd)
-	s.WalkState().Meta = cb.module
+	state = browse.NewWalkState(cb.module)
 	return
 }
 
@@ -167,23 +168,23 @@ type apiSelector struct {
 
 func (cb *apiSelector) selection(selectionHnd *ApiHandle) (browse.Selection, error) {
 	s := &browse.MySelection{}
-	s.OnSelect = func(meta schema.MetaList) (child browse.Selection, err error) {
+	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (child browse.Selection, err error) {
 		return cb.enter(meta, selectionHnd)
 	}
-	s.OnNext = func(keys []*browse.Value, first bool) (bool, error) {
+	s.OnNext = func(state *browse.WalkState, meta *schema.List, keys []*browse.Value, first bool) (bool, error) {
 		return cb.iterate(s, selectionHnd, keys, first)
 	}
-	s.OnRead = func(meta schema.HasDataType) (*browse.Value, error) {
+	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
 		return cb.read(meta, selectionHnd)
 	}
-	s.OnWrite = func(meta schema.Meta, op browse.Operation, val *browse.Value) error {
-		return cb.edit(s, selectionHnd, op, val)
+	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, val *browse.Value) error {
+		return cb.edit(meta, selectionHnd, op, val)
 	}
-	s.OnUnselect = func(meta schema.MetaList) error {
+	s.OnUnselect = func(state *browse.WalkState, meta schema.MetaList) error {
 		return cb.exit(meta, selectionHnd)
 	}
-	s.OnChoose = func(m *schema.Choice) (schema.Meta, error) {
-		return cb.choose(s, selectionHnd, m)
+	s.OnChoose = func(state *browse.WalkState, m *schema.Choice) (schema.Meta, error) {
+		return cb.choose(state.Position(), selectionHnd, m)
 	}
 	s.Resource = selectionHnd
 	return s, nil
@@ -260,13 +261,10 @@ func (cb *apiSelector) read(meta schema.HasDataType, selectionHnd *ApiHandle) (v
 	return val, err
 }
 
-func (cb *apiSelector) edit(s browse.Selection, selectionHnd *ApiHandle, op browse.Operation, val *browse.Value) (err error) {
+func (cb *apiSelector) edit(meta schema.Meta, selectionHnd *ApiHandle, op browse.Operation, val *browse.Value) (err error) {
 	errPtr := unsafe.Pointer(&err)
-	var ident *C.char;
 	var handle *GoHandle
-	if s.WalkState().Position != nil {
-		ident = encodeIdent(s.WalkState().Position)
-	}
+	ident := encodeIdent(meta)
 	var data_ptr unsafe.Pointer
 	var data_len C.int
 	if val != nil {
@@ -287,9 +285,9 @@ func (cb *apiSelector) edit(s browse.Selection, selectionHnd *ApiHandle, op brow
 	return
 }
 
-func (cb *apiSelector) choose(s browse.Selection, selectionHnd *ApiHandle, choice *schema.Choice) (resolved schema.Meta, err error) {
+func (cb *apiSelector) choose(meta schema.Meta, selectionHnd *ApiHandle, choice *schema.Choice) (resolved schema.Meta, err error) {
 	errPtr := unsafe.Pointer(&err)
-	ident := C.CString(s.WalkState().Position.GetIdent())
+	ident := C.CString(meta.GetIdent())
 	resolved_case := C.conf2_browse_choose(cb.browser.choose_impl, selectionHnd.ID, ident, errPtr)
 	if err == nil {
 		ccase := choice.GetCase(C.GoString(resolved_case))

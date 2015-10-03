@@ -48,7 +48,8 @@ func conf2_testharness_test_run(harness_hnd_id unsafe.Pointer, c_testname *C.cha
 	testname := C.GoString(c_testname)
 	details := strings.Split(testname, " ")
 	var root browse.Selection
-	if root, err = harness.browser.RootSelector(); err != nil {
+	var state *browse.WalkState
+	if root, state, err = harness.browser.RootSelector(); err != nil {
 		harness.failure(testname, err.Error())
 		return FALSE_SHORT
 	}
@@ -58,14 +59,14 @@ func conf2_testharness_test_run(harness_hnd_id unsafe.Pointer, c_testname *C.cha
 		harness.failure(testname, err.Error())
 		return FALSE_SHORT
 	}
-	if s, err = browse.WalkPath(root, path); err != nil {
+	if s, state, err = browse.WalkPath(state, root, path); err != nil {
 		harness.failure(testname, err.Error())
 		return FALSE_SHORT
 	}
 	var actual string
 	switch details[0] {
 	case "read":
-		actual, err = tojson(s)
+		actual, err = tojson(state, s)
 		if err != nil {
 			harness.failure(testname, err.Error())
 		} else {
@@ -109,11 +110,11 @@ func (h *testHarness) failure(testname string, reason string) {
 	h.failed = append(h.failed, failure)
 }
 
-func tojson(s browse.Selection) (json string, err error) {
+func tojson(state *browse.WalkState, s browse.Selection) (json string, err error) {
 	var actual bytes.Buffer
 	w := browse.NewJsonWriter(&actual)
 	out, _ := w.GetSelector()
-	if err = browse.Insert(s, out, browse.NewExhaustiveController()); err != nil {
+	if err = browse.Insert(state, s, out, browse.WalkAll()); err != nil {
 		return
 	}
 	json = string(actual.Bytes())

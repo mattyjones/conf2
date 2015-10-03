@@ -76,7 +76,7 @@ func TestPathParams(t *testing.T) {
 		{"depth=99", 		99},
 	}
 	for _, test := range tests {
-		p, _ := NewWalkTargetController(test.in)
+		p := NewFullWalk(test.in)
 		if p.MaxDepth != test.expected {
 			desc := fmt.Sprintf("\"%s\" - expected depth \"%d\" - got \"%d\"",
 				test.in, test.expected, p.MaxDepth)
@@ -98,19 +98,19 @@ func TestPathControllerContainerIterator(t *testing.T) {
 		{"a=key/b",		        2},
 	}
 	selection := &MySelection{}
-	selection.State.Meta = &schema.Container{Ident:"root"}
-	selection.State.Meta.AddMeta(&schema.Container{Ident:"a"})
-	selection.State.Meta.AddMeta(&schema.Container{Ident:"b"})
+	metaList := &schema.Container{Ident:"root"}
+	metaList.AddMeta(&schema.Container{Ident:"a"})
+	metaList.AddMeta(&schema.Container{Ident:"b"})
+	state := NewWalkState(metaList)
 	for _, test := range tests {
 		p ,_ = ParsePath(test.in)
-		rc := newPathController(p)
-
+		rc := NewFindTarget(p)
 		for i := 0; i < test.expected; i++ {
-			if ! rc.ContainerIterator(selection, i).HasNextMeta() {
+			if ! rc.ContainerIterator(state, selection, i).HasNextMeta() {
 				t.Error(test.in, "- unexpectedly max-depth'ed at level", i)
 			}
 		}
-		if rc.ContainerIterator(selection, test.expected).HasNextMeta() {
+		if rc.ContainerIterator(state, selection, test.expected).HasNextMeta() {
 			t.Error(test.in, "- expected to max-depth but didn't")
 		} else if rc.target != selection {
 			t.Error(test.in, "- target incorrect")
@@ -134,34 +134,34 @@ func TestPathControllerListIterator(t *testing.T) {
 	selection := &MySelection{}
 	listMeta := &schema.List{Ident:"path-test", Keys:[]string{"x"}}
 	listMeta.AddMeta(&schema.Leaf{Ident:"x", DataType:schema.NewDataType("string")})
-	selection.WalkState().Meta = listMeta
-	selection.OnNext = func([]*Value, bool) (bool, error) {
+	state := NewWalkState(listMeta)
+	selection.OnNext = func(*WalkState, *schema.List, []*Value, bool) (bool, error) {
 		return true, nil
 	}
 	var more bool
 	for _, test := range tests {
 		p ,_ = ParsePath(test.in)
-		rc := newPathController(p)
+		rc := NewFindTarget(p)
 
 		for i := 1; i < test.expected; i++ {
-			more, _ = rc.ListIterator(selection, i, true)
+			more, _ = rc.ListIterator(state, selection, i, true)
 			if ! more {
 				t.Error(test.in, "- unexpectedly max-depth'ed at level", i)
 			}
-			more, _ = rc.ListIterator(selection, i, false)
+			more, _ = rc.ListIterator(state, selection, i, false)
 			if more {
 				t.Error(test.in, "- unexpectedly found 2nd item", i)
 			}
 		}
-		more, _ = rc.ListIterator(selection, test.expected, true)
+		more, _ = rc.ListIterator(state, selection, test.expected, true)
 		if more != test.last {
 			t.Error(test.in, "- expected to max-depth but didn't")
 		} else {
-			more, _ = rc.ListIterator(selection, test.expected, false)
+			more, _ = rc.ListIterator(state, selection, test.expected, false)
 		    if rc.target != selection {
 				t.Error(test.in, "- target incorrect")
 			}
-			more, _ = rc.ListIterator(selection, test.expected + 1, true)
+			more, _ = rc.ListIterator(state, selection, test.expected + 1, true)
 			if more {
 				t.Error(test.in, "- expected to max-depth but didn't")
 			}

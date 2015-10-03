@@ -11,9 +11,7 @@ func TestJsonWalk(t *testing.T) {
 module json-test {
 	prefix "t";
 	namespace "t";
-	revision 0000-00-00 {
-		description "x";
-	}
+	revision 0;
 	list hobbies {
 		key "name";
 	    leaf name {
@@ -42,9 +40,9 @@ module json-test {
 			path string
 			expectedMeta	string
 		} {
-			{ "hobbies", 			"hobbies" },
-			{ "hobbies=birding", 	"hobbies" },
-			{ "hobbies=birding/favorite", "favorite" },
+			{ "hobbies", 			"json-test.hobbies.<nil>" },
+			{ "hobbies=birding", 	"json-test.hobbies.<nil>" },
+			{ "hobbies=birding/favorite", "json-test.hobbies.favorite.<nil>" },
 		}
 		for _, test := range tests {
 
@@ -52,16 +50,19 @@ module json-test {
 			if err != nil {
 				t.Error(err)
 			}
-			in, err := NewJsonReader(inIo).GetSelector(module, false)
+			state := NewWalkState(module)
+			in, err := NewJsonReader(inIo).GetSelector(state)
 			if err != nil {
 				t.Error(err)
 			}
 			p, _ := ParsePath(test.path)
-			s, err := WalkPath(in, p)
+			_, walkedState, err := WalkPath(state, in, p)
 			if err != nil {
 				t.Error("failed to transmit json", err)
-			} else if (s.WalkState().Meta.GetIdent() != test.expectedMeta) {
-				t.Error(test.path, "-", test.expectedMeta, "!=", s.WalkState().Meta.GetIdent())
+			} else if walkedState == nil {
+				t.Error(test.path, "- Target not found, state nil")
+			} else if (walkedState.String() != test.expectedMeta) {
+				t.Error(test.path, "-", test.expectedMeta, "!=", walkedState.String())
 			}
 		}
 	}

@@ -29,14 +29,15 @@ func TestWalkJson(t *testing.T) {
 }`
 	module := LoadSampleModule(t)
 	json := JsonReader{strings.NewReader(config)}
-	var actualBuff bytes.Buffer
-	outJson := NewJsonWriter(&actualBuff)
-	out, _ := outJson.GetSelector()
-	if root, err := json.GetSelector(module, false); err != nil {
+	state := NewWalkState(module)
+	if root, err := json.GetSelector(state); err != nil {
 		t.Error(err)
 	} else {
 		var err error
-		if err = Upsert(root, out, NewExhaustiveController()); err != nil {
+		var actualBuff bytes.Buffer
+		outJson := NewJsonWriter(&actualBuff)
+		out, _ := outJson.GetSelector()
+		if err = Upsert(state, root, out, WalkAll()); err != nil {
 			t.Error(err)
 		}
 		t.Log(string(actualBuff.Bytes()))
@@ -49,10 +50,10 @@ func TestWalkYang(t *testing.T) {
 	outJson := NewJsonWriter(&actualBuff)
 	out, _ := outJson.GetSelector()
 	browser := NewSchemaBrowser(module, true)
-	if root, err := browser.RootSelector(); err != nil {
+	if root, state, err := browser.RootSelector(); err != nil {
 		t.Error(err)
 	} else {
-		if err = Upsert(root, out, NewExhaustiveController()); err != nil {
+		if err = Upsert(state, root, out, WalkAll()); err != nil {
 			t.Error(err)
 		}
 		t.Log(string(actualBuff.Bytes()))

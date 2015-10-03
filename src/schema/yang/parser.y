@@ -307,7 +307,7 @@ container_body_stmts :
 
 container_body_stmt :
     description token_semi
-    | kywd_config token_string token_semi
+    | config_stmt
     | body_stmt
 
 uses_stmt :
@@ -384,7 +384,7 @@ notification_body_stmts :
 /* TODO: if, stats, reference, typedef*/
 notification_body_stmt :
     description token_semi
-    | kywd_config token_string token_semi
+    | config_stmt
     | body_stmt;
 
 grouping_stmt :
@@ -435,7 +435,7 @@ list_body_stmts :
 list_body_stmt :
     description token_semi
     | kywd_max_elements token_int token_semi
-    | kywd_config token_string token_semi
+    | config_stmt
     | key_stmt
     | kywd_unique token_string token_semi
     | body_stmt
@@ -473,9 +473,18 @@ leaf_body_stmts :
 leaf_body_stmt :
     type_stmt
     | description token_semi
-    | kywd_config token_string token_semi
+    | config_stmt
     | kywd_default token_string token_semi
     | kywd_mandatory token_string token_semi
+
+config_stmt : kywd_config token_string token_semi {
+     if hasDetails, valid := yylval.stack.Peek().(schema.HasDetails); valid {
+        hasDetails.Details().SetConfig("true" == $2)
+     } else {
+        yylex.Error("expected config statement on schema supporting details")
+        goto ret1
+     }
+}
 
 /* TODO: when, if, units, must, status, reference, min, max */
 leaf_list_stmt :

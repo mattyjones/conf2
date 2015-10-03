@@ -40,21 +40,21 @@ func (d *Dumper) Enter(level int) (Selection, error) {
 	row := 0
 	s := &MySelection{}
 	var created Selection
-	s.OnSelect = func(meta schema.MetaList) (child Selection, err error) {
+	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, err error) {
 		nest := created
 		created = nil
 		return nest, nil
 	}
-	s.OnWrite = func(meta schema.Meta, op Operation, v *Value) (err error) {
+	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, v *Value) (err error) {
 		switch op {
 			case CREATE_CHILD, CREATE_LIST, CREATE_LIST_ITEM:
 				created, _ = d.Enter(level + 1)
 		}
-		d.dumpEditOp(s, op, level)
+		d.dumpEditOp(state, op, level)
 		d.dumpValue(v, level)
 		return
 	}
-	s.OnNext = func(keys []*Value, first bool) (hasMore bool, err error) {
+	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (hasMore bool, err error) {
 		d.out.WriteString(fmt.Sprintf("%sITERATE row=%d, first=%v\n", Padding[:level], row, first))
 		row++
 		return false, nil
@@ -90,11 +90,7 @@ func (d *Dumper) dumpValue(v *Value, level int) {
 	d.out.WriteString(line)
 }
 
-func (d *Dumper) dumpEditOp(s *MySelection, op Operation, level int) {
-	ident := ""
-	if s.State.Position != nil {
-		ident = s.State.Position.GetIdent()
-	}
-	line := fmt.Sprintf("%s%s %s\n", Padding[:level], editOps[op], ident)
+func (d *Dumper) dumpEditOp(state *WalkState, op Operation, level int) {
+	line := fmt.Sprintf("%s%s %s\n", Padding[:level], editOps[op], state.String())
 	d.out.WriteString(line)
 }

@@ -37,7 +37,10 @@ PKGS = \
 	schema/browse \
 	schema/adapt \
 	schema/comm \
-	restconf
+	restconf \
+	db \
+	db/mongo \
+	conf2-proxy
 
 all : generate driver-java build test install
 
@@ -57,7 +60,10 @@ test :
 	CGO_CFLAGS="$(libconf2_CFLAGS)" \
 	  go test -v $(PKGS) -run $(TEST)
 
-install: libconf2 libconf2j;
+go-install :
+	  go install $(PKGS)
+
+install: go-install libconf2 libconf2j;
 
 JAVA_SRC = $(shell find drivers/java/src \( \
 	-name '*.java' -a \

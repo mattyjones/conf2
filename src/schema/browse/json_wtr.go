@@ -37,16 +37,16 @@ func (json *JsonWriter) GetSelector() (Selection, error) {
 func (json *JsonWriter) selectJson() (Selection, error) {
 	s := &MySelection{}
 	var created Selection
-	s.OnSelect = func(meta schema.MetaList) (child Selection, err error) {
+	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, err error) {
 		nest := created
 		created = nil
 		return nest, nil
 	}
-	s.OnWrite = func(meta schema.Meta, op Operation, v *Value) (err error) {
+	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, v *Value) (err error) {
 		switch op {
 		case BEGIN_EDIT:
 			_, err = json.out.WriteRune(OPEN_OBJ)
-			json.startingInsideList = schema.IsList(s.State.Meta)
+			json.startingInsideList = schema.IsList(meta)
 			json.firstWrite = true
 			return err
 		case END_EDIT:
@@ -56,40 +56,40 @@ func (json *JsonWriter) selectJson() (Selection, error) {
 				}
 			}
 		case CREATE_CHILD:
-			err = json.beginContainer(meta)
+			err = json.beginContainer(meta.GetIdent())
 			created, _ = json.selectJson()
 		case POST_CREATE_CHILD:
 			err = json.endContainer()
 		case CREATE_LIST_ITEM:
-			if err = json.conditionallyOpenArrayOnFirstWrite(s); err == nil {
+			if err = json.conditionallyOpenArrayOnFirstWrite(meta.GetIdent()); err == nil {
 				err = json.beginArrayItem()
 			}
 		case POST_CREATE_LIST_ITEM:
 			err = json.endArrayItem()
 		case CREATE_LIST:
-			err = json.beginList(meta)
+			err = json.beginList(meta.GetIdent())
 			created, _ = json.selectJson()
 		case POST_CREATE_LIST:
 			return json.endList()
 		case UPDATE_VALUE:
-			err = json.writeValue(s.State.Position, v)
+			err = json.writeValue(meta, v)
 		default:
 			err = &browseError{Msg:"Operation not supported"}
 		}
 		json.firstWrite = false
 		return
 	}
-	s.OnNext = func(keys []*Value, first bool) (hasMore bool, err error) {
+	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (hasMore bool, err error) {
 		return false, nil
 	}
 	return s, nil
 }
 
-func (json *JsonWriter) conditionallyOpenArrayOnFirstWrite(s *MySelection) error {
+func (json *JsonWriter) conditionallyOpenArrayOnFirstWrite(ident string) error {
 	var err error
 	if json.firstWrite && json.startingInsideList {
 		json.closeArrayOnExit = true
-		err = json.beginList(s.State.Meta)
+		err = json.beginList(ident)
 	}
 	return err
 }
@@ -102,8 +102,8 @@ func (json *JsonWriter) conditionallyCloseArrayOnLastWrite() error {
 	return err
 }
 
-func (json *JsonWriter) beginList(meta schema.Meta) (err error) {
-	if err = json.writeIdent(meta.GetIdent()); err == nil {
+func (json *JsonWriter) beginList(ident string) (err error) {
+	if err = json.writeIdent(ident); err == nil {
 		_, err = json.out.WriteRune(OPEN_ARRAY)
 		json.firstInContainer = true;
 	}
@@ -116,8 +116,8 @@ func (json *JsonWriter) endList() (err error) {
 	return
 }
 
-func (json *JsonWriter) beginContainer(meta schema.Meta) (err error) {
-	if err = json.writeIdent(meta.GetIdent()); err != nil {
+func (json *JsonWriter) beginContainer(ident string) (err error) {
+	if err = json.writeIdent(ident); err != nil {
 		return
 	}
 	if err = json.beginObject(); err != nil {

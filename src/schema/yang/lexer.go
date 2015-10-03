@@ -364,9 +364,9 @@ func lexBegin(l *lexer) stateFunc {
 			return lexBegin
 		}
 		if ! l.acceptToken(token_semi) {
-			return l.error("expected ;")
+			return l.error("expected { or ;")
 		}
-
+		return lexBegin
 	}
 
 	// FORMAT: Either

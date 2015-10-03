@@ -48,7 +48,8 @@ func TestPathIntoListItemContainer(t *testing.T) {
 		t.Fatal(err)
 	}
 	var s Selection
-	if s, err = b.RootSelector(); err != nil {
+	var state *WalkState
+	if s, state, err = b.RootSelector(); err != nil {
 		t.Fatal(err)
 	}
 	var p *Path
@@ -58,7 +59,7 @@ func TestPathIntoListItemContainer(t *testing.T) {
 	} else {
 		var target Selection
 		t.Log("Walk path to find apple in list\n")
-		target, err = WalkPath(s, p)
+		target, _, err = WalkPath(state, s, p)
 		if target == nil {
 			t.Fatal("Could not find target");
 		}
@@ -70,7 +71,7 @@ func TestPathIntoListItemContainer(t *testing.T) {
 	} else {
 		var target Selection
 		t.Log("Walk path to find apple's transportation\n")
-		target, err = WalkPath(s, p)
+		target, _, err = WalkPath(state, s, p)
 		if target == nil {
 			t.Fatal("Could not find target");
 		}

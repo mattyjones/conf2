@@ -2,6 +2,7 @@ package schema
 import (
 	"strings"
 	"strconv"
+	"fmt"
 )
 
 ///////////////////
@@ -52,6 +53,10 @@ type HasTypedefs interface {
 	GetTypedefs() MetaList
 }
 
+type HasDetails interface {
+	Details() *Details
+}
+
 type HasDataType interface {
 	Meta
 	GetDataType() *DataType
@@ -65,6 +70,32 @@ type MetaProxy interface {
 ///////////////////////
 // Base structs
 ///////////////////////
+
+type MetaPath struct {
+	ParentPath *MetaPath
+	Meta Meta
+}
+
+func (p *MetaPath) Parent() MetaList {
+	// we know it's a list otherwise it couldn't have a child
+	if p.ParentPath == nil {
+		return nil
+	}
+	return p.ParentPath.Meta.(MetaList)
+}
+
+func (p *MetaPath) String() string {
+	if p.ParentPath == nil {
+		if p.Meta == nil {
+			return "<nil>"
+		}
+		return p.Meta.GetIdent()
+	}
+	if p.Meta == nil {
+		return fmt.Sprint(p.ParentPath.String(), ".<nil>")
+	}
+	return fmt.Sprint(p.ParentPath.String(), ".", p.Meta.GetIdent())
+}
 
 // MetaList implementation helper(s)
 type ListBase struct {
@@ -247,6 +278,7 @@ type Choice struct {
 	Description string
 	MetaBase
 	ListBase
+	details Details
 }
 // Identifiable
 func (y *Choice) GetIdent() (string) {
@@ -285,6 +317,10 @@ func (y *Choice) ReplaceMeta(oldChild Meta, newChild Meta) error {
 // Other
 func (c *Choice) GetCase(ident string) *ChoiceCase {
 	return FindByPathWithoutResolvingProxies(c, ident).(*ChoiceCase)
+}
+// HasDetails
+func (c *Choice) Details() *Details {
+	return &c.details
 }
 
 ////////////////////////////////////////////////////
@@ -353,8 +389,7 @@ type Container struct {
 	ListBase
 	Groupings MetaContainer
 	Typedefs MetaContainer
-	Config bool
-	Mandatory bool
+	details Details
 }
 // Identifiable
 func (y *Container) GetIdent() (string) {
@@ -405,6 +440,10 @@ func (y *Container) GetGroupings() MetaList {
 func (y *Container) GetTypedefs() MetaList {
 	return &y.Typedefs
 }
+// HasDetails
+func (y *Container) Details() *Details {
+	return &y.details
+}
 
 ////////////////////////////////////////////////////
 
@@ -415,8 +454,7 @@ type List struct {
 	ListBase
 	Groupings MetaContainer
 	Typedefs MetaContainer
-	Config bool
-	Mandatory bool
+	details Details
 	Keys []string
 }
 // Identifiable
@@ -467,6 +505,11 @@ func (y *List) GetGroupings() MetaList {
 func (y *List) GetTypedefs() MetaList {
 	return &y.Typedefs
 }
+// HasDetails
+func (y *List) Details() *Details {
+	return &y.details
+}
+
 
 ////////////////////////////////////////////////////
 
@@ -474,8 +517,7 @@ type Leaf struct {
 	Ident string
 	Description string
 	MetaBase
-	Config bool
-	Mandatory bool
+	details Details
 	DataType *DataType
 }
 
@@ -515,7 +557,9 @@ func (y *Leaf) GetDataType() *DataType {
 func (y *Leaf) SetDataType(dataType *DataType) {
 	y.DataType = dataType
 }
-
+func (y *Leaf) Details() *Details {
+	return &y.details
+}
 
 ////////////////////////////////////////////////////
 
@@ -523,8 +567,7 @@ type LeafList struct {
 	Ident string
 	Description string
 	MetaBase
-	Config bool
-	Mandatory bool
+	details Details
 	DataType *DataType
 }
 // Identifiable
@@ -561,6 +604,9 @@ func (y *LeafList) SetDataType(dataType *DataType) {
 	}
 	y.DataType = dataType
 }
+func (y *LeafList) Details() *Details {
+	return &y.details
+}
 
 ////////////////////////////////////////////////////
 
@@ -569,8 +615,7 @@ type Grouping struct {
 	Description string
 	MetaBase
 	ListBase
-	Config bool
-	Mandatory bool
+	details Details
 	Groupings MetaContainer
 	Typedefs MetaContainer
 }
@@ -615,6 +660,10 @@ func (y *Grouping) GetGroupings() MetaList {
 // HasTypedefs
 func (y *Grouping) GetTypedefs() MetaList {
 	return &y.Typedefs
+}
+// HasDetails
+func (y *Grouping) Details() *Details {
+	return &y.details
 }
 
 ////////////////////////////////////////////////////

@@ -38,9 +38,9 @@ func (op Operation) String() string {
 	return operationNames[op]
 }
 
-type strategy int
+type Strategy int
 const (
-	UPSERT strategy = iota + 1
+	UPSERT Strategy = iota + 1
 	INSERT
 	UPDATE
 	DELETE
@@ -50,136 +50,122 @@ const (
 type editor struct {
 }
 
-func Insert(from Selection, to Selection, controller WalkController) error {
-	return edit(from, to, INSERT, controller)
+func Insert(state *WalkState, from Selection, to Selection, controller WalkController) error {
+	return edit(state, from, to, INSERT, controller)
 }
 
-func Upsert(from Selection, to Selection, controller WalkController) error {
-	return edit(from, to, UPSERT, controller)
+func Upsert(state *WalkState, from Selection, to Selection, controller WalkController) error {
+	return edit(state, from, to, UPSERT, controller)
 }
 
-func Delete(from Selection, to Selection, p *Path, controller WalkController) error {
-	return edit(from, to, DELETE, controller)
+func Delete(state *WalkState, from Selection, to Selection, p *Path, controller WalkController) error {
+	return edit(state, from, to, DELETE, controller)
 }
 
-func Update(from Selection, to Selection, controller WalkController) error {
-	return edit(from, to, UPDATE, controller)
+func Update(state *WalkState, from Selection, to Selection, controller WalkController) error {
+	return edit(state, from, to, UPDATE, controller)
 }
 
-func Action(impl Selection, rdr Selection, wtr Selection) (err error) {
-	meta := impl.WalkState().Position.(*schema.Rpc)
+func Action(state *WalkState, impl Selection, rdr Selection, wtr Selection) (err error) {
+	meta := state.Position().(*schema.Rpc)
 	var input, output Selection
-	if input, output, err = impl.Action(meta); err != nil {
+	if input, output, err = impl.Action(state, meta); err != nil {
 		return err
 	}
-	if err = Insert(rdr, input, NewExhaustiveController()); err != nil {
+	if err = Insert(state, rdr, input, WalkAll()); err != nil {
 		return err
 	}
-	if err = Insert(output, wtr, NewExhaustiveController()); err != nil {
+	if err = Insert(state, output, wtr, WalkAll()); err != nil {
 		return err
 	}
 	return
 }
 
-func edit(from Selection, dest Selection, strategy strategy, controller WalkController) (err error) {
+func edit(state *WalkState, from Selection, dest Selection, strategy Strategy, controller WalkController) (err error) {
 	e := editor{}
 	var s Selection
-	s, err = e.editTarget(from, dest, false, dest.WalkState().InsideList, strategy)
+	s, err = e.editTarget(from, dest, false, state.InsideList(), strategy)
 	if err == nil {
 		// sync dest and from
-		s.WalkState().Meta = from.WalkState().Meta
-		dest.WalkState().Meta = s.WalkState().Meta
-		if err = dest.Write(dest.WalkState().Meta, BEGIN_EDIT, nil); err == nil {
-			if err = WalkExhaustive(s, controller); err == nil {
-				err = dest.Write(dest.WalkState().Meta, END_EDIT, nil)
+		if err = dest.Write(state, state.SelectedMeta(), BEGIN_EDIT, nil); err == nil {
+			if err = Walk(state, s, controller); err == nil {
+				err = dest.Write(state, state.SelectedMeta(), END_EDIT, nil)
 			}
 		}
 	}
 	return
 }
 
-func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsideList bool, strategy strategy) (Selection, error) {
+func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsideList bool, strategy Strategy) (Selection, error) {
 	var createdContainer bool
 	var createdList bool
 	var createdListItem bool
 	var autoCreateListItems bool
 	var listIterationInitialized bool
 	s := &MySelection{}
-	s.State.InsideList = from.WalkState().InsideList
-	s.OnChoose = func(choice *schema.Choice) (schema.Meta, error) {
-		return from.Choose(choice)
+	s.OnChoose = func(state *WalkState, choice *schema.Choice) (schema.Meta, error) {
+		return from.Choose(state, choice)
 	}
-	createList := func(to Selection) (toChild Selection, sube error) {
-		metaList := s.State.Position.(schema.MetaList)
-		if sube = to.Write(metaList, CREATE_LIST, nil); sube != nil {
+	createList := func(state *WalkState, to Selection) (toChild Selection, sube error) {
+		if sube = to.Write(state, state.Position(), CREATE_LIST, nil); sube != nil {
 			return
 		}
-		if toChild, sube = to.Select(metaList); sube != nil {
+		metaList := state.Position().(schema.MetaList)
+		if toChild, sube = to.Select(state, metaList); sube != nil {
 			return
 		}
 		createdList = true
 		return
 	}
-	createContainer := func(to Selection) (toChild Selection, sube error) {
-		metaList := s.State.Position.(schema.MetaList)
-		if sube = to.Write(metaList, CREATE_CHILD, nil); sube != nil {
+	createContainer := func(state *WalkState, to Selection) (toChild Selection, sube error) {
+		if sube = to.Write(state, state.Position(), CREATE_CHILD, nil); sube != nil {
 			return
 		}
-		if toChild, sube = to.Select(metaList); sube != nil {
+		metaList := state.Position().(schema.MetaList)
+		if toChild, sube = to.Select(state, metaList); sube != nil {
 			return
 		}
 		createdContainer = true
 		return
 	}
-	s.OnSelect = func(meta schema.MetaList) (c Selection, err error) {
-		fromState := from.WalkState()
-		fromState.Meta = s.State.Meta
-		fromState.Position = s.State.Position
+	s.OnSelect = func(state *WalkState, meta schema.MetaList) (c Selection, err error) {
 		var fromChild Selection
-		metaList := s.State.Position.(schema.MetaList)
-		fromChild, err = from.Select(metaList)
+		fromChild, err = from.Select(state, meta)
 		if err != nil {
 			return
 		} else if fromChild == nil {
 			return
 		}
 
-		if fromChild.WalkState().Meta == nil {
-			fromChild.WalkState().Meta = s.State.Position.(schema.MetaList)
-		}
-
 		var toChild Selection
-		toState := to.WalkState()
-		toState.Meta = s.State.Meta
-		toState.Position = fromState.Position
-		toChild, err = to.Select(metaList)
+		toChild, err = to.Select(state, meta)
 		if err != nil {
 			return
 		}
-		isList := schema.IsList(s.State.Position)
+		isList := schema.IsList(meta)
 
 		switch strategy {
 		case INSERT:
 			if toChild != nil {
-				msg := fmt.Sprintf("Found existing container %s", s.ToString())
+				msg := fmt.Sprintf("Found existing container %s", state.String())
 				return nil, &browseError{Code:DUPLICATE_FOUND, Msg:msg}
 			}
 			if isList {
-				toChild, err = createList(to)
+				toChild, err = createList(state, to)
 			} else {
-				toChild, err = createContainer(to)
+				toChild, err = createContainer(state, to)
 			}
 		case UPSERT:
 			if toChild == nil {
 				if isList {
-					toChild, err = createList(to)
+					toChild, err = createList(state, to)
 				} else {
-					toChild, err = createContainer(to)
+					toChild, err = createContainer(state, to)
 				}
 			}
 		case UPDATE:
 			if toChild == nil {
-				msg := fmt.Sprintf("Container not found in list %s", s.ToString())
+				msg := fmt.Sprintf("Container not found in list %s", state.String())
 				return nil, &browseError{Code:NOT_FOUND, Msg:msg}
 			}
 		default:
@@ -190,66 +176,61 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 			return nil, err
 		}
 		if toChild == nil {
-			return nil, &browseError{Msg:fmt.Sprint("Unable to create edit destination item for ", s.ToString())}
+			return nil, &browseError{Msg:fmt.Sprint("Unable to create edit destination item for ", state.String())}
 		}
 		return e.editTarget(fromChild, toChild, createdList, false, UPSERT)
 	}
 
-	s.OnUnselect = func(meta schema.MetaList) (err error) {
-		metaList := s.State.Position.(schema.MetaList)
+	s.OnUnselect = func(state *WalkState, meta schema.MetaList) (err error) {
 		if createdContainer {
-			if err = to.Write(metaList, POST_CREATE_CHILD, nil); err != nil {
+			if err = to.Write(state, meta, POST_CREATE_CHILD, nil); err != nil {
 				return
 			}
 			createdContainer = false
 		}
 		if createdList {
-			if err = to.Write(metaList, POST_CREATE_LIST, nil); err != nil {
+			if err = to.Write(state, meta, POST_CREATE_LIST, nil); err != nil {
 				return
 			}
 			createdList = false
 		}
-		if err = from.Unselect(metaList); err != nil  {
+		if err = from.Unselect(state, meta); err != nil  {
 			return
 		}
-		if err = to.Unselect(metaList); err != nil {
+		if err = to.Unselect(state, meta); err != nil {
 			return
 		}
 		return
 	}
-	s.OnRead = func(meta schema.HasDataType) (v *Value, err error) {
-		from.WalkState().Position = meta
-		to.WalkState().Position = meta
-		if v, err = from.Read(meta); err != nil {
+	s.OnRead = func(state *WalkState, meta schema.HasDataType) (v *Value, err error) {
+		if v, err = from.Read(state, meta); err != nil {
 			return
 		}
 		if v != nil {
 			v.Type = meta.GetDataType()
-			if err = to.Write(meta, UPDATE_VALUE, v); err != nil {
+			if err = to.Write(state, meta, UPDATE_VALUE, v); err != nil {
 				return
 			}
 		}
 		return
 	}
-	createListItem := func() (sube error) {
-		sube = to.Write(s.State.Position, CREATE_LIST_ITEM, nil)
+	createListItem := func(state *WalkState) (sube error) {
+		sube = to.Write(state, state.SelectedMeta(), CREATE_LIST_ITEM, nil)
 		createdListItem = true
 		return
 	}
 
 	// List Edit - See "List Edit State Machine" diagram for additional documentation
-	s.OnNext = func(key []*Value, first bool) (hasMore bool, err error) {
-		from.WalkState().Meta = s.State.Meta
-		to.WalkState().Meta = s.State.Meta
+	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
 		if createdListItem {
-			err = to.Write(s.State.Meta, POST_CREATE_LIST_ITEM, nil)
+			err = to.Write(state, meta, POST_CREATE_LIST_ITEM, nil)
 			createdListItem = false
 			if err != nil {
 				return false, err
 			}
 		}
 
-		hasMore, err = from.Next(key, first)
+		hasMore, err = from.Next(state, meta, key, first)
 		if err != nil || ! hasMore {
 			return hasMore, err
 		}
@@ -260,7 +241,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 				autoCreateListItems = true
 			} else {
 				var isListNotEmpty bool
-				if isListNotEmpty, err = to.Next(NO_KEYS, true); err != nil {
+				if isListNotEmpty, err = to.Next(state, meta, NO_KEYS, true); err != nil {
 					return false, err
 				}
 				if ! isListNotEmpty { // is empty
@@ -269,33 +250,33 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 			}
 		}
 		if autoCreateListItems {
-			return true, createListItem()
+			return true, createListItem(state)
 		}
 
 		var toKey []*Value
 		var foundItem bool
-		if toKey, err = e.loadKey(key, from); err != nil {
+		if toKey, err = e.loadKey(state, key, from); err != nil {
 			return false, err
 		}
-		if foundItem, err = to.Next(toKey, true); err != nil {
+		if foundItem, err = to.Next(state, meta, toKey, true); err != nil {
 			return false, err
 		}
 		switch strategy {
 		case UPDATE:
 			if !foundItem {
-				msg := fmt.Sprintf("No item found with given key in list %s", s.ToString())
+				msg := fmt.Sprintf("No item found with given key in list %s", state.String())
 				return false, &browseError{Code:NOT_FOUND, Msg:msg}
 			}
 		case UPSERT:
 			if !foundItem {
-				return true, createListItem()
+				return true, createListItem(state)
 			}
 		case INSERT:
 			if foundItem {
-				msg := fmt.Sprintf("Duplicate item found with same key in list %s", s.ToString())
+				msg := fmt.Sprintf("Duplicate item found with same key in list %s", state.String())
 				return false, &browseError{Code:DUPLICATE_FOUND, Msg:msg}
 			}
-			return true, createListItem()
+			return true, createListItem(state)
 		default:
 			return false, &browseError{Msg:"Stratgey not implmented"}
 		}
@@ -305,9 +286,12 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 	return s, nil
 }
 
-func (e *editor) loadKey(explictKey []*Value, whereToFindKey Selection) ([]*Value, error) {
+func (e *editor) loadKey(state *WalkState, explictKey []*Value, whereToFindKey Selection) ([]*Value, error) {
 	if len(explictKey) > 0 {
 		return explictKey, nil
 	}
-	return ReadKeys(whereToFindKey)
+	if len(state.Key()) > 0 {
+		return state.Key(), nil
+	}
+	return ReadKeys(state, whereToFindKey)
 }

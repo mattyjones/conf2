@@ -14,7 +14,6 @@ type PathSegment struct {
 	Index int
 	Ident string
 	Keys []string
-	Key []*Value
 }
 
 func NewPath(path string) (p *Path) {

@@ -61,8 +61,9 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var path *browse.Path
 	if path, err = browse.ParsePath(r.URL.Path); err == nil {
 		var selection browse.Selection
-		if selection, err = reg.browser.RootSelector(); err == nil {
-			if selection, err = browse.WalkPath(selection, path); err == nil {
+		var state *browse.WalkState
+		if selection, state, err = reg.browser.RootSelector(); err == nil {
+			if selection, state, err = browse.WalkPath(state, selection, path); err == nil {
 				var walkCntlr browse.WalkController
 				if selection == nil {
 					http.Error(w, r.URL.Path, http.StatusNotFound)
@@ -73,26 +74,23 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						wtr := browse.NewJsonWriter(w)
 						var out browse.Selection
 						if out, err = wtr.GetSelector(); err == nil {
-							if walkCntlr, err = browse.NewWalkTargetController(r.URL.RawQuery); err == nil {
-								err = browse.Upsert(selection, out, walkCntlr)
-							}
+							walkCntlr = browse.NewFullWalk(r.URL.RawQuery)
+							err = browse.Upsert(state, selection, out, walkCntlr)
 						}
 					case "POST", "PUT":
 						rdr := browse.NewJsonReader(r.Body)
 						var in browse.Selection
-						state := selection.WalkState()
-						if in, err = rdr.GetSelector(state.Meta, state.InsideList); err == nil {
-							if walkCntlr, err = path.WalkTargetController(); err == nil {
-								switch r.Method {
-								case "POST":
-									err = browse.Insert(in, selection, walkCntlr)
-								case "PUT":
-									err = browse.Upsert(in, selection, walkCntlr)
-								}
+						if in, err = rdr.GetSelector(state); err == nil {
+							walkCntlr = browse.WalkAll()
+							switch r.Method {
+							case "POST":
+								err = browse.Insert(state, in, selection, walkCntlr)
+							case "PUT":
+								err = browse.Upsert(state, in, selection, walkCntlr)
+							}
 
-								if err == nil {
-									http.Error(w, "", http.StatusNoContent)
-								}
+							if err == nil {
+								http.Error(w, "", http.StatusNoContent)
 							}
 						}
 					default:

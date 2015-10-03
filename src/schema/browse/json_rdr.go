@@ -18,22 +18,22 @@ func NewJsonReader(in io.Reader) *JsonReader {
 
 // need to pass in walk state so it knows what to look for in initial data
 // particularly when in the middle of a list
-func (self *JsonReader) GetSelector(meta schema.MetaList, insideList bool) (s Selection, err error) {
+func (self *JsonReader) GetSelector(state *WalkState) (s Selection, err error) {
 	var values map[string]interface{}
 	d := json.NewDecoder(self.in)
 	if err = d.Decode(&values); err != nil {
 		return
 	}
-	if schema.IsList(meta) {
-		if insideList {
-			singletonList := []interface{} {
-				values,
-			}
-			s, err = self.enterJson(nil, singletonList, insideList)
+	if schema.IsList(state.SelectedMeta()) {
+		if state.InsideList() {
+//			singletonList := []interface{} {
+//				values,
+//			}
+			s, err = self.enterJson(values, nil, true)
 		} else {
-			list, found := values[meta.GetIdent()]
+			list, found := values[state.SelectedMeta().GetIdent()]
 			if !found {
-				msg := fmt.Sprintf("Could not find json data %s", meta.GetIdent())
+				msg := fmt.Sprintf("Could not find json data %s", state.String())
 				return nil, &browseError{Msg:msg}
 			}
 			s, err = self.enterJson(nil, list.([]interface{}), false)
@@ -41,7 +41,6 @@ func (self *JsonReader) GetSelector(meta schema.MetaList, insideList bool) (s Se
 	} else {
 		s, err = self.enterJson(values, nil, false)
 	}
-	s.WalkState().Meta = meta
 	return
 }
 
@@ -81,7 +80,7 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 	var value interface{}
 	var container = values
 	var i int
-	s.OnChoose = func(choice *schema.Choice) (m schema.Meta, err error) {
+	s.OnChoose = func(state *WalkState, choice *schema.Choice) (m schema.Meta, err error) {
 		// go thru each case and if there are any properties in the data that are not
 		// part of the schema, that disqualifies that case and we move onto next case
 		// until one case aligns with data.  If no cases align then input in inconclusive
@@ -105,10 +104,10 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 				return m, nil
 			}
 		}
-		msg := fmt.Sprintf("No discriminating data for choice schema %s ", s.ToString())
+		msg := fmt.Sprintf("No discriminating data for choice schema %s ", state.String())
 		return nil, &browseError{Msg:msg}
 	}
-	s.OnSelect = func(meta schema.MetaList) (child Selection, e error) {
+	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, e error) {
 		var found bool
 		if value, found = container[meta.GetIdent()]; found {
 			if schema.IsList(meta) {
@@ -116,17 +115,18 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 			} else {
 				return self.enterJson(value.(map[string]interface{}), nil, false)
 			}
+		} else {
 		}
 		return
 	}
-	s.OnRead = func (meta schema.HasDataType) (val *Value, err error) {
+	s.OnRead = func (state *WalkState, meta schema.HasDataType) (val *Value, err error) {
 		var found bool
-		if value, found = container[s.State.Position.GetIdent()]; found {
+		if value, found = container[meta.GetIdent()]; found {
 			return self.readLeafOrLeafList(meta, value)
 		}
 		return
 	}
-	s.OnNext = func(key []*Value, first bool) (hasMore bool, err error) {
+	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
 		container = nil
 		if len(key) > 0 {
 			if insideList {
@@ -137,7 +137,7 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 					return false, nil
 				}
 			} else if first {
-				keyFields := s.State.Meta.(*schema.List).Keys
+				keyFields := meta.Keys
 				for ; i < len(list); i++ {
 					candidate := list[i].(map[string]interface{})
 					if self.jsonKeyMatches(keyFields, candidate, key) {

@@ -1,6 +1,7 @@
 package browse
 import (
 	"sort"
+	"schema"
 )
 
 type StringIndexBuilder interface {
@@ -18,7 +19,7 @@ func (i *StringIndex) CurrentKey() string {
 	return i.Keys[i.Position]
 }
 
-func (i *StringIndex) OnNext(key []*Value, first bool) (bool, error) {
+func (i *StringIndex) OnNext(state *WalkState, meta *schema.List, key []*Value, first bool) (bool, error) {
 	if (len(key) > 0) {
 		if first {
 			i.Position = 0

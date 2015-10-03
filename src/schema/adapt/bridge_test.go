@@ -9,31 +9,32 @@ import (
 )
 
 func TestBridge(t *testing.T) {
-	json := `{"a":{"b":"hi","c":"bye"}}`
+	externalData := `{"a":{"b":"hi","c":"bye"}}`
 	var err error
-	var m1 *schema.Module
-	var m2 *schema.Module
-	if m1, err = yang.LoadModuleFromByteArray([]byte(m1Str), nil); err != nil {
+	var externalModule *schema.Module
+	var internalModule *schema.Module
+	if externalModule, err = yang.LoadModuleFromByteArray([]byte(externalYang), nil); err != nil {
 		t.Error(err)
-	} else if m2, err = yang.LoadModuleFromByteArray([]byte(m2Str), nil); err != nil {
+	} else if internalModule, err = yang.LoadModuleFromByteArray([]byte(internalYang), nil); err != nil {
 		t.Error(err)
 	} else {
 		mapping := NewBridgeMapping("")
 		a := mapping.AddMapping("a", "x")
 		a.AddMapping("b", "y")
-		jsonRdr := browse.NewJsonReader(strings.NewReader(json))
+		external := browse.NewJsonReader(strings.NewReader(externalData))
 		var actualBuff bytes.Buffer
-		jsonWtr := browse.NewJsonWriter(&actualBuff)
+		internal := browse.NewJsonWriter(&actualBuff)
 		var from browse.Selection
-		from, err = jsonRdr.GetSelector(m1, false)
+		externalState := browse.NewWalkState(externalModule)
+		from, err = external.GetSelector(externalState)
 		if err != nil {
 			t.Error(err)
 		} else {
-			toJson, _ := jsonWtr.GetSelector()
-			toJson.WalkState().Meta = m2
+			toJson, _ := internal.GetSelector()
 			b := &Bridge{}
-			to, _ := b.selectBridge(toJson, mapping)
-			err = browse.Insert(from, to, browse.NewExhaustiveController())
+			internalState := browse.NewWalkState(internalModule)
+			to, _ := b.selectBridge(toJson, internalState, mapping)
+			err = browse.Upsert(externalState, from, to, browse.WalkAll())
 			if err != nil {
 				t.Error(err)
 			} else {
@@ -47,14 +48,11 @@ func TestBridge(t *testing.T) {
 	}
 }
 
-var m1Str = `
-module m1 {
-	prefix "p";
-	namespace "n";
-	description "d";
-	revision 0000-00-00 {
-		description "d";
-	}
+var externalYang = `
+module external {
+	prefix "";
+	namespace "";
+	revision 0;
 	container a {
 		leaf b {
 			type string;
@@ -66,13 +64,11 @@ module m1 {
 }
 `
 
-var m2Str = `
-module m2 {
-	prefix "p";
-	namespace "n";
-	revision 0000-00-00 {
-		description "d";
-	}
+var internalYang = `
+module internal {
+	prefix "";
+	namespace "";
+	revision 0;
 	container x {
 		leaf y {
 			type string;

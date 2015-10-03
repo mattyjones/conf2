@@ -54,54 +54,59 @@ func (m *BridgeMapping) SelectMap(externalMeta schema.Meta, internalParentMeta s
 	return internalMeta, mapping
 }
 
-func (b *Bridge) RootSelector() (browse.Selection, error) {
-	internalRoot, err := b.internal.RootSelector()
+func (b *Bridge) RootSelector() (browse.Selection, *browse.WalkState, error) {
+	internalRoot, internalState, err := b.internal.RootSelector()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var bridged browse.Selection
-	bridged, err = b.selectBridge(internalRoot, b.Mapping)
-	bridged.WalkState().Meta = b.external
-	return bridged, err
+	bridged, err = b.selectBridge(internalRoot, internalState, b.Mapping)
+	return bridged, browse.NewWalkState(b.external), err
 }
 
-func (b *Bridge) selectBridge(internalSelection browse.Selection, mapping *BridgeMapping) (browse.Selection, error) {
+func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState *browse.WalkState, mapping *BridgeMapping) (*BridgeMapping, bool) {
+	var childMapping *BridgeMapping
+	var internalPosition schema.Meta
+	if internalPosition, childMapping = mapping.SelectMap(externalMeta, internalState.SelectedMeta()); internalPosition != nil {
+		internalState.SetPosition(internalPosition)
+		return childMapping, true
+	}
+	return nil, false
+}
+
+func (b *Bridge) selectBridge(internalSelection browse.Selection, internalState *browse.WalkState, mapping *BridgeMapping) (browse.Selection, error) {
 	s := &browse.MySelection{}
-	s.OnSelect = func(externalMeta schema.MetaList) (child browse.Selection, err error) {
-		internalState := internalSelection.WalkState()
-		var childMapping *BridgeMapping
-		if internalState.Position, childMapping = mapping.SelectMap(externalMeta, internalState.Meta); internalState.Position != nil {
+	s.OnSelect = func(state *browse.WalkState, externalMeta schema.MetaList) (child browse.Selection, err error) {
+		if childMapping, ok := b.updateInternalPosition(externalMeta, internalState, mapping); ok {
 			var internalChild browse.Selection
-			if internalChild, err = internalSelection.Select(internalState.Position.(schema.MetaList)); err == nil {
-				if internalChild != nil {
-					internalChild.WalkState().Meta = internalState.Position.(schema.MetaList)
-					return b.selectBridge(internalChild, childMapping)
-				}
+			if internalChild, err = internalSelection.Select(internalState, internalState.Position().(schema.MetaList)); err != nil {
+				return nil, err
+			} else if internalChild == nil {
+				return nil, nil
 			}
+			return b.selectBridge(internalChild, internalState.Select(), childMapping)
 		}
 		return
 	}
-	s.OnWrite = func(externalMeta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
-		internalState := internalSelection.WalkState()
-		internalState.Position, _ = mapping.SelectMap(s.State.Position, internalState.Meta)
-		if internalState.Position == nil && op == browse.UPDATE_VALUE {
-			return nil
+	s.OnWrite = func(state *browse.WalkState, externalMeta schema.Meta, op browse.Operation, val *browse.Value) error {
+		if op == browse.BEGIN_EDIT || op == browse.END_EDIT {
+			return internalSelection.Write(internalState, internalState.SelectedMeta(), op, val)
 		}
-		return internalSelection.Write(internalState.Position, op, val)
+		if _, ok := b.updateInternalPosition(externalMeta, internalState, mapping); ok {
+			return internalSelection.Write(internalState, internalState.Position(), op, val)
+		}
+		return nil
 	}
-	s.OnRead = func(externalMeta schema.HasDataType) (*browse.Value, error) {
-		internalState := internalSelection.WalkState()
-		internalPosition, _ := mapping.SelectMap(s.State.Position, internalState.Meta)
-		if internalPosition != nil {
-			internalSelection.WalkState().Position = internalPosition
+	s.OnRead = func(state *browse.WalkState, externalMeta schema.HasDataType) (*browse.Value, error) {
+		if _, ok := b.updateInternalPosition(externalMeta, internalState, mapping); ok {
 			// TODO: translate val
-			return internalSelection.Read(internalPosition.(schema.HasDataType))
+			return internalSelection.Read(internalState, internalState.Position().(schema.HasDataType))
 		}
 		return nil, nil
 	}
-	s.OnNext = func(key []*browse.Value, first bool) (bool, error) {
-		// TODO: need to translate keys?
-		return internalSelection.Next(key, first)
+	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (bool, error) {
+		// TODO: translate keys?
+		return internalSelection.Next(internalState, meta, key, first)
 	}
 	return s, nil
 }

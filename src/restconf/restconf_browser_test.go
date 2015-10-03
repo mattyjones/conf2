@@ -11,12 +11,12 @@ func TestRestMetaLoad(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	} else {
-		s, err := b.RootSelector()
+		s, state, err := b.RootSelector()
 		if err != nil {
 			t.Error(err.Error())
 		} else {
 			p, _ := browse.ParsePath("modules/module")
-			browse.WalkPath(s, p)
+			browse.WalkPath(state, s, p)
 		}
 	}
 }

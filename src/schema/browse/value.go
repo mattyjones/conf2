@@ -2,6 +2,9 @@ package browse
 import (
 	"schema"
 	"strconv"
+	"reflect"
+	"errors"
+	"fmt"
 )
 
 
@@ -66,6 +69,29 @@ func (v *Value) String() string {
 	default:
 		panic("Not implemented")
 	}
+}
+
+// Incoming value should be of appropriate type according to given data type format
+func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
+	reflectVal := reflect.ValueOf(val)
+	v := &Value{}
+	switch typ.Format {
+	case schema.FMT_BOOLEAN:
+		v.Bool = reflectVal.Bool()
+	case schema.FMT_BOOLEAN_LIST:
+		v.Boollist = reflectVal.Interface().([]bool)
+	case schema.FMT_INT32_LIST:
+		v.Intlist = reflectVal.Interface().([]int)
+	case schema.FMT_INT32:
+		v.Int = int(reflectVal.Int())
+	case schema.FMT_STRING:
+		v.Str = reflectVal.String()
+	case schema.FMT_STRING_LIST:
+		v.Strlist = reflectVal.Interface().([]string)
+	default:
+		return nil, errors.New(fmt.Sprintf("Format code %d not implemented", typ.Format))
+	}
+	return v, nil
 }
 
 func (v *Value) CoerseStrValue(s string) error {

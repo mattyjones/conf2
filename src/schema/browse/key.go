@@ -31,18 +31,13 @@ func CoerseKeys(list *schema.List, keyStrs []string) ([]*Value, error) {
 	return values, nil
 }
 
-func ReadKeys(s Selection) (values []*Value, err error) {
-fmt.Printf("key - READING kyes\n")
-	state := s.WalkState()
-	origPosition := state.Position
-	list := state.Meta.(*schema.List)
-	keyIdents := list.Keys
-	values = make([]*Value, len(keyIdents))
+func ReadKeys(state *WalkState, s Selection) (values []*Value, err error) {
+	list := state.SelectedMeta().(*schema.List)
+	values = make([]*Value, len(list.Keys))
 	var key *Value
-	for i, keyIdent := range keyIdents {
-		state.Position = schema.FindByIdent2(list, keyIdent)
-		keyMeta := state.Position.(schema.HasDataType)
-		if key, err = s.Read(keyMeta); err != nil {
+	for i, keyIdent := range list.Keys {
+		keyMeta := schema.FindByIdent2(state.SelectedMeta(), keyIdent).(schema.HasDataType)
+		if key, err = s.Read(state, keyMeta); err != nil {
 			return nil, err
 		}
 		if key == nil {
@@ -51,6 +46,5 @@ fmt.Printf("key - READING kyes\n")
 		key.Type = keyMeta.GetDataType()
 		values[i] = key
 	}
-	state.Position = origPosition
 	return
 }

@@ -35,25 +35,23 @@ func (rcb *RestconfBrowser) Close() error {
 	return nil
 }
 
-func (rcb *RestconfBrowser) RootSelector() (browse.Selection, error) {
+func (rcb *RestconfBrowser) RootSelector() (browse.Selection, *browse.WalkState, error) {
 	s := &browse.MySelection{}
-	s.WalkState().Meta = rcb.Meta
-	s.OnSelect = func (meta schema.MetaList) (browse.Selection, error) {
-		ident := s.State.Position.GetIdent()
-		switch ident {
+	s.OnSelect = func (state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
+		switch meta.GetIdent() {
 			case "modules":
 				return enterRegistrations(rcb.Service.registrations)
 		}
 		return nil, nil
 	}
-	return s, nil
+	return s, browse.NewWalkState(rcb.Meta), nil
 }
 
 func enterRegistrations(registrations map[string]*registration) (browse.Selection, error) {
 	s := &browse.MySelection{}
 	index := newRegIndex(registrations)
 	s.OnNext = index.Index.OnNext
-	s.OnSelect = func(meta schema.MetaList) (browse.Selection, error) {
+	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
 		switch meta.GetIdent() {
 		case "module":
 			if index.Selected != nil {
@@ -63,7 +61,7 @@ func enterRegistrations(registrations map[string]*registration) (browse.Selectio
 		}
 		return nil, nil
 	}
-	s.OnRead = func(meta schema.HasDataType) (*browse.Value, error) {
+	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
 		switch meta.GetIdent() {
 			case "name":
 				return &browse.Value{Str : index.Index.CurrentKey()}, nil
