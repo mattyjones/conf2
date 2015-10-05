@@ -5,6 +5,8 @@ import (
 	"schema"
 	"bufio"
 	"strconv"
+	"errors"
+	"fmt"
 )
 
 const QUOTE = '"';
@@ -17,21 +19,43 @@ const COMMA = ',';
 
 type JsonWriter struct {
 	out *bufio.Writer
+	meta *schema.Module
 	firstInContainer bool
 	startingInsideList bool
 	firstWrite bool
 	closeArrayOnExit bool
 }
 
-func NewJsonWriter(out io.Writer) *JsonWriter {
+func NewJsonWriter(out io.Writer, module *schema.Module) *JsonWriter {
+	return &JsonWriter{
+		out:bufio.NewWriter(out),
+		meta:module,
+		firstInContainer:true,
+	}
+}
+
+func NewJsonFragmentWriter(out io.Writer) *JsonWriter {
 	return &JsonWriter{
 		out:bufio.NewWriter(out),
 		firstInContainer:true,
 	}
 }
 
-func (json *JsonWriter) GetSelector() (Selection, error) {
-	return json.selectJson()
+func (json *JsonWriter) Selector(path *Path, strategy Strategy) (s Selection, state *WalkState, err error) {
+	if strategy != INSERT && strategy != UPSERT {
+		return nil, nil, errors.New("Only INSERT strategy is supported. Consider using bucket first")
+	}
+	s, _ = json.selectJson()
+	if json.meta != nil {
+		s, state, err = WalkPath(NewWalkState(json.meta), s, path)
+	}
+
+fmt.Printf("json-wtr strat %d\n", strategy)
+	return
+}
+
+func (self *JsonWriter) Module() *schema.Module {
+	return nil
 }
 
 func (json *JsonWriter) selectJson() (Selection, error) {

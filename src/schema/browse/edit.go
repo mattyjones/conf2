@@ -2,6 +2,7 @@ package browse
 import (
 	"schema"
 	"fmt"
+	"net/http"
 )
 
 type Operation int
@@ -45,41 +46,90 @@ const (
 	UPDATE
 	DELETE
 	CLEAR
+	READ
+	ACTION
 )
 
-type editor struct {
+type editor struct {}
+
+func Insert(path *Path, src Browser, dest Browser) (err error) {
+	return modifyingOperationWithInput(path, src, dest, INSERT)
 }
 
-func Insert(state *WalkState, from Selection, to Selection, controller WalkController) error {
-	return edit(state, from, to, INSERT, controller)
+func Upsert(path *Path, src Browser, dest Browser) (err error) {
+	return modifyingOperationWithInput(path, src, dest, UPSERT)
 }
 
-func Upsert(state *WalkState, from Selection, to Selection, controller WalkController) error {
-	return edit(state, from, to, UPSERT, controller)
+func Update(path *Path, src Browser, dest Browser) (err error) {
+	return modifyingOperationWithInput(path, src, dest, UPDATE)
 }
 
-func Delete(state *WalkState, from Selection, to Selection, p *Path, controller WalkController) error {
-	return edit(state, from, to, DELETE, controller)
-}
-
-func Update(state *WalkState, from Selection, to Selection, controller WalkController) error {
-	return edit(state, from, to, UPDATE, controller)
-}
-
-func Action(state *WalkState, impl Selection, rdr Selection, wtr Selection) (err error) {
-	meta := state.Position().(*schema.Rpc)
-	var input, output Selection
-	if input, output, err = impl.Action(state, meta); err != nil {
+func Delete(path *Path, b Browser) error {
+	sel, state, err := b.Selector(path, DELETE)
+	if err != nil {
 		return err
 	}
-	if err = Insert(state, rdr, input, WalkAll()); err != nil {
-		return err
-	}
-	if err = Insert(state, output, wtr, WalkAll()); err != nil {
-		return err
-	}
-	return
+	return sel.Write(state, state.SelectedMeta(), DELETE_CHILD, nil)
 }
+
+func modifyingOperationWithInput(path *Path, src Browser, dest Browser, strategy Strategy) (err error) {
+	var destSel, srcSel Selection
+	var destState, srcState *WalkState
+	if destSel, destState, err = dest.Selector(path, strategy); err != nil {
+		return err
+	}
+	if destSel == nil {
+		return NotFound(path.URL)
+	}
+	if srcSel, srcState, err = src.Selector(path, READ); err != nil {
+		return err
+	}
+
+	state := destState
+	if state == nil {
+		state = srcState
+	}
+fmt.Printf("edit - state=%s, srcSel=%v\n", state.String(), srcSel)
+	return edit(state, srcSel, destSel, strategy, NewFullWalk(path.query))
+}
+
+func Action(path *Path, impl Browser, input Browser, output Browser) (err error) {
+	var aSel, inputSel, outputSel, rpcInput, rpcOutput Selection
+	var aState *WalkState
+	if aSel, aState, err = impl.Selector(path, ACTION); err != nil {
+		return err
+	}
+	rpc := aState.Position().(*schema.Rpc)
+	if rpcInput, rpcOutput, err = aSel.Action(aState, rpc); err != nil {
+		return err
+	}
+
+	inputSel, _, err = input.Selector(path, READ)
+	if err = edit(aState, inputSel, rpcInput, INSERT, NewFullWalk(path.query)); err != nil {
+		return err
+	}
+	outputSel, _, err = input.Selector(path, INSERT)
+	if err = edit(aState, rpcOutput, outputSel, INSERT, NewFullWalk(path.query)); err != nil {
+		return err
+	}
+	return nil
+}
+
+//func SelectionInsert(state *WalkState, from Selection, to Selection, controller WalkController) error {
+//	return edit(state, from, to, INSERT, controller)
+//}
+//
+//func Upsert(state *WalkState, from Selection, to Selection, controller WalkController) error {
+//	return edit(state, from, to, UPSERT, controller)
+//}
+//
+//func Delete(state *WalkState, from Selection, to Selection, p *Path, controller WalkController) error {
+//	return edit(state, from, to, DELETE, controller)
+//}
+//
+//func Update(state *WalkState, from Selection, to Selection, controller WalkController) error {
+//	return edit(state, from, to, UPDATE, controller)
+//}
 
 func edit(state *WalkState, from Selection, dest Selection, strategy Strategy, controller WalkController) (err error) {
 	e := editor{}
@@ -129,6 +179,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 		return
 	}
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (c Selection, err error) {
+fmt.Printf("edit - OnSelect\n")
 		var fromChild Selection
 		fromChild, err = from.Select(state, meta)
 		if err != nil {
@@ -148,7 +199,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 		case INSERT:
 			if toChild != nil {
 				msg := fmt.Sprintf("Found existing container %s", state.String())
-				return nil, &browseError{Code:DUPLICATE_FOUND, Msg:msg}
+				return nil, &browseError{Code:http.StatusConflict, Msg:msg}
 			}
 			if isList {
 				toChild, err = createList(state, to)
@@ -166,7 +217,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 		case UPDATE:
 			if toChild == nil {
 				msg := fmt.Sprintf("Container not found in list %s", state.String())
-				return nil, &browseError{Code:NOT_FOUND, Msg:msg}
+				return nil, &browseError{Code:http.StatusNotFound, Msg:msg}
 			}
 		default:
 			return nil, &browseError{Msg:"Stratgey not implmented"}
@@ -222,6 +273,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 
 	// List Edit - See "List Edit State Machine" diagram for additional documentation
 	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
+fmt.Printf("edit - OnNext\n")
 		if createdListItem {
 			err = to.Write(state, meta, POST_CREATE_LIST_ITEM, nil)
 			createdListItem = false
@@ -265,7 +317,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 		case UPDATE:
 			if !foundItem {
 				msg := fmt.Sprintf("No item found with given key in list %s", state.String())
-				return false, &browseError{Code:NOT_FOUND, Msg:msg}
+				return false, &browseError{Code:http.StatusNotFound, Msg:msg}
 			}
 		case UPSERT:
 			if !foundItem {
@@ -274,7 +326,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 		case INSERT:
 			if foundItem {
 				msg := fmt.Sprintf("Duplicate item found with same key in list %s", state.String())
-				return false, &browseError{Code:DUPLICATE_FOUND, Msg:msg}
+				return false, &browseError{Code:http.StatusConflict, Msg:msg}
 			}
 			return true, createListItem(state)
 		default:

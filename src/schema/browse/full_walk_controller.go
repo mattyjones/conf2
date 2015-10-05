@@ -23,6 +23,9 @@ func NewFullWalk(query string) *FullWalk {
 }
 
 func (p *FullWalk) parseQuery(q string) (err error) {
+	if len(q) == 0 {
+		return nil
+	}
 	params := strings.Split(q, "&")
 	for _, param := range params {
 		nameValue := strings.Split(param, "=")

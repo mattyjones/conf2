@@ -26,6 +26,7 @@ func NewPath(path string) (p *Path) {
 	return p
 }
 
+
 func ParsePath(path string) (p *Path, err error) {
 	p = &Path{}
 
@@ -36,7 +37,7 @@ func ParsePath(path string) (p *Path, err error) {
 	qmark := strings.Index(path, "?")
 	if qmark >= 0 {
 		p.URL = path[:qmark]
-		p.query = path[qmark + 1:]
+		p.SetQuery(path[qmark + 1:])
 	} else {
 		p.URL = path
 	}
@@ -60,6 +61,13 @@ func (ps *PathSegment) parseSegment(segment string) {
 }
 
 func (p *Path) LastSegment() *PathSegment {
+	if len(p.Segments) == 0 {
+		return nil
+	}
 	return p.Segments[len(p.Segments) - 1]
+}
+
+func (p *Path) SetQuery(query string) {
+	p.query = query
 }
 

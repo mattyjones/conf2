@@ -9,40 +9,89 @@ import (
 )
 
 type JsonReader struct {
-	in  io.Reader
+	In io.Reader
+	Meta *schema.Module
+	values map[string]interface{}
 }
 
-func NewJsonReader(in io.Reader) *JsonReader {
-	return &JsonReader{in:in}
+func NewJsonReader(in io.Reader, module *schema.Module) *JsonReader {
+	r := &JsonReader{In:in, Meta:module}
+	return r
+}
+
+func NewJsonFragmentReader(in io.Reader) *JsonReader {
+	r := &JsonReader{In:in}
+	return r
+}
+
+func (self *JsonReader) Module() *schema.Module {
+	return self.Meta
+}
+
+func (self *JsonReader) Selector(path *Path, strategy Strategy) (s Selection,  state *WalkState, err error) {
+	if strategy != READ {
+		return nil, nil, errors.New("Only read is supported")
+	}
+	if self.values == nil {
+		d := json.NewDecoder(self.In)
+		if err = d.Decode(&self.values); err != nil {
+			return nil, nil, err
+		}
+	}
+	if self.Meta == nil {
+		return self.fragmentSelector(path, strategy)
+	}
+	s, err = self.enterJson(self.values, nil, false)
+	return WalkPath(NewWalkState(self.Meta), s, path)
+}
+
+func (self *JsonReader) fragmentSelector(path *Path, strategy Strategy) (s Selection,  state *WalkState, err error) {
+	// try to determine if we're reading a list
+	if (len(self.values) == 1) {
+		for _, value := range self.values {
+			if list, isList := value.([]interface{}); isList {
+				var insideList bool
+				lastSegment := path.LastSegment()
+				if lastSegment != nil {
+					insideList = len(lastSegment.Keys) > 0
+				}
+				s, err = self.enterJson(self.values, list, insideList)
+			}
+		}
+	}
+	if s == nil {
+		s, err = self.enterJson(self.values, nil, false)
+	}
+	return
 }
 
 // need to pass in walk state so it knows what to look for in initial data
 // particularly when in the middle of a list
-func (self *JsonReader) GetSelector(state *WalkState) (s Selection, err error) {
-	var values map[string]interface{}
-	d := json.NewDecoder(self.in)
-	if err = d.Decode(&values); err != nil {
-		return
-	}
-	if schema.IsList(state.SelectedMeta()) {
-		if state.InsideList() {
-//			singletonList := []interface{} {
-//				values,
+//func (self *JsonReader) GetSelector(state *WalkState) (s Selection, err error) {
+//	var values map[string]interface{}
+//	d := json.NewDecoder(self.in)
+//	if err = d.Decode(&values); err != nil {
+//		return
+//	}
+//	if schema.IsList(state.SelectedMeta()) {
+//		if state.InsideList() {
+////			singletonList := []interface{} {
+////				values,
+////			}
+//			s, err = self.enterJson(values, nil, true)
+//		} else {
+//			list, found := values[state.SelectedMeta().GetIdent()]
+//			if !found {
+//				msg := fmt.Sprintf("Could not find json data %s", state.String())
+//				return nil, &browseError{Msg:msg}
 //			}
-			s, err = self.enterJson(values, nil, true)
-		} else {
-			list, found := values[state.SelectedMeta().GetIdent()]
-			if !found {
-				msg := fmt.Sprintf("Could not find json data %s", state.String())
-				return nil, &browseError{Msg:msg}
-			}
-			s, err = self.enterJson(nil, list.([]interface{}), false)
-		}
-	} else {
-		s, err = self.enterJson(values, nil, false)
-	}
-	return
-}
+//			s, err = self.enterJson(nil, list.([]interface{}), false)
+//		}
+//	} else {
+//		s, err = self.enterJson(values, nil, false)
+//	}
+//	return
+//}
 
 func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *Value, err error) {
 	v = &Value{}
@@ -108,15 +157,18 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 		return nil, &browseError{Msg:msg}
 	}
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, e error) {
+fmt.Printf("json-rdr - OnSelect %s\n", state.String())
 		var found bool
 		if value, found = container[meta.GetIdent()]; found {
 			if schema.IsList(meta) {
+fmt.Printf("json-rdr - OnSelect %s FOUND list, len=%d\n", state.String(), len(value.([]interface{})))
 				return self.enterJson(nil, value.([]interface{}), false)
 			} else {
+fmt.Printf("json-rdr - OnSelect %s FOUND container\n", state.String())
 				return self.enterJson(value.(map[string]interface{}), nil, false)
 			}
-		} else {
 		}
+fmt.Printf("json-rdr - OnSelect %s NOT found\n", state.String())
 		return
 	}
 	s.OnRead = func (state *WalkState, meta schema.HasDataType) (val *Value, err error) {

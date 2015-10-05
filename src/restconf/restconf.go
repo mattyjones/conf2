@@ -13,12 +13,16 @@ import (
 )
 
 type restconfError struct {
-	Code browse.ResponseCode
+	Code int
 	Msg string
 }
 
 func (err *restconfError) Error() string {
 	return err.Msg
+}
+
+func (err *restconfError) HttpCode() int {
+	return err.Code
 }
 
 type Service interface {
@@ -60,49 +64,31 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var path *browse.Path
 	if path, err = browse.ParsePath(r.URL.Path); err == nil {
-		var selection browse.Selection
-		var state *browse.WalkState
-		if selection, state, err = reg.browser.RootSelector(); err == nil {
-			if selection, state, err = browse.WalkPath(state, selection, path); err == nil {
-				var walkCntlr browse.WalkController
-				if selection == nil {
-					http.Error(w, r.URL.Path, http.StatusNotFound)
-				} else {
-					switch r.Method {
-					case "GET":
-						w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
-						wtr := browse.NewJsonWriter(w)
-						var out browse.Selection
-						if out, err = wtr.GetSelector(); err == nil {
-							walkCntlr = browse.NewFullWalk(r.URL.RawQuery)
-							err = browse.Upsert(state, selection, out, walkCntlr)
-						}
-					case "POST", "PUT":
-						rdr := browse.NewJsonReader(r.Body)
-						var in browse.Selection
-						if in, err = rdr.GetSelector(state); err == nil {
-							walkCntlr = browse.WalkAll()
-							switch r.Method {
-							case "POST":
-								err = browse.Insert(state, in, selection, walkCntlr)
-							case "PUT":
-								err = browse.Upsert(state, in, selection, walkCntlr)
-							}
-
-							if err == nil {
-								http.Error(w, "", http.StatusNoContent)
-							}
-						}
-					default:
-						http.Error(w, "Not implemented yet", http.StatusInternalServerError)
-					}
-				}
-			}
+		path.SetQuery(r.URL.RawQuery)
+		switch r.Method {
+		case "GET":
+			w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
+			dest := browse.NewJsonFragmentWriter(w)
+			err = browse.Insert(path, reg.browser, dest)
+		case "PUT":{
+			rdr := browse.NewJsonFragmentReader(r.Body)
+			err = browse.Upsert(path, rdr, reg.browser)
+		}
+		case "POST": {
+			// TODO: Detect RPC Actions
+			rdr := browse.NewJsonFragmentReader(r.Body)
+			err = browse.Insert(path, rdr, reg.browser)
+		}
+		default:
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		}
 	}
 	if err != nil  {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		if httpErr, ok := err.(browse.HttpError); ok {
+			http.Error(w, httpErr.Error(), httpErr.HttpCode())
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 

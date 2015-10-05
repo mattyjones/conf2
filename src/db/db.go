@@ -17,51 +17,53 @@ import (
 //   If a node has "config" set to "false", no node underneath it can have
 //   "config" set to "true".
 
-type PersistableBrowser interface {
-	ReadSelector(p *browse.Path) (browse.Selection, error)
-	WriteSelector(p *browse.Path, strategy browse.Strategy) (browse.Selection, error)
-}
 
 type ComboBrowser struct {
 	oper browse.Browser
-	persist PersistableBrowser
+	config browse.Browser
 }
 
-func NewComboBrowser(operational browse.Browser, peristable PersistableBrowser) *ComboBrowser {
+func NewComboBrowser(operational browse.Browser, config browse.Browser) *ComboBrowser {
 	return &ComboBrowser{
 		oper:operational,
-		persist:peristable,
+		config:config,
 	}
 }
 
-func (self *ComboBrowser) ReadSelector(state *browse.WalkState, p *browse.Path) (browse.Selection, error) {
+func (self *ComboBrowser) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
 	var err error
-	var oper, operRoot, persist browse.Selection
-	var operState *browse.WalkState
-	if operRoot, operState, err = self.oper.RootSelector(); err != nil {
-		return nil, err
-	}
-
-	if oper, operState, err = browse.WalkPath(operState, operRoot, p); err != nil {
-		return nil, err
-	}
-	if state.IsConfig() {
-		if persist, err = self.persist.ReadSelector(p); err != nil {
-			return nil, err
+	var oper, config, combo browse.Selection
+	var operState, configState *browse.WalkState
+	if oper, operState, err = self.oper.Selector(path, strategy); err != nil {
+		return nil, nil, err
+	} else {
+		if oper, operState, err = browse.WalkPath(operState, oper, path); err != nil {
+			return nil, nil, err
 		}
 	}
 
-	return self.readMulticast(oper, persist)
+	if config, configState, err = self.config.Selector(path, strategy); err != nil {
+		return nil, nil, err
+	} else {
+		if config, configState, err = browse.WalkPath(configState, config, path); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	if combo, err = self.readMulticast(oper, config); err != nil {
+		return nil, nil, err
+	}
+	return combo, operState, nil
 }
 
-func (self *ComboBrowser) readMulticast(oper browse.Selection, persist browse.Selection) (browse.Selection, error) {
+func (self *ComboBrowser) readMulticast(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
 	s := &browse.MySelection{}
 
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {
 		// TODO: Figure out how to keep operational and config lists in sync when iterating
 		// without keys.
-		if persist != nil {
-			hasMore, err = persist.Next(state, meta, key, first)
+		if config != nil {
+			hasMore, err = config.Next(state, meta, key, first)
 		}
 		if oper != nil {
 			hasMore, err = oper.Next(state, meta, key, first)
@@ -69,15 +71,15 @@ func (self *ComboBrowser) readMulticast(oper browse.Selection, persist browse.Se
 		return
 	}
 	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
-		if persist != nil &&  state.IsConfig() {
-			err = persist.Write(state, meta, op, val)
+		if config != nil &&  state.IsConfig() {
+			err = config.Write(state, meta, op, val)
 		}
 		return err
 	}
 	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
-		if persist != nil {
+		if config != nil {
 			if state.IsConfig() {
-				return persist.Read(state, meta)
+				return config.Read(state, meta)
 			}
 		}
 		if oper != nil {
@@ -86,18 +88,18 @@ func (self *ComboBrowser) readMulticast(oper browse.Selection, persist browse.Se
 		return nil, nil
 	}
 	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (child browse.Selection, err error) {
-		var persistChild, operChild browse.Selection
-		if persist != nil {
+		var configChild, operChild browse.Selection
+		if config != nil {
 			if state.IsConfig() {
-				persistChild, err = persist.Select(state, meta)
+				configChild, err = config.Select(state, meta)
 			}
 		}
 
 		if oper != nil {
 			operChild, err = oper.Select(state, meta)
 		}
-		if operChild != nil || persistChild != nil {
-			return self.readMulticast(operChild, persistChild)
+		if operChild != nil || configChild != nil {
+			return self.readMulticast(operChild, configChild)
 		}
 		return nil, nil
 	}

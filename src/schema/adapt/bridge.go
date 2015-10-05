@@ -54,14 +54,13 @@ func (m *BridgeMapping) SelectMap(externalMeta schema.Meta, internalParentMeta s
 	return internalMeta, mapping
 }
 
-func (b *Bridge) RootSelector() (browse.Selection, *browse.WalkState, error) {
-	internalRoot, internalState, err := b.internal.RootSelector()
+func (b *Bridge) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
+	internalRoot, internalState, err := b.internal.Selector(path, strategy)
 	if err != nil {
 		return nil, nil, err
 	}
-	var bridged browse.Selection
-	bridged, err = b.selectBridge(internalRoot, internalState, b.Mapping)
-	return bridged, browse.NewWalkState(b.external), err
+	bridged, _ := b.selectBridge(internalRoot, internalState, b.Mapping)
+	return browse.WalkPath(browse.NewWalkState(b.external), bridged, path)
 }
 
 func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState *browse.WalkState, mapping *BridgeMapping) (*BridgeMapping, bool) {
@@ -75,6 +74,9 @@ func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState 
 }
 
 func (b *Bridge) selectBridge(internalSelection browse.Selection, internalState *browse.WalkState, mapping *BridgeMapping) (browse.Selection, error) {
+	if internalState == nil {
+		panic("STOP")
+	}
 	s := &browse.MySelection{}
 	s.OnSelect = func(state *browse.WalkState, externalMeta schema.MetaList) (child browse.Selection, err error) {
 		if childMapping, ok := b.updateInternalPosition(externalMeta, internalState, mapping); ok {

@@ -29,7 +29,7 @@ func (bb *BridgeBrowser) AddBridge(name string, bridge *Bridge) {
 	bb.Bridges[name] = bridge
 }
 
-func (bb *BridgeBrowser) RootSelector() (browse.Selection, *browse.WalkState, error) {
+func (bb *BridgeBrowser) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
 	s := &browse.MySelection{}
 	s.OnSelect = func (state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
 		switch meta.GetIdent() {
@@ -38,7 +38,7 @@ func (bb *BridgeBrowser) RootSelector() (browse.Selection, *browse.WalkState, er
 		}
 		return nil, nil
 	}
-	return s, browse.NewWalkState(bb.Meta), nil
+	return browse.WalkPath(browse.NewWalkState(bb.Meta), s, path)
 }
 
 func (bb *BridgeBrowser) selectBridges(bridges map[string]*Bridge) (browse.Selection, error) {

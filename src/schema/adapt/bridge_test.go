@@ -18,31 +18,20 @@ func TestBridge(t *testing.T) {
 	} else if internalModule, err = yang.LoadModuleFromByteArray([]byte(internalYang), nil); err != nil {
 		t.Error(err)
 	} else {
-		mapping := NewBridgeMapping("")
-		a := mapping.AddMapping("a", "x")
-		a.AddMapping("b", "y")
-		external := browse.NewJsonReader(strings.NewReader(externalData))
 		var actualBuff bytes.Buffer
-		internal := browse.NewJsonWriter(&actualBuff)
-		var from browse.Selection
-		externalState := browse.NewWalkState(externalModule)
-		from, err = external.GetSelector(externalState)
+		internal := browse.NewJsonWriter(&actualBuff, internalModule)
+		b := NewBridge(internal, externalModule)
+		a := b.Mapping.AddMapping("a", "x")
+		a.AddMapping("b", "y")
+		input := browse.NewJsonReader(strings.NewReader(externalData), externalModule)
+		err = browse.Upsert(browse.NewPath(""), input, b)
 		if err != nil {
 			t.Error(err)
 		} else {
-			toJson, _ := internal.GetSelector()
-			b := &Bridge{}
-			internalState := browse.NewWalkState(internalModule)
-			to, _ := b.selectBridge(toJson, internalState, mapping)
-			err = browse.Upsert(externalState, from, to, browse.WalkAll())
-			if err != nil {
-				t.Error(err)
-			} else {
-				actual := string(actualBuff.Bytes())
-				expected := `{"x":{"y":"hi","c":"bye"}}`
-				if actual != expected {
-					t.Errorf("\nExpected:\"%s\"\n  Actual:\"%s\"", expected, actual)
-				}
+			actual := string(actualBuff.Bytes())
+			expected := `{"x":{"y":"hi","c":"bye"}}`
+			if actual != expected {
+				t.Errorf("\nExpected:\"%s\"\n  Actual:\"%s\"", expected, actual)
 			}
 		}
 	}

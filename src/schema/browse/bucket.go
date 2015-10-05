@@ -10,21 +10,26 @@ import (
 // Stores stuff in memory according to a given schema.  Useful in testing or store of
 // generic settings.
 type BucketBrowser struct {
-	Module *schema.Module
+	Meta *schema.Module
 	Bucket map[string]interface{}
 	PathDelim string
 }
 
 func NewBucketBrowser(module *schema.Module) (bb *BucketBrowser) {
-	bb = &BucketBrowser{Module:module, PathDelim:"."}
+	bb = &BucketBrowser{Meta:module, PathDelim:"."}
 	bb.Bucket = make(map[string]interface{}, 10)
 	return bb
 }
 
-func (bb *BucketBrowser) RootSelector() (s Selection, state *WalkState, err error) {
-	s, err = bb.selectContainer(bb.Bucket)
-	state = NewWalkState(bb.Module)
+func (bb *BucketBrowser) Selector(path *Path, strategy Strategy) (s Selection, state *WalkState, err error) {
+	if s, err = bb.selectContainer(bb.Bucket); err == nil {
+		return WalkPath(NewWalkState(bb.Meta), s, path)
+	}
 	return
+}
+
+func (bb *BucketBrowser) Module() *schema.Module {
+	return bb.Meta
 }
 
 //

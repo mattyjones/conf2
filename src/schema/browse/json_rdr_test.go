@@ -45,18 +45,8 @@ module json-test {
 			{ "hobbies=birding/favorite", "json-test.hobbies.favorite.<nil>" },
 		}
 		for _, test := range tests {
-
-			inIo := strings.NewReader(json)
-			if err != nil {
-				t.Error(err)
-			}
-			state := NewWalkState(module)
-			in, err := NewJsonReader(inIo).GetSelector(state)
-			if err != nil {
-				t.Error(err)
-			}
-			p, _ := ParsePath(test.path)
-			_, walkedState, err := WalkPath(state, in, p)
+			in := &JsonReader{In:strings.NewReader(json), Meta:module}
+			_, walkedState, err := in.Selector(NewPath(test.path), READ)
 			if err != nil {
 				t.Error("failed to transmit json", err)
 			} else if walkedState == nil {

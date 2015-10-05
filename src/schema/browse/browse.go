@@ -5,7 +5,7 @@ import (
 )
 
 type Browser interface {
-	RootSelector() (Selection, *WalkState, error)
+	Selector(path *Path, strategy Strategy) (Selection, *WalkState, error)
 	Module() (*schema.Module)
 }
 

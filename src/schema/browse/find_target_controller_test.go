@@ -53,30 +53,22 @@ module json-test {
 		}
 
 		for i, test := range tests {
-			p := NewPath(test.path)
 			inIo := strings.NewReader(json)
-			var actualBuff bytes.Buffer
-			state := NewWalkState(module)
-			in, err := NewJsonReader(inIo).GetSelector(state)
+			in := &JsonReader{In:inIo, Meta:module}
 			if err != nil {
 				t.Error(err)
 			}
-			if ref, walkedState, err := WalkPath(state, in, p); err != nil {
-				t.Error(err)
+			var actualBuff bytes.Buffer
+			out := NewJsonFragmentWriter(&actualBuff)
+			err = Upsert(NewPath(test.path), in, out)
+			if err != nil {
+				t.Error("failed to transmit json", err)
 			} else {
-				out := NewJsonWriter(&actualBuff)
-				to, _ := out.GetSelector()
-				cntlr := NewFullWalkFromPath(p)
-				err = Upsert(walkedState, ref, to, cntlr)
-				if err != nil {
-					t.Error("failed to transmit json", err)
-				} else {
-					actual := string(actualBuff.Bytes())
-					if actual != test.expected {
-						msg := fmt.Sprintf("Failed subtest #%d - '%s'\nExpected:'%s'\n  Actual:'%s'",
-							i + 1, test.path, test.expected, actual)
-						t.Error(msg)
-					}
+				actual := string(actualBuff.Bytes())
+				if actual != test.expected {
+					msg := fmt.Sprintf("Failed subtest #%d - '%s'\nExpected:'%s'\n  Actual:'%s'",
+						i + 1, test.path, test.expected, actual)
+					t.Error(msg)
 				}
 			}
 		}

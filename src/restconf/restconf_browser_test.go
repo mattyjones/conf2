@@ -4,19 +4,18 @@ import (
 	"schema/browse"
 )
 
-func TestRestMetaLoad(t *testing.T) {
+func TestRestconfBrowserMetaLoad(t *testing.T) {
 	rc := &serviceImpl{restconfPath:"/restconf/"}
 	rc.registrations = make(map[string]*registration, 5)
 	b, err := NewBrowser(rc)
 	if err != nil {
 		t.Error(err.Error())
 	} else {
-		s, state, err := b.RootSelector()
+		s, _, err := b.Selector(browse.NewPath("modules"), browse.READ)
 		if err != nil {
 			t.Error(err.Error())
-		} else {
-			p, _ := browse.ParsePath("modules/module")
-			browse.WalkPath(state, s, p)
+		} else if s == nil {
+			t.Error("Could not find modules/module")
 		}
 	}
 }

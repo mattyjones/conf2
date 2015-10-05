@@ -114,7 +114,7 @@ func tojson(state *browse.WalkState, s browse.Selection) (json string, err error
 	var actual bytes.Buffer
 	w := browse.NewJsonWriter(&actual)
 	out, _ := w.GetSelector()
-	if err = browse.Insert(state, s, out, browse.WalkAll()); err != nil {
+	if err = browse.SelectionInsert(state, s, out, browse.WalkAll()); err != nil {
 		return
 	}
 	json = string(actual.Bytes())

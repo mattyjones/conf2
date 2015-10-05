@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"schema"
+	"errors"
 )
 
 var editOps = map[Operation]string {
@@ -32,8 +33,16 @@ func NewDumper(out io.Writer) *Dumper {
 	}
 }
 
-func (d *Dumper) GetSelector() (Selection, error) {
-	return d.Enter(0)
+func (d *Dumper) Selector(path *Path, strategy Strategy) (s Selection, state *WalkState, err error) {
+	if strategy != INSERT && strategy != UPSERT {
+		return nil, nil, errors.New("Only INSERT supported")
+	}
+	s, err = d.Enter(0)
+	return s, nil, err
+}
+
+func (self *Dumper) Module() *schema.Module {
+	return nil
 }
 
 func (d *Dumper) Enter(level int) (Selection, error) {

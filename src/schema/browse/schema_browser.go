@@ -43,7 +43,7 @@ func GetSchemaSchema() *schema.Module {
 
 type MetaListSelector func(m schema.Meta) (Selection, error)
 
-func (self *SchemaBrowser) RootSelector() (Selection, *WalkState, error) {
+func (self *SchemaBrowser) Selector(p *Path, strategy Strategy) (Selection, *WalkState, error) {
 	s := &MySelection{}
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
 		switch meta.GetIdent() {
@@ -77,7 +77,7 @@ func (self *SchemaBrowser) SelectModule(module *schema.Module) (Selection, error
 		case "notifications":
 			return self.selectNotifications(module.GetNotifications())
 		default:
-			return self.GroupingsTypedefsDefinitions(s, meta, module)
+			return self.groupingsTypedefsDefinitions(s, meta, module)
 		}
 		return nil, nil
 	}
@@ -146,9 +146,9 @@ func (self *SchemaBrowser) selectGroupings(groupings schema.MetaList) (Selection
 	i := listIterator{dataList:groupings, resolve:self.resolve}
 	var created *schema.Grouping
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		return self.GroupingsTypedefsDefinitions(s, meta, i.data)
+		return self.groupingsTypedefsDefinitions(s, meta, i.data)
 	}
-	s.OnNext = i.Iterate
+	s.OnNext = i.iterate
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, i.data)
 	}
@@ -176,7 +176,7 @@ func (self *SchemaBrowser) selectRpcIO(i *schema.RpcInput, o *schema.RpcOutput) 
 		io = o
 	}
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		return self.GroupingsTypedefsDefinitions(s, meta, io)
+		return self.groupingsTypedefsDefinitions(s, meta, io)
 	}
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, io)
@@ -191,7 +191,7 @@ func (self *SchemaBrowser) selectRpcIO(i *schema.RpcInput, o *schema.RpcOutput) 
 	return s, nil
 }
 
-func (self *SchemaBrowser) CreateGroupingsTypedefsDefinitions(parent schema.MetaList, childMeta schema.Meta) (schema.Meta, error) {
+func (self *SchemaBrowser) createGroupingsTypedefsDefinitions(parent schema.MetaList, childMeta schema.Meta) (schema.Meta, error) {
 	var child schema.Meta
 	switch childMeta.GetIdent() {
 		case "leaf":
@@ -256,7 +256,7 @@ func (self *SchemaBrowser) selectRpcs(rpcs schema.MetaList) (Selection, error) {
 		}
 		return nil
 	}
-	s.OnNext = i.Iterate
+	s.OnNext = i.iterate
 	return s, nil
 }
 
@@ -277,7 +277,7 @@ func (self *SchemaBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, 
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, i.data)
 	}
-	s.OnNext = i.Iterate
+	s.OnNext = i.iterate
 	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case CREATE_CHILD:
@@ -301,7 +301,7 @@ func (self *SchemaBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, 
 	return s, nil
 }
 
-func (self *SchemaBrowser) GroupingsTypedefsDefinitions(s Selection, meta schema.MetaList, data schema.Meta) (Selection, error) {
+func (self *SchemaBrowser) groupingsTypedefsDefinitions(s Selection, meta schema.MetaList, data schema.Meta) (Selection, error) {
 	switch meta.GetIdent() {
 	case "groupings":
 		if !self.resolve {
@@ -325,9 +325,9 @@ func (self *SchemaBrowser) selectNotifications(notifications schema.MetaList) (S
 	i := listIterator{dataList:notifications, resolve:self.resolve}
 	var created *schema.Notification
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		return self.GroupingsTypedefsDefinitions(s, meta, i.data)
+		return self.groupingsTypedefsDefinitions(s, meta, i.data)
 	}
-	s.OnNext = i.Iterate
+	s.OnNext = i.iterate
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, i.data)
 	}
@@ -349,7 +349,7 @@ func (self *SchemaBrowser) selectNotifications(notifications schema.MetaList) (S
 func (self *SchemaBrowser) selectMetaList(data *schema.List) (Selection, error) {
 	s := &MySelection{}
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		return self.GroupingsTypedefsDefinitions(s, meta, data)
+		return self.groupingsTypedefsDefinitions(s, meta, data)
 	}
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, data)
@@ -367,7 +367,7 @@ func (self *SchemaBrowser) selectMetaList(data *schema.List) (Selection, error) 
 func (self *SchemaBrowser) selectMetaContainer(data schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		return self.GroupingsTypedefsDefinitions(s, meta, data)
+		return self.groupingsTypedefsDefinitions(s, meta, data)
 	}
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, data)
@@ -458,7 +458,7 @@ func (self *SchemaBrowser) selectMetaUses(data *schema.Uses) (Selection, error) 
 func (self *SchemaBrowser) selectMetaCases(choice *schema.Choice) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:choice, resolve:self.resolve}
-	s.OnNext = i.Iterate
+	s.OnNext = i.iterate
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
 		switch meta.GetIdent() {
 		case "definitions":
@@ -501,7 +501,7 @@ type listIterator struct {
 	resolve bool
 }
 
-func (i *listIterator) Iterate(state *WalkState, meta *schema.List, keys []*Value, first bool) (bool, error) {
+func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Value, first bool) (bool, error) {
 	i.data = nil
 	if i.dataList == nil {
 		return false, nil
@@ -553,7 +553,7 @@ func (self *SchemaBrowser) selectDefinitionsList(dataList schema.MetaList) (Sele
 		switch op {
 		case CREATE_CHILD:
 			var err error
-			if i.data, err = self.CreateGroupingsTypedefsDefinitions(dataList, meta); err != nil {
+			if i.data, err = self.createGroupingsTypedefsDefinitions(dataList, meta); err != nil {
 				return err
 			}
 		case POST_CREATE_CHILD:
@@ -561,7 +561,7 @@ func (self *SchemaBrowser) selectDefinitionsList(dataList schema.MetaList) (Sele
 		}
 		return nil
 	}
-	s.OnNext = i.Iterate
+	s.OnNext = i.iterate
 	return s, nil
 
 }

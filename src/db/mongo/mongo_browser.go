@@ -15,9 +15,16 @@ func NewMongoBrowser(schema *schema.Module, c *mgo.Collection) *MongoBrowser {
 	return &MongoBrowser{schema:schema, c:c}
 }
 
-func (self *mongoBrowserReader) RootSelector() (browse.Selection, error) {
-	s := &browse.MySelection{}
-	return s, nil
+func (self *MongoBrowser) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
+	if strategy == browse.READ {
+		return self.ReadSelector(path)
+	}
+
+	return self.WriteSelector(path, strategy)
+}
+
+func (self *MongoBrowser) Module() *schema.Module {
+	return self.schema
 }
 
 type mongoBrowserReader struct{

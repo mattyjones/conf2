@@ -47,34 +47,17 @@ func TestPathIntoListItemContainer(t *testing.T) {
 	if b, err = LoadPathTestData(); err != nil {
 		t.Fatal(err)
 	}
-	var s Selection
-	var state *WalkState
-	if s, state, err = b.RootSelector(); err != nil {
+	var target Selection
+	if target, _, err = b.Selector(NewPath("fruits=apple/origin"), READ); err != nil {
 		t.Fatal(err)
-	}
-	var p *Path
-	p, err = ParsePath("fruits=apple/origin")
-	if err != nil {
-		t.Error(err)
-	} else {
-		var target Selection
-		t.Log("Walk path to find apple in list\n")
-		target, _, err = WalkPath(state, s, p)
-		if target == nil {
-			t.Fatal("Could not find target");
-		}
+	} else if target == nil {
+		t.Fatal("Could not find target");
 	}
 
-	p, err = ParsePath("fruits=apple/boat")
-	if err != nil {
-		t.Error(err)
-	} else {
-		var target Selection
-		t.Log("Walk path to find apple's transportation\n")
-		target, _, err = WalkPath(state, s, p)
-		if target == nil {
-			t.Fatal("Could not find target");
-		}
+	if target, _, err = b.Selector(NewPath("fruits=apple/boat"), READ); err != nil {
+		t.Fatal(err)
+	} else if target == nil {
+		t.Fatal("Could not find target");
 	}
 }
 

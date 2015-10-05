@@ -33,53 +33,29 @@ func TestEditListItem(t *testing.T) {
 	if b, err = LoadEditTestData(); err != nil {
 		t.Fatal(err)
 	}
-	var s Selection
-	var state *WalkState
-	if s, state, err = b.RootSelector(); err != nil {
-		t.Fatal(err)
-	}
-	p, _ := ParsePath("fruits=apple")
-	var target Selection
-	log.Printf("Walk path to find apple in list\n")
-	target, state, err = WalkPath(state, s, p)
-	if target == nil {
-		t.Fatal("Could not find target");
-	}
-	var edit Selection
-	edit, err = NewEditTestEdit(state, `{"origin":{"country":"Canada"}}`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	in := NewJsonFragmentReader(strings.NewReader(`{"origin":{"country":"Canada"}}`))
 
 	// UPDATE
 	// Here we're testing editing a specific list item. With FindTarget walk controller
 	// needs to leave walkstate in a position for WalkTarget controller to make the edit
 	// on the right item.
 	log.Println("Testing edit\n")
-//	err = Update(state, edit, target, WalkAll())
-//	if err != nil {
-//		t.Error(err)
-//	} else {
-//		var actual interface{}
-//		if actual, err = b.Read("fruits.1.origin.country"); err != nil {
-//			t.Error(err)
-//		} else if actual != "Canada" {
-//			t.Error("Edit failed", actual)
-//		}
-//	}
+	err = Update(NewPath("fruits=apple"), in, b)
+	if err != nil {
+		t.Error(err)
+	} else {
+		var actual interface{}
+		if actual, err = b.Read("fruits.1.origin.country"); err != nil {
+			t.Error(err)
+		} else if actual != "Canada" {
+			t.Error("Edit failed", actual)
+		}
+	}
 
 	// INSERT
-	p = NewPath("fruits")
-	var insertState *WalkState
-	s, state, _ = b.RootSelector()
-	log.Println("Walking path insert")
-	target, insertState, err = WalkPath(state, s, p)
-	if target == nil {
-		t.Fatal("Could not find target");
-	}
-	edit, err = NewEditTestEdit(insertState, `{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`)
+	in = NewJsonFragmentReader(strings.NewReader(`{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`))
 	log.Println("Testing insert\n")
-	err = Insert(insertState, edit, target, WalkAll())
+	err = Insert(NewPath("fruits"), in, b)
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -93,11 +69,6 @@ func TestEditListItem(t *testing.T) {
 			}
 		}
 	}
-}
-
-func NewEditTestEdit(state *WalkState, edit string) (Selection, error) {
-	r := NewJsonReader(strings.NewReader(edit))
-	return r.GetSelector(state)
 }
 
 func LoadEditTestData() (*BucketBrowser, error) {

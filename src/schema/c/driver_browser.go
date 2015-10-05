@@ -87,7 +87,7 @@ func conf2_load_module(
 		from, state, err = module_browser.RootSelector()
 		defer schema.CloseResource(from)
 		if err == nil {
-			err = browse.Insert(state, from, to, browse.WalkAll())
+			err = browse.SelectionInsert(state, from, to, browse.WalkAll())
 			if err == nil {
 				moduleHnd := NewGoHandle(module)
 				return moduleHnd.ID

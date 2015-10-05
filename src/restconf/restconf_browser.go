@@ -35,7 +35,7 @@ func (rcb *RestconfBrowser) Close() error {
 	return nil
 }
 
-func (rcb *RestconfBrowser) RootSelector() (browse.Selection, *browse.WalkState, error) {
+func (rcb *RestconfBrowser) Selector(path *browse.Path, stategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
 	s := &browse.MySelection{}
 	s.OnSelect = func (state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
 		switch meta.GetIdent() {
@@ -44,7 +44,7 @@ func (rcb *RestconfBrowser) RootSelector() (browse.Selection, *browse.WalkState,
 		}
 		return nil, nil
 	}
-	return s, browse.NewWalkState(rcb.Meta), nil
+	return browse.WalkPath(browse.NewWalkState(rcb.Meta), s, path)
 }
 
 func enterRegistrations(registrations map[string]*registration) (browse.Selection, error) {
