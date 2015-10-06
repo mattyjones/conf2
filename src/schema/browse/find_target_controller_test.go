@@ -5,9 +5,81 @@ import (
 	"strings"
 	"bytes"
 	"fmt"
+	"schema"
 )
 
-func TestFindTargetController(t *testing.T) {
+func TestFindTargetIterator(t *testing.T) {
+	mstr := `
+module m {
+    prefix "";
+    namespace "";
+	revision 0;
+	container a {
+	  list aa {
+	    key "aaa";
+	  	leaf aaa {
+	  		type string;
+	  	}
+	  	container aab {
+	  	  leaf aaba {
+	  	    type string;
+	  	  }
+	  	}
+	  }
+	}
+	list b {
+	    key "ba";
+		leaf ba {
+			type string;
+		}
+		list bb {
+			key "bba";
+			leaf bba {
+		    	type string;
+			}
+		}
+	}
+}
+`
+	module, err := yang.LoadModuleFromByteArray([]byte(mstr), nil);
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection := &MySelection{}
+	selection.OnNext = func(*WalkState, *schema.List, []*Value, bool) (bool, error) {
+		return true, nil
+	}
+	selection.OnSelect = func(*WalkState, schema.MetaList) (Selection, error) {
+		return selection, nil
+	}
+	rootState := NewWalkState(module)
+	var s Selection
+	var state *WalkState
+	tests := []struct {
+		path string
+		expected string
+	}{
+		{"", 					"m.<nil>"},
+		{"a", 					"m.a.<nil>"},
+		{"b", 					"m.b.<nil>"},
+		{"b=x",					"m.b.<nil>"},
+		{"a/aa=key/aab",     		"m.a.aa.aab.<nil>"},
+	}
+	for _, test := range tests {
+		s, state, err = WalkPath(rootState, selection, NewPath(test.path))
+		if s == nil {
+			t.Errorf("Target for %s not found", test.path)
+		} else {
+			actual := state.String()
+			if test.expected != actual {
+				t.Errorf("Wrong state path for %s\nExpected:%s\n  Actual:%s", test.path, test.expected, actual)
+			}
+		}
+	}
+}
+
+
+func TestFindTargetAndInsert(t *testing.T) {
 	moduleStr := `
 module json-test {
 	prefix "";
@@ -62,7 +134,7 @@ module json-test {
 			out := NewJsonFragmentWriter(&actualBuff)
 			err = Upsert(NewPath(test.path), in, out)
 			if err != nil {
-				t.Error("failed to transmit json", err)
+				t.Error(err)
 			} else {
 				actual := string(actualBuff.Bytes())
 				if actual != test.expected {

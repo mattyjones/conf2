@@ -7,13 +7,12 @@ import (
 
 type FullWalk struct {
 	MaxDepth int
+	finalDepth int
 	InitialKey []*Value
 }
 
 func NewFullWalkFromPath(p *Path) *FullWalk {
-	c := &FullWalk{MaxDepth:32}
-	c.parseQuery(p.query)
-	return c
+	return NewFullWalk(p.query)
 }
 
 func NewFullWalk(query string) *FullWalk {
@@ -43,16 +42,23 @@ func (p *FullWalk) CloseSelection(s Selection) error {
 	return schema.CloseResource(s)
 }
 
-func (e *FullWalk) ListIterator(state *WalkState, s Selection, level int, first bool) (hasMore bool, err error) {
-	if level >= e.MaxDepth {
+func (e *FullWalk) maxedLevel(state *WalkState) bool {
+	if e.finalDepth == 0 {
+		e.finalDepth = state.Level() + e.MaxDepth
+	}
+	return state.Level() >= e.finalDepth
+}
+
+func (e *FullWalk) ListIterator(state *WalkState, s Selection, first bool) (hasMore bool, err error) {
+	if e.maxedLevel(state) {
 		return false, nil
 	}
 	listMeta := state.SelectedMeta().(*schema.List)
-	return s.Next(state, listMeta, state.key, first)
+	return s.Next(state, listMeta, NO_KEYS, first)
 }
 
-func (e *FullWalk) ContainerIterator(state *WalkState, s Selection, level int) schema.MetaIterator {
-	if level >= e.MaxDepth {
+func (e *FullWalk) ContainerIterator(state *WalkState, s Selection) schema.MetaIterator {
+	if e.maxedLevel(state) {
 		return schema.EmptyInterator(0)
 	}
 	return schema.NewMetaListIterator(state.SelectedMeta(), true)

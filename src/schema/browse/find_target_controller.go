@@ -1,7 +1,7 @@
 package browse
 import (
 	"schema"
-	"fmt"
+	"errors"
 )
 
 type FindTarget struct {
@@ -15,34 +15,29 @@ func NewFindTarget(p *Path) *FindTarget {
 	return &FindTarget{path:p}
 }
 
-func (n *FindTarget) ListIterator(state *WalkState, s Selection, level int, first bool) (hasMore bool, err error) {
-	if level == len(n.path.Segments) {
-		if len(n.path.Segments[level - 1].Keys) == 0 {
-			n.setTarget(state, s)
-			return false, nil
-		}
-		if !first {
-			n.setTarget(state, s)
-			return false, nil
-		}
-	}
-	if first && level > 0 && level <= len(n.path.Segments) {
-		segment := n.path.Segments[level - 1]
-		keysAsStrings := segment.Keys
-		list, isList := state.SelectedMeta().(*schema.List)
-		if !isList {
-			return false, &browseError{Msg:fmt.Sprintf("Key \"%s\" specified when not a list", keysAsStrings)}
-		}
-		var key []*Value
-		key, err = CoerseKeys(list, keysAsStrings)
-		state.SetKey(key)
-		if err != nil {
-			return false, err
-		}
-		return s.Next(state, list, key, first)
-	} else {
+func (n *FindTarget) ListIterator(state *WalkState, s Selection, first bool) (hasMore bool, err error) {
+	if !first {
+		// when we're finding targets, we never iterate more than one item in a list
 		return false, nil
 	}
+	level := state.Level()
+	if level == len(n.path.Segments) {
+		n.setTarget(state, s)
+		if len(n.path.Segments[level - 1].Keys) == 0 {
+			return false, nil
+		}
+	}
+
+	if len(n.path.Segments[level - 1].Keys) == 0 {
+		return false, errors.New("Key required when navigating lists")
+	}
+	list := state.SelectedMeta().(*schema.List)
+	var key []*Value
+	key, err = CoerseKeys(list, n.path.Segments[level - 1].Keys)
+	if err != nil {
+		return false, err
+	}
+	return s.Next(state, list, key, true)
 }
 
 func (p *FindTarget) CloseSelection(s Selection) error {
@@ -60,9 +55,10 @@ func (n *FindTarget) setTarget(state *WalkState, s Selection) {
 	//	s.Resource = nil
 }
 
-func (n *FindTarget) ContainerIterator(state *WalkState, s Selection, level int) schema.MetaIterator {
+func (n *FindTarget) ContainerIterator(state *WalkState, s Selection) schema.MetaIterator {
 	//n.path.Key = nil
-	if level >= len(n.path.Segments) {
+	level := state.Level()
+	if level == len(n.path.Segments) {
 		n.setTarget(state, s)
 		return schema.EmptyInterator(0)
 	}

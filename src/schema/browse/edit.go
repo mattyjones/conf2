@@ -88,8 +88,10 @@ func modifyingOperationWithInput(path *Path, src Browser, dest Browser, strategy
 	state := destState
 	if state == nil {
 		state = srcState
+		if state == nil {
+			return NotFound(path.URL)
+		}
 	}
-fmt.Printf("edit - state=%s, srcSel=%v\n", state.String(), srcSel)
 	return edit(state, srcSel, destSel, strategy, NewFullWalk(path.query))
 }
 
@@ -114,22 +116,6 @@ func Action(path *Path, impl Browser, input Browser, output Browser) (err error)
 	}
 	return nil
 }
-
-//func SelectionInsert(state *WalkState, from Selection, to Selection, controller WalkController) error {
-//	return edit(state, from, to, INSERT, controller)
-//}
-//
-//func Upsert(state *WalkState, from Selection, to Selection, controller WalkController) error {
-//	return edit(state, from, to, UPSERT, controller)
-//}
-//
-//func Delete(state *WalkState, from Selection, to Selection, p *Path, controller WalkController) error {
-//	return edit(state, from, to, DELETE, controller)
-//}
-//
-//func Update(state *WalkState, from Selection, to Selection, controller WalkController) error {
-//	return edit(state, from, to, UPDATE, controller)
-//}
 
 func edit(state *WalkState, from Selection, dest Selection, strategy Strategy, controller WalkController) (err error) {
 	e := editor{}
@@ -179,7 +165,6 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 		return
 	}
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (c Selection, err error) {
-fmt.Printf("edit - OnSelect\n")
 		var fromChild Selection
 		fromChild, err = from.Select(state, meta)
 		if err != nil {
@@ -198,7 +183,7 @@ fmt.Printf("edit - OnSelect\n")
 		switch strategy {
 		case INSERT:
 			if toChild != nil {
-				msg := fmt.Sprintf("Found existing container %s", state.String())
+				msg := fmt.Sprint("Found existing container ", state.String())
 				return nil, &browseError{Code:http.StatusConflict, Msg:msg}
 			}
 			if isList {
@@ -216,7 +201,7 @@ fmt.Printf("edit - OnSelect\n")
 			}
 		case UPDATE:
 			if toChild == nil {
-				msg := fmt.Sprintf("Container not found in list %s", state.String())
+				msg := fmt.Sprint("Container not found in list ", state.String())
 				return nil, &browseError{Code:http.StatusNotFound, Msg:msg}
 			}
 		default:
@@ -273,7 +258,6 @@ fmt.Printf("edit - OnSelect\n")
 
 	// List Edit - See "List Edit State Machine" diagram for additional documentation
 	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
-fmt.Printf("edit - OnNext\n")
 		if createdListItem {
 			err = to.Write(state, meta, POST_CREATE_LIST_ITEM, nil)
 			createdListItem = false
@@ -316,7 +300,7 @@ fmt.Printf("edit - OnNext\n")
 		switch strategy {
 		case UPDATE:
 			if !foundItem {
-				msg := fmt.Sprintf("No item found with given key in list %s", state.String())
+				msg := fmt.Sprint("No item found with given key in list ", state.String())
 				return false, &browseError{Code:http.StatusNotFound, Msg:msg}
 			}
 		case UPSERT:
@@ -325,7 +309,7 @@ fmt.Printf("edit - OnNext\n")
 			}
 		case INSERT:
 			if foundItem {
-				msg := fmt.Sprintf("Duplicate item found with same key in list %s", state.String())
+				msg := fmt.Sprint("Duplicate item found with same key in list ", state.String())
 				return false, &browseError{Code:http.StatusConflict, Msg:msg}
 			}
 			return true, createListItem(state)
@@ -341,9 +325,6 @@ fmt.Printf("edit - OnNext\n")
 func (e *editor) loadKey(state *WalkState, explictKey []*Value, whereToFindKey Selection) ([]*Value, error) {
 	if len(explictKey) > 0 {
 		return explictKey, nil
-	}
-	if len(state.Key()) > 0 {
-		return state.Key(), nil
 	}
 	return ReadKeys(state, whereToFindKey)
 }

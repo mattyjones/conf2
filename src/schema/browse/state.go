@@ -6,7 +6,6 @@ import (
 type WalkState struct {
 	path schema.MetaPath
 	insideList bool
-	key []*Value
 }
 
 func NewWalkState(meta schema.MetaList) *WalkState {
@@ -49,17 +48,19 @@ func (state *WalkState) SetInsideList() {
 	state.insideList = true
 }
 
-func (state *WalkState) SetKey(key []*Value) {
-	//state.key = key
-}
-
-func (state *WalkState) Key() []*Value {
-	return state.key
-}
-
 func (state *WalkState) IsConfig() bool {
 	if hasDetails, ok := state.path.Meta.(schema.HasDetails); ok {
 		return hasDetails.Details().Config(&state.path)
 	}
 	return true
+}
+
+func (state *WalkState) Level() int {
+	level := -1
+	p := &state.path
+	for p.ParentPath != nil {
+		level++
+		p = p.ParentPath
+	}
+	return level
 }

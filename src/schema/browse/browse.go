@@ -11,18 +11,18 @@ type Browser interface {
 
 func WalkPath(state *WalkState, from Selection, path *Path) (Selection, *WalkState, error) {
 	finder := NewFindTarget(path)
-	err := walk(state, from, finder, 0)
+	err := walk(state, from, finder)
 	return finder.target, finder.targetState, err
 }
 
 func Walk(state *WalkState, selection Selection, controller WalkController) (err error) {
-	return walk(state, selection, controller, 0)
+	return walk(state, selection, controller)
 }
 
-func walk(state *WalkState, selection Selection, controller WalkController, level int) (err error) {
+func walk(state *WalkState, selection Selection, controller WalkController) (err error) {
 	if schema.IsList(state.SelectedMeta()) && !state.InsideList() {
 		var hasMore bool
-		if hasMore, err = controller.ListIterator(state, selection, level, true); err != nil {
+		if hasMore, err = controller.ListIterator(state, selection, true); err != nil {
 			return
 		}
 		for i := 0; hasMore; i++ {
@@ -30,16 +30,16 @@ func walk(state *WalkState, selection Selection, controller WalkController, leve
 			// important flag, otherwise we recurse indefinitely
 			state.SetInsideList()
 
-			if err = walk(state, selection, controller, level); err != nil {
+			if err = walk(state, selection, controller); err != nil {
 				return
 			}
-			if hasMore, err = controller.ListIterator(state, selection, level, false); err != nil {
+			if hasMore, err = controller.ListIterator(state, selection, false); err != nil {
 				return
 			}
 		}
 	} else {
 		var child Selection
-		i := controller.ContainerIterator(state, selection, level)
+		i := controller.ContainerIterator(state, selection)
 		for i.HasNextMeta() {
 			state.SetPosition(i.NextMeta())
 			if choice, isChoice := state.Position().(*schema.Choice); isChoice {
@@ -63,7 +63,7 @@ func walk(state *WalkState, selection Selection, controller WalkController, leve
 					continue
 				}
 				defer schema.CloseResource(child)
-				if err = walk(state.Select(), child, controller, level + 1); err != nil {
+				if err = walk(state.Select(), child, controller); err != nil {
 					return
 				}
 

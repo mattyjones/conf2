@@ -36,7 +36,7 @@ func (self *ComboBrowser) Selector(path *browse.Path, strategy browse.Strategy) 
 	var operState, configState *browse.WalkState
 	if oper, operState, err = self.oper.Selector(path, strategy); err != nil {
 		return nil, nil, err
-	} else {
+	} else if oper != nil {
 		if oper, operState, err = browse.WalkPath(operState, oper, path); err != nil {
 			return nil, nil, err
 		}
@@ -53,7 +53,19 @@ func (self *ComboBrowser) Selector(path *browse.Path, strategy browse.Strategy) 
 	if combo, err = self.readMulticast(oper, config); err != nil {
 		return nil, nil, err
 	}
-	return combo, operState, nil
+	state := operState
+	if state == nil {
+		state = configState
+	}
+	return combo, state, nil
+}
+
+func (self *ComboBrowser) Module() *schema.Module {
+	m := self.oper.Module()
+	if m == nil {
+		m = self.config.Module()
+	}
+	return m
 }
 
 func (self *ComboBrowser) readMulticast(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
@@ -65,7 +77,7 @@ func (self *ComboBrowser) readMulticast(oper browse.Selection, config browse.Sel
 		if config != nil {
 			hasMore, err = config.Next(state, meta, key, first)
 		}
-		if oper != nil {
+		if oper != nil && !hasMore {
 			hasMore, err = oper.Next(state, meta, key, first)
 		}
 		return

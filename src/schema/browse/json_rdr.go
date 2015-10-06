@@ -65,34 +65,6 @@ func (self *JsonReader) fragmentSelector(path *Path, strategy Strategy) (s Selec
 	return
 }
 
-// need to pass in walk state so it knows what to look for in initial data
-// particularly when in the middle of a list
-//func (self *JsonReader) GetSelector(state *WalkState) (s Selection, err error) {
-//	var values map[string]interface{}
-//	d := json.NewDecoder(self.in)
-//	if err = d.Decode(&values); err != nil {
-//		return
-//	}
-//	if schema.IsList(state.SelectedMeta()) {
-//		if state.InsideList() {
-////			singletonList := []interface{} {
-////				values,
-////			}
-//			s, err = self.enterJson(values, nil, true)
-//		} else {
-//			list, found := values[state.SelectedMeta().GetIdent()]
-//			if !found {
-//				msg := fmt.Sprintf("Could not find json data %s", state.String())
-//				return nil, &browseError{Msg:msg}
-//			}
-//			s, err = self.enterJson(nil, list.([]interface{}), false)
-//		}
-//	} else {
-//		s, err = self.enterJson(values, nil, false)
-//	}
-//	return
-//}
-
 func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *Value, err error) {
 	v = &Value{}
 	switch meta.GetDataType().Format {
@@ -157,18 +129,14 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 		return nil, &browseError{Msg:msg}
 	}
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, e error) {
-fmt.Printf("json-rdr - OnSelect %s\n", state.String())
 		var found bool
 		if value, found = container[meta.GetIdent()]; found {
 			if schema.IsList(meta) {
-fmt.Printf("json-rdr - OnSelect %s FOUND list, len=%d\n", state.String(), len(value.([]interface{})))
 				return self.enterJson(nil, value.([]interface{}), false)
 			} else {
-fmt.Printf("json-rdr - OnSelect %s FOUND container\n", state.String())
 				return self.enterJson(value.(map[string]interface{}), nil, false)
 			}
 		}
-fmt.Printf("json-rdr - OnSelect %s NOT found\n", state.String())
 		return
 	}
 	s.OnRead = func (state *WalkState, meta schema.HasDataType) (val *Value, err error) {

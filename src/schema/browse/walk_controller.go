@@ -5,8 +5,8 @@ import (
 )
 
 type WalkController interface {
-	ListIterator(state *WalkState, s Selection, level int, first bool) (hasMore bool, err error)
-	ContainerIterator(state *WalkState, s Selection, level int) schema.MetaIterator
+	ListIterator(state *WalkState, s Selection, first bool) (hasMore bool, err error)
+	ContainerIterator(state *WalkState, s Selection) schema.MetaIterator
 	CloseSelection(s Selection) error
 }
 

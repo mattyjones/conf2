@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"strconv"
 	"errors"
-	"fmt"
 )
 
 const QUOTE = '"';
@@ -49,8 +48,6 @@ func (json *JsonWriter) Selector(path *Path, strategy Strategy) (s Selection, st
 	if json.meta != nil {
 		s, state, err = WalkPath(NewWalkState(json.meta), s, path)
 	}
-
-fmt.Printf("json-wtr strat %d\n", strategy)
 	return
 }
 
