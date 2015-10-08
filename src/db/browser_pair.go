@@ -2,6 +2,7 @@ package db
 import (
 	"schema/browse"
 	"schema"
+	"fmt"
 )
 
 // Details on config nodes v.s. state data
@@ -17,50 +18,50 @@ import (
 //   If a node has "config" set to "false", no node underneath it can have
 //   "config" set to "true".
 
-
-type ComboBrowser struct {
+type BrowserPair struct {
 	oper browse.Browser
 	config browse.Browser
 }
 
-func NewComboBrowser(operational browse.Browser, config browse.Browser) *ComboBrowser {
-	return &ComboBrowser{
+func NewBrowserPair(operational browse.Browser, config browse.Browser) *BrowserPair {
+	return &BrowserPair{
 		oper:operational,
 		config:config,
 	}
 }
 
-func (self *ComboBrowser) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
+func (self *BrowserPair) Init() error {
+	// Here we initialize the operational browser with the current configuration
+	return browse.Update(browse.NewPath(""), self.config, self.oper)
+}
+
+func (self *BrowserPair) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
 	var err error
 	var oper, config, combo browse.Selection
 	var operState, configState *browse.WalkState
 	if oper, operState, err = self.oper.Selector(path, strategy); err != nil {
 		return nil, nil, err
-	} else if oper != nil {
-		if oper, operState, err = browse.WalkPath(operState, oper, path); err != nil {
-			return nil, nil, err
-		}
 	}
 
 	if config, configState, err = self.config.Selector(path, strategy); err != nil {
 		return nil, nil, err
-	} else {
-		if config, configState, err = browse.WalkPath(configState, config, path); err != nil {
-			return nil, nil, err
-		}
 	}
 
-	if combo, err = self.readMulticast(oper, config); err != nil {
+	if config == nil && oper == nil {
+		return nil, nil, browse.NotFound(path.URL)
+	}
+	if combo, err = self.selectPair(oper, config); err != nil {
 		return nil, nil, err
 	}
 	state := operState
 	if state == nil {
 		state = configState
 	}
+fmt.Printf("browser_pair - path %s, config nil %v, oper nil %v\n", path.URL, config == nil, oper == nil)
 	return combo, state, nil
 }
 
-func (self *ComboBrowser) Module() *schema.Module {
+func (self *BrowserPair) Module() *schema.Module {
 	m := self.oper.Module()
 	if m == nil {
 		m = self.config.Module()
@@ -68,7 +69,7 @@ func (self *ComboBrowser) Module() *schema.Module {
 	return m
 }
 
-func (self *ComboBrowser) readMulticast(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
+func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
 	s := &browse.MySelection{}
 
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {
@@ -83,9 +84,14 @@ func (self *ComboBrowser) readMulticast(oper browse.Selection, config browse.Sel
 		return
 	}
 	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
-		if config != nil &&  state.IsConfig() {
+fmt.Printf("browser_pair - OnWrite\n")
+		if oper != nil {
+			err = oper.Write(state, meta, op, val)
+		}
+		if err == nil && config != nil && state.IsConfig() {
 			err = config.Write(state, meta, op, val)
 		}
+
 		return err
 	}
 	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
@@ -111,9 +117,19 @@ func (self *ComboBrowser) readMulticast(oper browse.Selection, config browse.Sel
 			operChild, err = oper.Select(state, meta)
 		}
 		if operChild != nil || configChild != nil {
-			return self.readMulticast(operChild, configChild)
+			return self.selectPair(operChild, configChild)
 		}
 		return nil, nil
+	}
+	s.OnChoose = func(state *browse.WalkState, choice *schema.Choice) (choosen schema.Meta, err error) {
+		if oper != nil {
+			choosen, err = oper.Choose(state, choice)
+		}
+		// assume that the error is because it's not implemented
+		if err != nil && config != nil {
+			choosen, err = config.Choose(state, choice)
+		}
+		return
 	}
 	return s, nil
 }

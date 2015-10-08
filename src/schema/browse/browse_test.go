@@ -21,8 +21,9 @@ func TestWalkJson(t *testing.T) {
 	"game" : {
 		"base-radius" : 14,
 		"teams" : [{
+  		  "color" : "red",
 		  "team" : {
-		  	"color" : "red"
+		    "members" : ["joe","mary"]
 		  }
 		}]
 	}

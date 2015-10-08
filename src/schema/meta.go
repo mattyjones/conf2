@@ -97,6 +97,15 @@ func (p *MetaPath) String() string {
 	return fmt.Sprint(p.ParentPath.String(), ".", p.Meta.GetIdent())
 }
 
+func (p *MetaPath) Root() (root *MetaPath) {
+	root = p
+	for root.ParentPath != nil {
+		root = root.ParentPath
+	}
+	return
+}
+
+
 // MetaList implementation helper(s)
 type ListBase struct {
 	// Parent? - it's normally in MetaBase

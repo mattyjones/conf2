@@ -73,8 +73,8 @@ func AssertProxies(t *testing.T, teams schema.MetaList) {
 		c := schema.FindByIdent(i, "color")
 		t.Log("color", c)
 
-		if color := schema.FindByPath(def.(schema.MetaList), "color"); color != nil {
-			t.Log("Found color from grouping")
+		if members := schema.FindByPath(def.(schema.MetaList), "members"); members != nil {
+			t.Log("Found members from grouping")
 		} else {
 			t.Error("team grouping didn't resolve")
 		}

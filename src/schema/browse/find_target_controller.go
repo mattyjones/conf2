@@ -37,6 +37,7 @@ func (n *FindTarget) ListIterator(state *WalkState, s Selection, first bool) (ha
 	if err != nil {
 		return false, err
 	}
+	state.SetKey(key)
 	return s.Next(state, list, key, true)
 }
 

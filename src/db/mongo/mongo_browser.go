@@ -4,6 +4,7 @@ import (
 	"schema/browse"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"fmt"
 )
 
 type MongoBrowser struct {
@@ -38,11 +39,12 @@ type mongoBrowserWriter struct{
 
 func (self *MongoBrowser) WriteSelector(p *browse.Path, strategy browse.Strategy) (s browse.Selection, state *browse.WalkState, err error) {
 	w := mongoBrowserWriter{c:self.c, strategy:strategy}
-	var meta schema.MetaList
-	w.selector, meta, err = PathToQuery(self.schema, p)
+	if w.selector, state, err = PathToQuery(browse.NewWalkState(self.schema), p); err != nil {
+		return nil, nil, err
+	}
 	data := make(bson.M, 10)
 	s, err = w.writeResults(data, nil)
-	return s, browse.NewWalkState(meta), err
+	return s, state, err
 }
 
 func (self *mongoBrowserWriter) writeResults(data bson.M, list []bson.M) (browse.Selection, error) {
@@ -57,7 +59,7 @@ func (self *mongoBrowserWriter) writeResults(data bson.M, list []bson.M) (browse
 		created = nil
 		return next, nil
 	}
-	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, v *browse.Value) error {
+	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, v *browse.Value) (err error) {
 		switch op {
 		case browse.CREATE_LIST:
 			childList := make([]bson.M, 0, 1)
@@ -76,13 +78,12 @@ func (self *mongoBrowserWriter) writeResults(data bson.M, list []bson.M) (browse
 			container[meta.GetIdent()] = v.Value()
 		case browse.END_EDIT:
 			if self.selector == nil {
-				self.c.Insert(data)
+				err = self.c.Insert(data)
 			} else {
-				self.c.Upsert(self.selector, data)
+				_, err = self.c.Upsert(self.selector, data)
 			}
-			// write to db
 		}
-		return nil
+		return
 	}
 	return s, nil
 }
@@ -91,11 +92,23 @@ func (self *MongoBrowser) ReadSelector(p *browse.Path) (s browse.Selection, stat
 	r := mongoBrowserReader{}
 	var selector interface{}
 	//var meta schema.MetaList
-	if selector, _, err = PathToQuery(self.schema, p); err != nil {
-		return nil, nil, err
-	}
+
 	var results bson.M
-	err = self.c.Find(selector).One(&results)
+
+	if len(p.Segments) == 1 && len(p.Segments[0].Keys) == 1 {
+		// TODO: Hack, specialized query for demo
+
+		var recordResult bson.M
+		err = self.c.FindId(bson.ObjectIdHex(p.Segments[0].Keys[0])).One(&recordResult)
+		results = bson.M{"records": []interface{}{recordResult}}
+
+	} else {
+		if selector, _, err = PathToQuery(browse.NewWalkState(self.schema), p); err != nil {
+			return nil, nil, err
+		}
+		err = self.c.Find(selector).One(&results)
+	}
+
 	// TODO: restrict results to only the data that was asked for.
 	if err != nil {
 		return nil, nil, nil
@@ -106,6 +119,8 @@ func (self *MongoBrowser) ReadSelector(p *browse.Path) (s browse.Selection, stat
 	// the result tree goes all the way back to the document root.  we need to navigate to
 	// the point of the path and throw away results.
 	s, state, err = browse.WalkPath(browse.NewWalkState(self.schema), root, p)
+
+fmt.Printf("mongo-browser - state %s, s != nil ? %v\n", state.String(), s != nil)
 
 	return
 }
@@ -150,7 +165,15 @@ func (self *mongoBrowserReader) readResults(result bson.M, list []interface{}) (
 		return nil, nil
 	}
 	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
+		if meta == nil {
+			return nil, nil
+		}
 		value := record[meta.GetIdent()]
+		switch meta.GetDataType().Format {
+		case schema.FMT_BOOLEAN:
+			b := value.(int64) > 0
+			return browse.SetValue(meta.GetDataType(), b)
+		}
 		return browse.SetValue(meta.GetDataType(), value)
 	}
 	return s, nil

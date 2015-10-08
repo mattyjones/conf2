@@ -42,7 +42,7 @@ func NewJsonFragmentWriter(out io.Writer) *JsonWriter {
 
 func (json *JsonWriter) Selector(path *Path, strategy Strategy) (s Selection, state *WalkState, err error) {
 	if strategy != INSERT && strategy != UPSERT {
-		return nil, nil, errors.New("Only INSERT strategy is supported. Consider using bucket first")
+		return nil, nil, errors.New("Only [UP,IN]SERT strategy is supported. Consider using bucket first")
 	}
 	s, _ = json.selectJson()
 	if json.meta != nil {

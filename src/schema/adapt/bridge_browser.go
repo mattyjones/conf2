@@ -34,14 +34,14 @@ func (bb *BridgeBrowser) Selector(path *browse.Path, strategy browse.Strategy) (
 	s.OnSelect = func (state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
 		switch meta.GetIdent() {
 			case "bridges":
-				return bb.selectBridges(bb.Bridges)
+				return bb.SelectBridges(bb.Bridges)
 		}
 		return nil, nil
 	}
 	return browse.WalkPath(browse.NewWalkState(bb.Meta), s, path)
 }
 
-func (bb *BridgeBrowser) selectBridges(bridges map[string]*Bridge) (browse.Selection, error) {
+func (bb *BridgeBrowser) SelectBridges(bridges map[string]*Bridge) (browse.Selection, error) {
 	s := &browse.MySelection{}
 	index := newBridgeIndex(bridges)
 	s.OnNext = index.Index.OnNext

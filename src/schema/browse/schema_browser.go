@@ -315,7 +315,7 @@ func (self *SchemaBrowser) groupingsTypedefsDefinitions(s Selection, meta schema
 		}
 	case "definitions":
 		defs := data.(schema.MetaList)
-		return self.selectDefinitionsList(defs)
+		return self.SelectDefinitionsList(defs)
 	}
 	return nil, nil
 }
@@ -462,7 +462,7 @@ func (self *SchemaBrowser) selectMetaCases(choice *schema.Choice) (Selection, er
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
 		switch meta.GetIdent() {
 		case "definitions":
-			return self.selectDefinitionsList(choice)
+			return self.SelectDefinitionsList(choice)
 		}
 		return nil, nil
 	}
@@ -507,6 +507,7 @@ func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Valu
 		return false, nil
 	}
 	if len(keys) > 0 {
+		state.SetKey(keys)
 		if first {
 			i.data = schema.FindByIdent2(i.dataList, keys[0].Str)
 		}
@@ -516,12 +517,13 @@ func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Valu
 		}
 		if i.iterator.HasNextMeta() {
 			i.data = i.iterator.NextMeta()
+			state.SetKey([]*Value{&Value{Str:i.data.GetIdent()}})
 		}
 	}
 	return i.data != nil, nil
 }
 
-func (self *SchemaBrowser) selectDefinitionsList(dataList schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:dataList, resolve:self.resolve}
 	s.OnChoose = func(state *WalkState, choice *schema.Choice) (m schema.Meta, err error) {

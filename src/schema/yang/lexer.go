@@ -298,7 +298,8 @@ func (l *lexer) acceptAlphaNumeric(ttype int) bool {
 	accepted := false
 	for {
 		r := l.next()
-		if ! unicode.IsDigit(r) && ! unicode.IsLetter(r) && ! (r == '-') {
+		// TODO: review spec on legal chars
+		if ! unicode.IsDigit(r) && ! unicode.IsLetter(r) && ! (r == '-') && ! (r == '_') {
 			l.backup()
 			if (accepted) {
 				l.emit(ttype)

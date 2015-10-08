@@ -18,9 +18,6 @@ module rtstone {
     }
 
     grouping team {
-        leaf color {
-            type string;
-        }
         leaf-list members {
             type string;
         }
@@ -34,7 +31,11 @@ module rtstone {
 
     container game {
         list teams {
+            key "color";
             max-elements 4;
+            leaf color {
+                type string;
+            }
             container team {
                 uses team;
             }

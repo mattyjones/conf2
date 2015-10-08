@@ -71,29 +71,36 @@ func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interfa
 	case schema.FMT_INT32:
 		v.Int = int(data.(float64))
 	case schema.FMT_INT32_LIST:
-		a := data.([]float64)
+		a := data.([]interface{})
 		v.Intlist = make([]int, len(a))
 		for i, f := range a {
-			v.Intlist[i] = int(f)
+			v.Intlist[i] = int(f.(float64))
 		}
 	case schema.FMT_STRING:
 		v.Str = data.(string)
 	case schema.FMT_STRING_LIST:
-		a := data.([]string)
-		v.Strlist = a
+		v.Strlist = asStringArray(data.([]interface{}))
 	case schema.FMT_BOOLEAN:
 		s := data.(string)
 		v.Bool = ("true" == s)
 	case schema.FMT_BOOLEAN_LIST:
-		a := data.([]string)
+		a := data.([]interface{})
 		v.Boollist = make([]bool, len(a))
 		for i, s := range a {
-			v.Boollist[i] = ("true" == s)
+			v.Boollist[i] = ("true" == s.(string))
 		}
 	default:
 		return nil, errors.New("Not implemented")
 	}
 	return
+}
+
+func asStringArray(data []interface{}) []string {
+	s := make([]string, len(data))
+	for i, d := range data {
+		s[i] = d.(string)
+	}
+	return s
 }
 
 func (self *JsonReader) enterJson(values map[string]interface{}, list []interface{}, insideList bool) (Selection, error) {
@@ -166,6 +173,7 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 					}
 				}
 			}
+			state.SetKey(key)
 		} else {
 			if first {
 				i = 0
@@ -174,6 +182,10 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 			}
 			if i < len(list) {
 				container = list[i].(map[string]interface{})
+				// TODO: compound keys
+				keyStrs := []string{container[meta.Keys[0]].(string)}
+				key, err = CoerseKeys(meta, keyStrs)
+				state.SetKey(key)
 			}
 		}
 		return container != nil, nil
