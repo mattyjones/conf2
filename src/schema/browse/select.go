@@ -103,6 +103,17 @@ func (s *MySelection) Action(state *WalkState, rpc *schema.Rpc) (input Selection
 	return s.OnAction(state, rpc)
 }
 
+
+func (my *MySelection) Mixin(delegate Selection) {
+	my.OnAction = delegate.Action
+	my.OnSelect = delegate.Select
+	my.OnUnselect = delegate.Unselect
+	my.OnNext = delegate.Next
+	my.OnRead = delegate.Read
+	my.OnWrite = delegate.Write
+	my.OnChoose = delegate.Choose
+}
+
 type NextFunc func(state *WalkState, meta *schema.List, keys []*Value, first bool) (hasMore bool, err error)
 type SelectFunc func(state *WalkState, meta schema.MetaList) (child Selection, err error)
 type ReadFunc func(state *WalkState, meta schema.HasDataType) (*Value, error)

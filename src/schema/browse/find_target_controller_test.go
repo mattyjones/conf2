@@ -63,7 +63,7 @@ module m {
 		{"a", 					"m.a.<nil>"},
 		{"b", 					"m.b.<nil>"},
 		{"b=x",					"m.b.<nil>"},
-		{"a/aa=key/aab",     		"m.a.aa.aab.<nil>"},
+		{"a/aa=key/aab",     	"m.a.aa.aab.<nil>"},
 	}
 	for _, test := range tests {
 		s, state, err = WalkPath(rootState, selection, NewPath(test.path))

@@ -7,10 +7,10 @@ import (
 	"errors"
 )
 
-func PathToQuery(parent schema.MetaList, p *browse.Path) (q interface{}, meta schema.MetaList, err error) {
+func PathToQuery(initialState *browse.WalkState, p *browse.Path) (q interface{}, state *browse.WalkState, err error) {
 	nKeys := countKeys(p)
 	var all []bson.M
-	if all, meta, err = segmentsToQuearyParams(parent, p, nKeys); err == nil {
+	if all, state, err = segmentsToQuearyParams(initialState, p, nKeys); err == nil {
 		if nKeys == 0 {
 			q = nil
 		} else if nKeys == 1 {
@@ -22,11 +22,11 @@ func PathToQuery(parent schema.MetaList, p *browse.Path) (q interface{}, meta sc
 	return
 }
 
-func segmentsToQuearyParams(parent schema.MetaList, p *browse.Path, expectedSegments int) (q []bson.M, meta schema.MetaList, err error) {
+func segmentsToQuearyParams(initialState *browse.WalkState, p *browse.Path, expectedSegments int) (q []bson.M, state *browse.WalkState, err error) {
 	q = make([]bson.M, expectedSegments)
 	var ndx int
 	var path string
-	meta = parent
+	state = initialState
 	pathAppend := func(a string, b string) string {
 		if len(a) == 0 {
 			return b
@@ -34,13 +34,14 @@ func segmentsToQuearyParams(parent schema.MetaList, p *browse.Path, expectedSegm
 		return fmt.Sprint(a, ".", b)
 	}
 	for _, segment := range p.Segments {
-		propMeta := schema.FindByIdent2(meta, segment.Ident)
+		propMeta := schema.FindByIdent2(state.SelectedMeta(), segment.Ident)
 		if propMeta == nil {
 			return nil, nil, errors.New(fmt.Sprintf("Schema \"%s\" not found", segment.Ident))
 		} else if schema.IsLeaf(propMeta) {
 			return nil, nil, errors.New(fmt.Sprintf("Cannot navigate into leaf node \"%s\"", segment.Ident))
 		}
-		meta = propMeta.(schema.MetaList)
+		state.SetPosition(propMeta)
+		state = state.Select()
 		path = pathAppend(path, segment.Ident)
 		if len(segment.Keys) > 0 {
 			listMeta := propMeta.(*schema.List)

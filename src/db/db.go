@@ -2,6 +2,7 @@ package db
 import (
 	"schema/browse"
 	"schema"
+	"fmt"
 )
 
 // Details on config nodes v.s. state data
@@ -36,20 +37,15 @@ func (self *ComboBrowser) Selector(path *browse.Path, strategy browse.Strategy) 
 	var operState, configState *browse.WalkState
 	if oper, operState, err = self.oper.Selector(path, strategy); err != nil {
 		return nil, nil, err
-	} else if oper != nil {
-		if oper, operState, err = browse.WalkPath(operState, oper, path); err != nil {
-			return nil, nil, err
-		}
 	}
 
 	if config, configState, err = self.config.Selector(path, strategy); err != nil {
 		return nil, nil, err
-	} else {
-		if config, configState, err = browse.WalkPath(configState, config, path); err != nil {
-			return nil, nil, err
-		}
 	}
 
+	if config == nil && oper == nil {
+		return nil, nil, browse.NotFound(path.URL)
+	}
 	if combo, err = self.readMulticast(oper, config); err != nil {
 		return nil, nil, err
 	}
@@ -83,9 +79,14 @@ func (self *ComboBrowser) readMulticast(oper browse.Selection, config browse.Sel
 		return
 	}
 	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
-		if config != nil &&  state.IsConfig() {
+fmt.Printf("db OnWrite config %v, isconfig %v %s, %s\n", config, state.IsConfig(), op.String(), state.String())
+		if oper != nil {
+			err = oper.Write(state, meta, op, val)
+		}
+		if err == nil && config != nil && state.IsConfig() {
 			err = config.Write(state, meta, op, val)
 		}
+
 		return err
 	}
 	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
@@ -114,6 +115,16 @@ func (self *ComboBrowser) readMulticast(oper browse.Selection, config browse.Sel
 			return self.readMulticast(operChild, configChild)
 		}
 		return nil, nil
+	}
+	s.OnChoose = func(state *browse.WalkState, choice *schema.Choice) (choosen schema.Meta, err error) {
+		if oper != nil {
+			choosen, err = oper.Choose(state, choice)
+		}
+		// assume that the error is because it's not implemented
+		if err != nil && config != nil {
+			choosen, err = config.Choose(state, choice)
+		}
+		return
 	}
 	return s, nil
 }
