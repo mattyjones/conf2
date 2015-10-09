@@ -4,6 +4,7 @@ import (
 	"schema/browse"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"fmt"
 )
 
 type MongoBrowser struct {
@@ -91,11 +92,24 @@ func (self *MongoBrowser) ReadSelector(p *browse.Path) (s browse.Selection, stat
 	r := mongoBrowserReader{}
 	var selector interface{}
 	//var meta schema.MetaList
-	if selector, _, err = PathToQuery(browse.NewWalkState(self.schema), p); err != nil {
-		return nil, nil, err
-	}
+
 	var results bson.M
-	err = self.c.Find(selector).One(&results)
+
+fmt.Printf("mongo-browser - path=%s\n", p.URL)
+	if len(p.Segments) == 1 && len(p.Segments[0].Keys) == 1 {
+		// TODO: Hack, specialized query for demo
+
+		var recordResult bson.M
+		err = self.c.FindId(bson.ObjectIdHex(p.Segments[0].Keys[0])).One(&recordResult)
+		results = bson.M{"records": []interface{}{recordResult}}
+
+	} else {
+		if selector, _, err = PathToQuery(browse.NewWalkState(self.schema), p); err != nil {
+			return nil, nil, err
+		}
+		err = self.c.Find(selector).One(&results)
+	}
+
 	// TODO: restrict results to only the data that was asked for.
 	if err != nil {
 		return nil, nil, nil
@@ -106,6 +120,8 @@ func (self *MongoBrowser) ReadSelector(p *browse.Path) (s browse.Selection, stat
 	// the result tree goes all the way back to the document root.  we need to navigate to
 	// the point of the path and throw away results.
 	s, state, err = browse.WalkPath(browse.NewWalkState(self.schema), root, p)
+
+fmt.Printf("mongo-browser - state %s, s != nil ? %v\n", state.String(), s != nil)
 
 	return
 }
@@ -150,7 +166,15 @@ func (self *mongoBrowserReader) readResults(result bson.M, list []interface{}) (
 		return nil, nil
 	}
 	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
+		if meta == nil {
+			return nil, nil
+		}
 		value := record[meta.GetIdent()]
+		switch meta.GetDataType().Format {
+		case schema.FMT_BOOLEAN:
+			b := value.(int64) > 0
+			return browse.SetValue(meta.GetDataType(), b)
+		}
 		return browse.SetValue(meta.GetDataType(), value)
 	}
 	return s, nil

@@ -507,6 +507,7 @@ func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Valu
 		return false, nil
 	}
 	if len(keys) > 0 {
+		state.SetKey(keys)
 		if first {
 			i.data = schema.FindByIdent2(i.dataList, keys[0].Str)
 		}
@@ -516,6 +517,7 @@ func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Valu
 		}
 		if i.iterator.HasNextMeta() {
 			i.data = i.iterator.NextMeta()
+			state.SetKey([]*Value{&Value{Str:i.data.GetIdent()}})
 		}
 	}
 	return i.data != nil, nil

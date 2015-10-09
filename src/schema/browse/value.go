@@ -26,7 +26,7 @@ func (v *Value) Value() interface{} {
 		return v.Bool
 	case schema.FMT_BOOLEAN_LIST:
 		return v.Boollist
-	case schema.FMT_INT32:
+	case schema.FMT_INT32, schema.FMT_ENUMERATION:
 		return v.Int
 	case schema.FMT_INT32_LIST:
 		return v.Intlist
@@ -84,7 +84,7 @@ func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
 		v.Intlist = reflectVal.Interface().([]int)
 	case schema.FMT_INT32:
 		v.Int = int(reflectVal.Int())
-	case schema.FMT_STRING:
+	case schema.FMT_STRING, schema.FMT_ENUMERATION:
 		v.Str = reflectVal.String()
 	case schema.FMT_STRING_LIST:
 		v.Strlist = reflectVal.Interface().([]string)

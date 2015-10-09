@@ -55,7 +55,7 @@ module birding {
 	}
 	var actual interface{}
 	for _, test := range tests {
-		actual, _, err = PathToQuery(m, browse.NewPath(test.xpath))
+		actual, _, err = PathToQuery(browse.NewWalkState(m), browse.NewPath(test.xpath))
 		if err != nil {
 			if test.valid {
 				t.Error(err)

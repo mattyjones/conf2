@@ -10,7 +10,7 @@ import (
 func PathToQuery(initialState *browse.WalkState, p *browse.Path) (q interface{}, state *browse.WalkState, err error) {
 	nKeys := countKeys(p)
 	var all []bson.M
-	if all, state, err = segmentsToQuearyParams(initialState, p, nKeys); err == nil {
+	if all, state, err = segmentsToQueryParams(initialState, p, nKeys); err == nil {
 		if nKeys == 0 {
 			q = nil
 		} else if nKeys == 1 {
@@ -22,7 +22,7 @@ func PathToQuery(initialState *browse.WalkState, p *browse.Path) (q interface{},
 	return
 }
 
-func segmentsToQuearyParams(initialState *browse.WalkState, p *browse.Path, expectedSegments int) (q []bson.M, state *browse.WalkState, err error) {
+func segmentsToQueryParams(initialState *browse.WalkState, p *browse.Path, expectedSegments int) (q []bson.M, state *browse.WalkState, err error) {
 	q = make([]bson.M, expectedSegments)
 	var ndx int
 	var path string
@@ -53,7 +53,11 @@ func segmentsToQuearyParams(initialState *browse.WalkState, p *browse.Path, expe
 			}
 
 			qpath := pathAppend(path, listMeta.Keys[0])
-			q[ndx] = bson.M{qpath : values[0].Value()} // all?
+			if listMeta.Keys[0] == "_id" {
+				q[ndx] = bson.M{qpath : bson.ObjectIdHex(values[0].Str)} // all?
+			} else {
+				q[ndx] = bson.M{qpath : values[0].Value()} // all?
+			}
 			ndx++
 			if ndx == expectedSegments {
 				break

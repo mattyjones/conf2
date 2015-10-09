@@ -1,10 +1,13 @@
 package browse
 import (
 	"schema"
+	"fmt"
+	"errors"
 )
 
 type WalkState struct {
 	path schema.MetaPath
+	key []*Value
 	insideList bool
 }
 
@@ -21,6 +24,13 @@ func (state *WalkState) SelectedMeta() schema.MetaList {
 func (state *WalkState) Select() *WalkState {
 	child := &WalkState{}
 	child.path.ParentPath = &state.path
+	return child
+}
+
+func (state *WalkState) SelectListItem(key []*Value) *WalkState {
+	child := &WalkState{}
+	child.path.ParentPath = &state.path
+	child.key = key
 	return child
 }
 
@@ -46,6 +56,21 @@ func (state *WalkState) InsideList() bool {
 
 func (state *WalkState) SetInsideList() {
 	state.insideList = true
+}
+
+func (state *WalkState) Key() []*Value {
+	return state.key
+}
+
+func (state *WalkState) RequireKey() ([]*Value, error) {
+	if state.key == nil {
+		return nil, errors.New(fmt.Sprint("Cannot select list without key ", state.String()))
+	}
+	return state.key, nil
+}
+
+func (state *WalkState) SetKey(key []*Value) {
+	state.key = key
 }
 
 func (state *WalkState) IsConfig() bool {

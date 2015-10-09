@@ -106,7 +106,6 @@ func (p *MetaPath) Root() (root *MetaPath) {
 }
 
 
-
 // MetaList implementation helper(s)
 type ListBase struct {
 	// Parent? - it's normally in MetaBase

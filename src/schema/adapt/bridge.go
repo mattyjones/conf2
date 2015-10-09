@@ -2,6 +2,8 @@ package adapt
 import (
 	"schema"
 	"schema/browse"
+	"fmt"
+	"strings"
 )
 
 type Bridge struct {
@@ -54,13 +56,37 @@ func (m *BridgeMapping) SelectMap(externalMeta schema.Meta, internalParentMeta s
 	return internalMeta, mapping
 }
 
-func (b *Bridge) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
-	internalRoot, internalState, err := b.internal.Selector(path, strategy)
+func (b *Bridge) Selector(externalPath *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
+	internalPath, externalState := b.internalPath(externalPath)
+	internalRoot, internalState, err := b.internal.Selector(internalPath, strategy)
 	if err != nil {
 		return nil, nil, err
 	}
 	bridged, _ := b.selectBridge(internalRoot, internalState, b.Mapping)
-	return browse.WalkPath(browse.NewWalkState(b.external), bridged, path)
+	return bridged, externalState, nil
+}
+
+func (b *Bridge) internalPath(p *browse.Path) (*browse.Path, *browse.WalkState) {
+	mapping := b.Mapping
+	var found bool
+	internalPath := make([]string, len(p.Segments))
+	state := browse.NewWalkState(b.external)
+	for i, seg := range p.Segments {
+		mapping, found = mapping.Children[seg.Ident]
+		if !found {
+			panic("path unmappable")
+		}
+		internalPath[i] = mapping.InternalIdent
+		if len(seg.Keys) > 0 {
+			internalPath[i] = fmt.Sprint(internalPath[i], "=", seg.Keys[0])
+		}
+		position := schema.FindByIdent2(state.SelectedMeta(), seg.Ident)
+fmt.Printf("bridge - position, seg=%v\n", position, seg.Ident)
+		state.SetPosition(position)
+		state = state.Select()
+	}
+fmt.Printf("bridge - internal path %v\n", internalPath)
+	return browse.NewPath(strings.Join(internalPath, "/")), state
 }
 
 func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState *browse.WalkState, mapping *BridgeMapping) (*BridgeMapping, bool) {
@@ -108,6 +134,7 @@ func (b *Bridge) selectBridge(internalSelection browse.Selection, internalState 
 	}
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (bool, error) {
 		// TODO: translate keys?
+fmt.Println("bridge - OnNext\n")
 		return internalSelection.Next(internalState, meta, key, first)
 	}
 	return s, nil
