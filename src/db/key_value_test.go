@@ -20,17 +20,18 @@ func TestKeyValueBuildList(t *testing.T) {
 		{ "/a/c", "y|z" },
 	}
 	s := &KeyValuesSelector{}
-	s.values = make(KeyValueStore, 10)
+	store := make(KeyValueStore, 10)
+	s.store = store
 	v := &browse.Value{}
-	s.values["/a/a/c"] = v
-	s.values["/a/b=x/c"] = v
-	s.values["/a/c=y/c"] = v
-	s.values["/a/c=y/c"] = v
-	s.values["/a/c=z/q/f=yy/fg=gf/gf"] = v
+	store["/a/a/c"] = v
+	store["/a/b=x/c"] = v
+	store["/a/c=y/c"] = v
+	store["/a/c=y/c"] = v
+	store["/a/c=z/q/f=yy/fg=gf/gf"] = v
 	meta := &schema.List{Ident:"c", Keys:[]string{"k"}}
 	meta.AddMeta(&schema.Leaf{Ident:"k", DataType:&schema.DataType{Format:schema.FMT_STRING}})
 	for _, test := range tests {
-		keys, err := s.buildList(test.path, meta)
+		keys, err := s.store.KeyList(test.path, meta)
 		if err != nil {
 			t.Error(err)
 		}

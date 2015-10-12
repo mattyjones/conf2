@@ -13,21 +13,51 @@ type KeyValues struct {
 
 type KeyValueStore map[string]*browse.Value
 
-func (kvs KeyValueStore) Load(p *browse.Path) (map[string]*browse.Value, error) {
-	return kvs, nil
+func (kvs KeyValueStore) Load() error {
+	return nil
 }
 
-func (kvs KeyValueStore) Clear(p *browse.Path) error {
+func (kvs KeyValueStore) Clear() error {
 	for k, _ := range kvs {
 		delete(kvs, k)
 	}
 	return nil
 }
 
-func (kvs KeyValueStore) Upsert(p *browse.Path, vals map[string]*browse.Value) error {
-	for k, v := range vals {
-		kvs[k] = v
+func (kvs KeyValueStore) HasValues(path string) bool {
+	for k, _ := range kvs {
+		if strings.HasPrefix(k, path) {
+			return true
+		}
 	}
+	return false
+}
+
+func (kvs KeyValueStore) Save() error {
+	return nil
+}
+
+func (kvs KeyValueStore) KeyList(key string) ([]string, error) {
+	// same as mongo store...
+}
+
+type KeyList struct {
+	set map[string]struct{}
+
+}
+
+func (kl *KeyList)
+
+func (kvs KeyValueStore) Value(key string, dataType *schema.DataType) (*browse.Value, error) {
+	if v, found := kvs[key]; found {
+		v.Type = dataType
+		return v, nil
+	}
+	return nil, nil
+}
+
+func (kvs KeyValueStore) SetValue(key string, v *browse.Value) error {
+	kvs[key] = v
 	return nil
 }
 
@@ -42,7 +72,6 @@ type KeyValuesSelector struct {
 	store Store
 	path *browse.Path
 	strategy browse.Strategy
-	values map[string]*browse.Value
 }
 
 func (kv *KeyValues) Module() *schema.Module {
@@ -52,13 +81,11 @@ func (kv *KeyValues) Module() *schema.Module {
 func (kv *KeyValues) Selector(path *browse.Path, strategy browse.Strategy) (s browse.Selection, state *browse.WalkState, err error) {
 	selector := &KeyValuesSelector{path: path, store:kv.store, strategy : strategy}
 	switch strategy {
-	case browse.READ, browse.UPDATE:
-		selector.values, err = kv.store.Load(path)
+	case browse.READ, browse.UPDATE, browse.UPSERT:
+		err = kv.store.Load()
 		if err != nil {
 			return nil, nil, err
 		}
-	case browse.INSERT, browse.UPSERT:
-		selector.values = make(map[string]*browse.Value, 100)
 	}
 	s, err = selector.browse(path.URL)
 	return browse.WalkPath(browse.NewWalkState(kv.module), s, path)
@@ -66,31 +93,42 @@ func (kv *KeyValues) Selector(path *browse.Path, strategy browse.Strategy) (s br
 
 func (kvs *KeyValuesSelector) browse(parentPath string) (browse.Selection, error) {
 	s := &browse.MySelection{}
-	var list [][]*browse.Value
+	path := parentPath
+	var keyList []string
 	var i int
 	var created browse.Selection
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {
-		if first {
-			list, err = kvs.buildList(kvs.metaPath(parentPath, state, meta), meta)
-			if err != nil {
-				return false, err
+		if len(key) != 0 {
+			if first {
+				path = fmt.Sprint(parentPath, "=", key[0].String())
+				hasMore = kvs.store.HasValues(path)
+			} else {
+				return false, nil
 			}
-			i = 0
+		} else {
+			if first {
+				keyList, err = kvs.store.KeyList(parentPath)
+				i = 0
+			} else {
+				i++
+			}
+			if hasMore = i < len(keyList); hasMore {
+				path = fmt.Sprint(parentPath, "=", keyList[i])
+				var key []*browse.Value
+				if key, err = browse.CoerseKeys(meta, []string{keyList[i]}); err != nil {
+					return false, err
+				}
+				state.SetKey(key)
+			}
 		}
-		if i < len(list) {
-			state.SetKey(list[i])
-			i++
-			return true, nil
-		}
-		return false, nil
+		return
 	}
 	s.OnRead = func (state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
-		v, _ := kvs.values[kvs.metaPath(parentPath, state, meta)]
-		return v, nil
+		return kvs.store.Value(kvs.metaPath(path, state, meta), meta.GetDataType())
 	}
 	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (child browse.Selection, err error) {
-		childPath := kvs.metaPath(parentPath, state, meta)
-		if kvs.containerExists(childPath) {
+		childPath := kvs.metaPath(path, state, meta)
+		if kvs.store.HasValues(childPath) {
 			child, err = kvs.browse(childPath)
 		} else if (created != nil) {
 			child = created
@@ -101,58 +139,15 @@ func (kvs *KeyValuesSelector) browse(parentPath string) (browse.Selection, error
 	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, v *browse.Value) (err error) {
 		switch op {
 		case browse.END_EDIT:
-			switch kvs.strategy {
-			case browse.INSERT:
-				kvs.store.Clear(kvs.path)
-				kvs.store.Upsert(kvs.path, kvs.values)
-			case browse.UPSERT, browse.UPDATE:
-				// TODO: differentiate here
-				kvs.store.Upsert(kvs.path, kvs.values)
-			}
+			kvs.store.Save()
 		case browse.CREATE_LIST, browse.CREATE_CHILD:
-			created, err = kvs.browse(kvs.metaPath(parentPath, state, meta))
+			created, err = kvs.browse(kvs.metaPath(path, state, meta))
 		case browse.UPDATE_VALUE:
-			kvs.values[kvs.metaPath(parentPath, state, meta)] = v
+			kvs.store.SetValue(kvs.metaPath(path, state, meta), v)
 		}
 		return
 	}
 	return s, nil
-}
-
-func (kvs *KeyValuesSelector) containerExists(path string) bool {
-	// TODO: performance - most efficient way? sort first?
-	for k, _ := range kvs.values {
-		if strings.HasPrefix(k, path) {
-			return true
-		}
-	}
-	return false
-}
-
-func (kvs *KeyValuesSelector) buildList(path string, meta *schema.List) (keys [][]*browse.Value, err error) {
-	// TODO: performance - most efficient way? sort first?
-	keysSet := make(map[string]struct{}, 10)
-	keyStart := len(path) + 1
-	for k, _ := range kvs.values {
-		if strings.HasPrefix(k, path) {
-			keyEnd := strings.IndexRune(k[keyStart:], '/')
-			if keyEnd < 0 {
-				continue
-			}
-			key := k[keyStart:keyStart + keyEnd]
-			keysSet[key] = struct{}{}
-		}
-	}
-	keys = make([][]*browse.Value, len(keysSet))
-	var i int
-	for k, _ := range keysSet {
-		if keys[i], err = browse.CoerseKeys(meta, []string{k}); err != nil {
-			return nil, err
-		}
-		i++
-	}
-
-	return
 }
 
 func (kvs *KeyValuesSelector) metaPath(parentPath string, state *browse.WalkState, meta schema.Meta) string {

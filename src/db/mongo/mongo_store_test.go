@@ -21,10 +21,8 @@ func TestMongoStore(t *testing.T) {
 		"a/b/f" : &browse.Value{Type:strType, Str:"hi"},
 		"a/b/d" : &browse.Value{Type:strType, Str:"xxx"},
 	}
-	err = store.Upsert(browse.NewPath("/x/y"), vals)
+	err = store.Upsert(vals)
 	if err != nil {
 		t.Error(err)
 	}
-
-
 }
