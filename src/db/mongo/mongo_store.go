@@ -5,6 +5,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"schema"
 	"strings"
+	"db"
 )
 
 
@@ -12,11 +13,6 @@ type Store struct {
 	c *mgo.Collection
 	oid bson.ObjectId
 	values bson.M
-}
-
-type StoreIndex interface {
-	Next(*browse.WalkState, meta *schema.List, key []*browse.Value, bool) (bool, error)
-
 }
 
 func NewStore(collection *mgo.Collection, oid bson.ObjectId) *Store {
@@ -36,38 +32,18 @@ func (s *Store) HasValues(path string) bool {
 	return false
 }
 
-func (s *Store) KeyList(path string) ([]string, err error) {
-
-}
-
-
-func (s *Store) KeyList(path string) ([]string, err error) {
-	// TODO: performance - most efficient way? sort first?
-	keysSet := make(map[string]struct{}, 10)
-	keyStart := len(path) + 1
+func (s *Store) KeyList(path string, meta *schema.List) ([]string, error) {
+	builder := db.NewKeyListBuilder(path)
 	for k, _ := range s.values {
-		if strings.HasPrefix(k, path) {
-			keyEnd := strings.IndexRune(k[keyStart:], '/')
-			if keyEnd < 0 {
-				continue
-			}
-			key := k[keyStart:keyStart + keyEnd]
-			keysSet[key] = struct{}{}
-		}
+		builder.ParseKey(k)
 	}
-	keys := make([]string, len(keysSet))
-	var i int
-	for k, _ := range keysSet {
-		keys[i] = k
-		i++
-	}
-	return keys, nil
+	return builder.List(), nil
 }
 
-func (s *Store) Value(key string, dataType *schema.DataType) *browse.Value {
+func (s *Store) Value(key string, dataType *schema.DataType) (*browse.Value, error) {
 	v, found := s.values[key]
 	if found {
-		return browse.SetValue(dataType, v), nil
+		return browse.SetValue(dataType, v)
 	}
 	return nil, nil
 }
@@ -83,6 +59,6 @@ func (s *Store) Load() (err error) {
 }
 
 func (s *Store) Save() (err error) {
-	err = s.c.UpsertId(s.oid, s.values)
+	_, err = s.c.UpsertId(s.oid, s.values)
 	return err
 }

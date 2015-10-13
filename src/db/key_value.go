@@ -37,16 +37,14 @@ func (kvs KeyValueStore) Save() error {
 	return nil
 }
 
-func (kvs KeyValueStore) KeyList(key string) ([]string, error) {
-	// same as mongo store...
+func (kvs KeyValueStore) KeyList(key string, meta *schema.List) ([]string, error) {
+	builder := NewKeyListBuilder(key)
+	for k, _ := range kvs {
+		builder.ParseKey(k)
+	}
+	return builder.List(), nil
 }
 
-type KeyList struct {
-	set map[string]struct{}
-
-}
-
-func (kl *KeyList)
 
 func (kvs KeyValueStore) Value(key string, dataType *schema.DataType) (*browse.Value, error) {
 	if v, found := kvs[key]; found {
@@ -107,7 +105,7 @@ func (kvs *KeyValuesSelector) browse(parentPath string) (browse.Selection, error
 			}
 		} else {
 			if first {
-				keyList, err = kvs.store.KeyList(parentPath)
+				keyList, err = kvs.store.KeyList(parentPath, meta)
 				i = 0
 			} else {
 				i++

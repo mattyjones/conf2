@@ -10,5 +10,5 @@ type Store interface {
 	HasValues(path string) bool
 	Value(path string, typ *schema.DataType) (*browse.Value, error)
 	SetValue(path string, v *browse.Value) error
-	KeyList(path string) ([]string, error)
+	KeyList(path string, meta *schema.List) ([]string, error)
 }

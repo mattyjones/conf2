@@ -18,20 +18,19 @@ import (
 //   If a node has "config" set to "false", no node underneath it can have
 //   "config" set to "true".
 
-
-type ComboBrowser struct {
+type BrowserPair struct {
 	oper browse.Browser
 	config browse.Browser
 }
 
-func NewComboBrowser(operational browse.Browser, config browse.Browser) *ComboBrowser {
-	return &ComboBrowser{
+func NewBrowserPair(operational browse.Browser, config browse.Browser) *BrowserPair {
+	return &BrowserPair{
 		oper:operational,
 		config:config,
 	}
 }
 
-func (self *ComboBrowser) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
+func (self *BrowserPair) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
 	var err error
 	var oper, config, combo browse.Selection
 	var operState, configState *browse.WalkState
@@ -56,7 +55,7 @@ func (self *ComboBrowser) Selector(path *browse.Path, strategy browse.Strategy) 
 	return combo, state, nil
 }
 
-func (self *ComboBrowser) Module() *schema.Module {
+func (self *BrowserPair) Module() *schema.Module {
 	m := self.oper.Module()
 	if m == nil {
 		m = self.config.Module()
@@ -64,7 +63,7 @@ func (self *ComboBrowser) Module() *schema.Module {
 	return m
 }
 
-func (self *ComboBrowser) readMulticast(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
+func (self *BrowserPair) readMulticast(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
 	s := &browse.MySelection{}
 
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {

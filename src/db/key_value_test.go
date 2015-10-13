@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"schema"
 	"strings"
-	"sort"
 )
 
 func TestKeyValueBuildList(t *testing.T) {
@@ -35,22 +34,11 @@ func TestKeyValueBuildList(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		actual := joinTestValues(keys)
+		actual := strings.Join(keys, "|")
 		if actual != test.expected {
 			t.Errorf("Test failed for path %s\nExpected:%s\n  Actual:%s", test.path, test.expected, actual)
 		}
 	}
-}
-
-func joinTestValues(keys [][]*browse.Value) string {
-	strs := make([]string, 0, len(keys))
-	for _, key := range keys {
-		for _, v := range key {
-			strs = append(strs, v.String())
-		}
-	}
-	sort.Strings(strs)
-	return strings.Join(strs, "|")
 }
 
 func keyValuesTestModule() *schema.Module {
