@@ -3,8 +3,6 @@ import (
 	"testing"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"schema/browse"
-	"schema"
 )
 
 func TestMongoStore(t *testing.T) {
@@ -12,17 +10,25 @@ func TestMongoStore(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
 	col := session.DB("test").C("TestMongoStore")
-	oid := bson.ObjectIdHex("5618045b36846627ce000001")
-	store := NewStore(col, oid)
-	strType := &schema.DataType{Format:schema.FMT_STRING}
-	vals := map[string]*browse.Value {
-		"a/b/f" : &browse.Value{Type:strType, Str:"hi"},
-		"a/b/d" : &browse.Value{Type:strType, Str:"xxx"},
+	store := NewStore(col, "abc")
+	store.entry.Values = bson.M {
+		"a/b/f" : "hi",
+		"a/b/d" : "xxx",
 	}
-	err = store.Upsert(vals)
+	err = store.Save()
 	if err != nil {
 		t.Error(err)
+	}
+	store.entry.Values["a/b/e"] = "zzz"
+	err = store.Save()
+	if err != nil {
+		t.Error(err)
+	}
+
+	dup := NewStore(col, "abc")
+	dup.Load()
+	if len(dup.entry.Values) != 3 {
+		t.Error("Expected 3 values got ", len(dup.entry.Values))
 	}
 }

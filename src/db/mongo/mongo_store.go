@@ -8,23 +8,29 @@ import (
 	"db"
 )
 
+type StoreEntry struct {
+	Path string
+	Values bson.M
+}
 
 type Store struct {
 	c *mgo.Collection
-	oid bson.ObjectId
-	values bson.M
+	entry StoreEntry
+	selector interface{}
 }
 
-func NewStore(collection *mgo.Collection, oid bson.ObjectId) *Store {
-	return &Store{
+func NewStore(collection *mgo.Collection, rootPath string) *Store {
+	store := &Store{
 		c : collection,
-		oid : oid,
+		selector : bson.M{ "path" : rootPath},
 	}
+	store.entry.Path = rootPath
+	return store
 }
 
 func (s *Store) HasValues(path string) bool {
 	// TODO: performance - most efficient way? sort first?
-	for k, _ := range s.values {
+	for k, _ := range s.entry.Values {
 		if strings.HasPrefix(k, path) {
 			return true
 		}
@@ -34,14 +40,14 @@ func (s *Store) HasValues(path string) bool {
 
 func (s *Store) KeyList(path string, meta *schema.List) ([]string, error) {
 	builder := db.NewKeyListBuilder(path)
-	for k, _ := range s.values {
+	for k, _ := range s.entry.Values {
 		builder.ParseKey(k)
 	}
 	return builder.List(), nil
 }
 
 func (s *Store) Value(key string, dataType *schema.DataType) (*browse.Value, error) {
-	v, found := s.values[key]
+	v, found := s.entry.Values[key]
 	if found {
 		return browse.SetValue(dataType, v)
 	}
@@ -49,16 +55,20 @@ func (s *Store) Value(key string, dataType *schema.DataType) (*browse.Value, err
 }
 
 func (s *Store) SetValue(key string, v *browse.Value) error {
-	s.values[key] = v.Value()
+	s.entry.Values[key] = v.Value()
 	return nil
 }
 
 func (s *Store) Load() (err error) {
-	err = s.c.FindId(s.oid).One(&s.values)
-	return err
+	err = s.c.Find(s.selector).One(&s.entry)
+	if err == mgo.ErrNotFound {
+		s.entry.Values = make(bson.M, 10)
+		return nil
+	}
+	return nil
 }
 
 func (s *Store) Save() (err error) {
-	_, err = s.c.UpsertId(s.oid, s.values)
+	_, err = s.c.Upsert(s.selector, &s.entry)
 	return err
 }

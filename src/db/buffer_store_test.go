@@ -8,8 +8,7 @@ import (
 	"schema"
 	"strings"
 )
-
-func TestKeyValueBuildList(t *testing.T) {
+func TestKeyListBuilderInBufferStore(t *testing.T) {
 	tests := []struct {
 		path string
 		expected string
@@ -18,8 +17,8 @@ func TestKeyValueBuildList(t *testing.T) {
 		{ "/a/b", "x" },
 		{ "/a/c", "y|z" },
 	}
-	s := &KeyValuesSelector{}
-	store := make(KeyValueStore, 10)
+	s := &configSelector{}
+	store := make(BufferStore, 10)
 	s.store = store
 	v := &browse.Value{}
 	store["/a/a/c"] = v
@@ -84,9 +83,9 @@ module m {
 }
 
 func TestKeyValueRead(t *testing.T) {
-	store := make(KeyValueStore, 100)
+	store := make(BufferStore, 100)
 	m := keyValuesTestModule()
-	kv := NewKeyValues(m, store)
+	kv := NewConfig(m, store)
 	store["/a/aa/aaa"] = &browse.Value{Str:"hi"}
 	store["/b=x/ba"] = &browse.Value{Str:"x"}
 	var actualBytes bytes.Buffer
@@ -100,9 +99,9 @@ func TestKeyValueRead(t *testing.T) {
 }
 
 func TestKeyValueEdit(t *testing.T) {
-	store := make(KeyValueStore, 100)
+	store := make(BufferStore, 100)
 	m := keyValuesTestModule()
-	kv := NewKeyValues(m, store)
+	kv := NewConfig(m, store)
 	inputJson := `{"a":{"aa":{"aaa":"hi"}},"b":[{"ba":"x"}]}`
 	json := browse.NewJsonReader(strings.NewReader(inputJson), m)
 	err := browse.Insert(browse.NewPath(""), json, kv)

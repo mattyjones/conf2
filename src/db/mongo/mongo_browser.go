@@ -95,7 +95,6 @@ func (self *MongoBrowser) ReadSelector(p *browse.Path) (s browse.Selection, stat
 
 	var results bson.M
 
-fmt.Printf("mongo-browser - path=%s\n", p.URL)
 	if len(p.Segments) == 1 && len(p.Segments[0].Keys) == 1 {
 		// TODO: Hack, specialized query for demo
 

@@ -30,6 +30,11 @@ func NewBrowserPair(operational browse.Browser, config browse.Browser) *BrowserP
 	}
 }
 
+func (self *BrowserPair) Init() error {
+	// Here we initialize the operational browser with the current configuration
+	return browse.Update(browse.NewPath(""), self.config, self.oper)
+}
+
 func (self *BrowserPair) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
 	var err error
 	var oper, config, combo browse.Selection
@@ -45,13 +50,14 @@ func (self *BrowserPair) Selector(path *browse.Path, strategy browse.Strategy) (
 	if config == nil && oper == nil {
 		return nil, nil, browse.NotFound(path.URL)
 	}
-	if combo, err = self.readMulticast(oper, config); err != nil {
+	if combo, err = self.selectPair(oper, config); err != nil {
 		return nil, nil, err
 	}
 	state := operState
 	if state == nil {
 		state = configState
 	}
+fmt.Printf("browser_pair - path %s, config nil %v, oper nil %v\n", path.URL, config == nil, oper == nil)
 	return combo, state, nil
 }
 
@@ -63,7 +69,7 @@ func (self *BrowserPair) Module() *schema.Module {
 	return m
 }
 
-func (self *BrowserPair) readMulticast(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
+func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
 	s := &browse.MySelection{}
 
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {
@@ -78,7 +84,7 @@ func (self *BrowserPair) readMulticast(oper browse.Selection, config browse.Sele
 		return
 	}
 	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
-fmt.Printf("db OnWrite config %v, isconfig %v %s, %s\n", config, state.IsConfig(), op.String(), state.String())
+fmt.Printf("browser_pair - OnWrite\n")
 		if oper != nil {
 			err = oper.Write(state, meta, op, val)
 		}
@@ -111,7 +117,7 @@ fmt.Printf("db OnWrite config %v, isconfig %v %s, %s\n", config, state.IsConfig(
 			operChild, err = oper.Select(state, meta)
 		}
 		if operChild != nil || configChild != nil {
-			return self.readMulticast(operChild, configChild)
+			return self.selectPair(operChild, configChild)
 		}
 		return nil, nil
 	}
