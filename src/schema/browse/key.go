@@ -32,6 +32,9 @@ func CoerseKeys(list *schema.List, keyStrs []string) ([]*Value, error) {
 }
 
 func ReadKeys(state *WalkState, s Selection) (values []*Value, err error) {
+	if len(state.Key()) > 0 {
+		return state.Key(), nil
+	}
 	list := state.SelectedMeta().(*schema.List)
 	values = make([]*Value, len(list.Keys))
 	var key *Value

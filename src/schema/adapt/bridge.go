@@ -81,11 +81,9 @@ func (b *Bridge) internalPath(p *browse.Path) (*browse.Path, *browse.WalkState) 
 			internalPath[i] = fmt.Sprint(internalPath[i], "=", seg.Keys[0])
 		}
 		position := schema.FindByIdent2(state.SelectedMeta(), seg.Ident)
-fmt.Printf("bridge - position, seg=%v\n", position, seg.Ident)
 		state.SetPosition(position)
 		state = state.Select()
 	}
-fmt.Printf("bridge - internal path %v\n", internalPath)
 	return browse.NewPath(strings.Join(internalPath, "/")), state
 }
 
@@ -134,7 +132,6 @@ func (b *Bridge) selectBridge(internalSelection browse.Selection, internalState 
 	}
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (bool, error) {
 		// TODO: translate keys?
-fmt.Println("bridge - OnNext\n")
 		return internalSelection.Next(internalState, meta, key, first)
 	}
 	return s, nil

@@ -517,7 +517,12 @@ func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Valu
 		}
 		if i.iterator.HasNextMeta() {
 			i.data = i.iterator.NextMeta()
-			state.SetKey([]*Value{&Value{Str:i.data.GetIdent()}})
+			state.SetKey([]*Value{
+				&Value{
+					Str:i.data.GetIdent(),
+					Type:&schema.DataType{Format:schema.FMT_STRING},
+				},
+			})
 		}
 	}
 	return i.data != nil, nil

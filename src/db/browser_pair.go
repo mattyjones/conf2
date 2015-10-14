@@ -69,63 +69,47 @@ func (self *BrowserPair) Module() *schema.Module {
 
 func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
 	s := &browse.MySelection{}
-
+	IsContainerConfig := config != nil
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {
-		// TODO: Figure out how to keep operational and config lists in sync when iterating
-		// without keys.
-		if config != nil {
-			hasMore, err = config.Next(state, meta, key, first)
+		hasMore, err = oper.Next(state, meta, key, first)
+		if err == nil && hasMore && IsContainerConfig {
+			_, err = config.Next(state, meta, state.Key(), true)
 		}
-		if oper != nil && !hasMore {
-			hasMore, err = oper.Next(state, meta, key, first)
-		}
+
 		return
 	}
 	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
-		if oper != nil {
-			err = oper.Write(state, meta, op, val)
-		}
-		if err == nil && config != nil && state.IsConfig() {
+		err = oper.Write(state, meta, op, val)
+		if err == nil && state.IsConfig() {
 			err = config.Write(state, meta, op, val)
+			// TODO: if there's now an error, config and operation are out of sync. To fix
+			// this we must "rollback the Write
 		}
 
 		return err
 	}
-	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
-		if config != nil {
-			if state.IsConfig() {
-				return config.Read(state, meta)
-			}
+	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (v *browse.Value, err error) {
+		if IsContainerConfig && state.IsConfig() {
+			v, err = config.Read(state, meta)
 		}
-		if oper != nil {
-			return oper.Read(state, meta)
+		if v == nil && err == nil {
+			v, err = oper.Read(state, meta)
 		}
-		return nil, nil
+		return
 	}
 	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (child browse.Selection, err error) {
 		var configChild, operChild browse.Selection
-		if config != nil {
-			if state.IsConfig() {
+		operChild, err = oper.Select(state, meta)
+		if operChild != nil {
+			if IsContainerConfig && state.IsConfig() {
 				configChild, err = config.Select(state, meta)
 			}
-		}
-
-		if oper != nil {
-			operChild, err = oper.Select(state, meta)
-		}
-		if operChild != nil || configChild != nil {
 			return self.selectPair(operChild, configChild)
 		}
 		return nil, nil
 	}
 	s.OnChoose = func(state *browse.WalkState, choice *schema.Choice) (choosen schema.Meta, err error) {
-		if oper != nil {
-			choosen, err = oper.Choose(state, choice)
-		}
-		// assume that the error is because it's not implemented
-		if err != nil && config != nil {
-			choosen, err = config.Choose(state, choice)
-		}
+		choosen, err = oper.Choose(state, choice)
 		return
 	}
 	return s, nil

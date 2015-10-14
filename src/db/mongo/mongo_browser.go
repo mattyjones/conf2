@@ -4,7 +4,6 @@ import (
 	"schema/browse"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"fmt"
 )
 
 type MongoBrowser struct {
@@ -119,9 +118,6 @@ func (self *MongoBrowser) ReadSelector(p *browse.Path) (s browse.Selection, stat
 	// the result tree goes all the way back to the document root.  we need to navigate to
 	// the point of the path and throw away results.
 	s, state, err = browse.WalkPath(browse.NewWalkState(self.schema), root, p)
-
-fmt.Printf("mongo-browser - state %s, s != nil ? %v\n", state.String(), s != nil)
-
 	return
 }
 

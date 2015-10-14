@@ -38,12 +38,12 @@ func (kv *Config) Selector(path *browse.Path, strategy browse.Strategy) (s brows
 	}
 
 	// here we fast-forward to the destination prepared to insert into the parse hierarchy
-	s, _ = selector.selectConfig(path.URL)
-	state, err = FastForward(browse.NewWalkState(kv.module), path)
+	s, _ = selector.selectConfig(fmt.Sprint("/", path.URL))
+	state, err = fastForwardState(browse.NewWalkState(kv.module), path)
 	return
 }
 
-func FastForward(initialState *browse.WalkState, path *browse.Path) (state *browse.WalkState, err error) {
+func fastForwardState(initialState *browse.WalkState, path *browse.Path) (state *browse.WalkState, err error) {
 	state = initialState
 	for _, seg := range path.Segments {
 		position := schema.FindByIdentExpandChoices(state.SelectedMeta(), seg.Ident)
@@ -86,9 +86,37 @@ func (kvs *configSelector) selectConfig(parentPath string) (browse.Selection, er
 	var keyList []string
 	var i int
 	var created browse.Selection
+	s.OnChoose = func(state *browse.WalkState, choice *schema.Choice) (m schema.Meta, err error) {
+		// go thru each case and if there are any properties in the data that are not
+		// part of the schema, that disqualifies that case and we move onto next case
+		// until one case aligns with data.  If no cases align then input in inconclusive
+		// i.e. non-discriminating and we should error out.
+		cases := schema.NewMetaListIterator(choice, false)
+		for cases.HasNextMeta() {
+			kase := cases.NextMeta().(*schema.ChoiceCase)
+			aligned := true
+			props := schema.NewMetaListIterator(kase, true)
+			for props.HasNextMeta() {
+				prop := props.NextMeta()
+				candidatePath := path.metaPath(prop.GetIdent())
+				found := kvs.store.HasValues(candidatePath)
+				if !found {
+					aligned = false
+					break;
+				} else {
+					m = prop
+				}
+			}
+			if aligned {
+				return m, nil
+			}
+		}
+		msg := fmt.Sprintf("No discriminating data for choice schema %s ", state.String())
+		return nil, errors.New(msg)
+	}
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {
 		path.listKey = ""
-		if len(key) != 0 {
+		if len(key) > 0 {
 			if first {
 				path.listKey = key[0].String()
 				hasMore = kvs.store.HasValues(path.String())
