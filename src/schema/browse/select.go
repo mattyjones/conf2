@@ -80,6 +80,7 @@ func (s *MySelection) Write(state *WalkState, meta schema.Meta, op Operation, va
 			Msg: fmt.Sprint("Write not implemented on node ", state.String()),
 		}
 	}
+	//fmt.Printf("select OnWrite - %s %s\n", op.String(), state.String())
 	return s.OnWrite(state, meta, op, val)
 }
 
@@ -102,7 +103,6 @@ func (s *MySelection) Action(state *WalkState, rpc *schema.Rpc) (input Selection
 	}
 	return s.OnAction(state, rpc)
 }
-
 
 func (my *MySelection) Mixin(delegate Selection) {
 	my.OnAction = delegate.Action

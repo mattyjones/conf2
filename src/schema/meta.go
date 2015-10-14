@@ -112,6 +112,10 @@ type ListBase struct {
 	FirstMeta Meta
 	LastMeta Meta
 }
+func (y *ListBase) Clear() {
+	y.FirstMeta = nil
+	y.LastMeta = nil
+}
 func (y *ListBase) linkMeta(impl MetaList, meta Meta) error {
 	meta.SetParent(impl)
 	if y.LastMeta != nil {
