@@ -23,7 +23,7 @@ func (kv *Config) Module() *schema.Module {
 }
 
 func (kv *Config) Selector(path *browse.Path, strategy browse.Strategy) (s browse.Selection, state *browse.WalkState, err error) {
-	selector := &configSelector{path: path, store:kv.store, strategy : strategy}
+	selector := &configSelector{store:kv.store, strategy : strategy}
 	switch strategy {
 	case browse.READ, browse.UPDATE, browse.UPSERT:
 		err = kv.store.Load()
@@ -37,7 +37,7 @@ func (kv *Config) Selector(path *browse.Path, strategy browse.Strategy) (s brows
 		return browse.WalkPath(browse.NewWalkState(kv.module), s, path)
 	}
 
-	// here we fast-forward to the destination prepared to insert into the parse matrix
+	// here we fast-forward to the destination prepared to insert into the parse hierarchy
 	s, _ = selector.selectConfig(path.URL)
 	state, err = FastForward(browse.NewWalkState(kv.module), path)
 	return
@@ -58,7 +58,6 @@ func FastForward(initialState *browse.WalkState, path *browse.Path) (state *brow
 
 type configSelector struct {
 	store Store
-	path *browse.Path
 	strategy browse.Strategy
 }
 
@@ -128,7 +127,6 @@ func (kvs *configSelector) selectConfig(parentPath string) (browse.Selection, er
 		return
 	}
 	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, v *browse.Value) (err error) {
-fmt.Printf("config - OnWrite %s path=%s state=%s\n", op.String(), path.String(), state.String())
 		switch op {
 		case browse.END_EDIT:
 			kvs.store.Save()

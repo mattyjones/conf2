@@ -9,6 +9,20 @@ func TestLeafListFormatSetting(t *testing.T) {
 	}
 }
 
+func TestMetaIsConfig(t *testing.T) {
+	l := &List{Ident:"l"}
+	m := &Leaf{Ident:"leaf"}
+	path := &MetaPath{Meta:m}
+	path.ParentPath = &MetaPath{Meta:l}
+	if ! m.Details().Config(path) {
+		t.Error("Should be config")
+	}
+	l.details.ConfigFlag = SET_FALSE
+	if m.Details().Config(path) {
+		t.Error("Should not be config")
+	}
+}
+
 func TestMetaList(t *testing.T) {
 	g1 := &Grouping{Ident:"G1"}
 	g2 := &Grouping{Ident:"G2"}

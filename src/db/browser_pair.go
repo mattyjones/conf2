@@ -2,7 +2,6 @@ package db
 import (
 	"schema/browse"
 	"schema"
-	"fmt"
 )
 
 // Details on config nodes v.s. state data
@@ -57,7 +56,6 @@ func (self *BrowserPair) Selector(path *browse.Path, strategy browse.Strategy) (
 	if state == nil {
 		state = configState
 	}
-fmt.Printf("browser_pair - path %s, config nil %v, oper nil %v\n", path.URL, config == nil, oper == nil)
 	return combo, state, nil
 }
 
@@ -84,7 +82,6 @@ func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selecti
 		return
 	}
 	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
-fmt.Printf("browser_pair - OnWrite\n")
 		if oper != nil {
 			err = oper.Write(state, meta, op, val)
 		}

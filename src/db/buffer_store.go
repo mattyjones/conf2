@@ -3,7 +3,6 @@ import (
 	"schema/browse"
 	"schema"
 	"strings"
-	"fmt"
 )
 
 // Store key values in memory.  Useful for testing or moving temporary data
@@ -24,11 +23,9 @@ func (kvs BufferStore) Clear() error {
 func (kvs BufferStore) HasValues(path string) bool {
 	for k, _ := range kvs {
 		if strings.HasPrefix(k, path) {
-fmt.Printf("buffer_store - TRUE hasvalues %s\n", path)
 			return true
 		}
 	}
-fmt.Printf("buffer_store - FALSE hasvalues %s\n", path)
 	return false
 }
 
