@@ -31,15 +31,17 @@ func (kv *Config) Selector(path *browse.Path, strategy browse.Strategy) (s brows
 			return nil, nil, err
 		}
 	}
+	state = browse.NewWalkState(kv.module)
 	if strategy == browse.READ {
 		// we walk to the destination and legitimately return nil if nothing is there
 		s, err = selector.selectConfig("")
-		return browse.WalkPath(browse.NewWalkState(kv.module), s, path)
+		return browse.WalkPath(state, s, path)
 	}
 
 	// here we fast-forward to the destination prepared to insert into the parse hierarchy
-	s, _ = selector.selectConfig(fmt.Sprint("/", path.URL))
-	state, err = fastForwardState(browse.NewWalkState(kv.module), path)
+	s, _ = selector.selectConfig(path.URL)
+	state, err = fastForwardState(state, path)
+fmt.Printf("config - s == nil? %v  state %s\n", s == nil, state.String())
 	return
 }
 
@@ -76,7 +78,10 @@ func (sp configPath) String() string {
 }
 
 func (sp configPath) metaPath(metaIdent string) string {
-	return fmt.Sprint(sp.String(), "/", metaIdent)
+	if len(sp.parent) > 0 {
+		return fmt.Sprint(sp.String(), "/", metaIdent)
+	}
+	return metaIdent
 }
 
 
@@ -115,6 +120,7 @@ func (kvs *configSelector) selectConfig(parentPath string) (browse.Selection, er
 		return nil, errors.New(msg)
 	}
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {
+fmt.Printf("config - OnNext %s\n", path.metaPath(meta.GetIdent()))
 		path.listKey = ""
 		if len(key) > 0 {
 			if first {
@@ -142,9 +148,11 @@ func (kvs *configSelector) selectConfig(parentPath string) (browse.Selection, er
 		return
 	}
 	s.OnRead = func (state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
+fmt.Printf("config - OnRead %s\n", path.metaPath(meta.GetIdent()))
 		return kvs.store.Value(path.metaPath(meta.GetIdent()), meta.GetDataType())
 	}
 	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (child browse.Selection, err error) {
+fmt.Printf("config - OnSelect %s\n", path.metaPath(meta.GetIdent()))
 		childPath := path.metaPath(meta.GetIdent())
 		if kvs.store.HasValues(childPath) {
 			child, err = kvs.selectConfig(childPath)
@@ -155,6 +163,7 @@ func (kvs *configSelector) selectConfig(parentPath string) (browse.Selection, er
 		return
 	}
 	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, v *browse.Value) (err error) {
+fmt.Printf("config - OnWrite %s\n", path.metaPath(meta.GetIdent()))
 		switch op {
 		case browse.END_EDIT:
 			kvs.store.Save()
@@ -164,7 +173,15 @@ func (kvs *configSelector) selectConfig(parentPath string) (browse.Selection, er
 		case browse.CREATE_LIST_ITEM:
 			path.listKey = state.Key()[0].String()
 		case browse.UPDATE_VALUE:
-			kvs.store.SetValue(path.metaPath(meta.GetIdent()), v)
+			if err = kvs.store.SetValue(path.metaPath(meta.GetIdent()), v); err == nil {
+				if schema.IsKeyLeaf(state.SelectedMeta(), meta) {
+					oldPath := path.String()
+					pathCopy := path
+					pathCopy.listKey = v.String()
+					newPath := pathCopy.String()
+					kvs.store.RenameKey(oldPath, newPath)
+				}
+			}
 		}
 		return
 	}

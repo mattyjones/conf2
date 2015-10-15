@@ -3,6 +3,7 @@ import (
 	"schema/browse"
 	"schema"
 	"strings"
+	"fmt"
 )
 
 // Store key values in memory.  Useful for testing or moving temporary data
@@ -51,7 +52,18 @@ func (kvs BufferStore) Value(key string, dataType *schema.DataType) (*browse.Val
 }
 
 func (kvs BufferStore) SetValue(key string, v *browse.Value) error {
+fmt.Printf("buffer_store SetValue %s\n", key)
 	kvs[key] = v
 	return nil
+}
+
+func (kvs BufferStore) RenameKey(oldPath string, newPath string) {
+	for k, v := range kvs {
+		if strings.HasPrefix(k, oldPath) {
+			newKey := fmt.Sprint(newPath, k[len(oldPath):])
+			delete(kvs, k)
+			kvs[newKey] = v
+		}
+	}
 }
 

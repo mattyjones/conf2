@@ -266,6 +266,7 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 			}
 		}
 
+fmt.Printf("edit from == nil %v?\n", from == nil)
 		hasMore, err = from.Next(state, meta, key, first)
 		if err != nil || ! hasMore {
 			return hasMore, err

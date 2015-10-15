@@ -55,6 +55,18 @@ func IsLeaf(m Meta) bool {
 	return false
 }
 
+func IsKeyLeaf(parent MetaList, leaf Meta) bool {
+	if !IsList(parent) || !IsLeaf(leaf) {
+		return false
+	}
+	for _, keyIdent := range parent.(*List).Keys {
+		if keyIdent == leaf.GetIdent() {
+			return true
+		}
+	}
+	return false
+}
+
 func ListLen(parent MetaList) (len int) {
 	i := NewMetaListIterator(parent, true)
 	for i.HasNextMeta() {

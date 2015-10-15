@@ -11,4 +11,5 @@ type Store interface {
 	Value(path string, typ *schema.DataType) (*browse.Value, error)
 	SetValue(path string, v *browse.Value) error
 	KeyList(path string, meta *schema.List) ([]string, error)
+	RenameKey(oldPath string, newPath string)
 }

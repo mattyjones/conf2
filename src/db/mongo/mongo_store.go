@@ -6,6 +6,7 @@ import (
 	"schema"
 	"strings"
 	"db"
+	"fmt"
 )
 
 type StoreEntry struct {
@@ -71,4 +72,14 @@ func (s *Store) Load() (err error) {
 func (s *Store) Save() (err error) {
 	_, err = s.c.Upsert(s.selector, &s.entry)
 	return err
+}
+
+func (s *Store) RenameKey(oldPath string, newPath string) {
+	for k, v := range s.entry.Values {
+		if strings.HasPrefix(k, oldPath) {
+			newKey := fmt.Sprint(newPath, k[len(oldPath):])
+			delete(s.entry.Values, k)
+			s.entry.Values[newKey] = v
+		}
+	}
 }

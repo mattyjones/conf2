@@ -13,19 +13,19 @@ func TestKeyListBuilderInBufferStore(t *testing.T) {
 		path string
 		expected string
 	} {
-		{ "/a/a", "" },
-		{ "/a/b", "x" },
-		{ "/a/c", "y|z" },
+		{ "a/a", "" },
+		{ "a/b", "x" },
+		{ "a/c", "y|z" },
 	}
 	s := &configSelector{}
 	store := make(BufferStore, 10)
 	s.store = store
 	v := &browse.Value{}
-	store["/a/a/c"] = v
-	store["/a/b=x/c"] = v
-	store["/a/c=y/c"] = v
-	store["/a/c=y/c"] = v
-	store["/a/c=z/q/f=yy/fg=gf/gf"] = v
+	store["a/a/c"] = v
+	store["a/b=x/c"] = v
+	store["a/c=y/c"] = v
+	store["a/c=y/c"] = v
+	store["a/c=z/q/f=yy/fg=gf/gf"] = v
 	meta := &schema.List{Ident:"c", Keys:[]string{"k"}}
 	meta.AddMeta(&schema.Leaf{Ident:"k", DataType:&schema.DataType{Format:schema.FMT_STRING}})
 	for _, test := range tests {
@@ -86,8 +86,8 @@ func TestKeyValueRead(t *testing.T) {
 	store := make(BufferStore, 100)
 	m := keyValuesTestModule()
 	kv := NewConfig(m, store)
-	store["/a/aa/aaa"] = &browse.Value{Str:"hi"}
-	store["/b=x/ba"] = &browse.Value{Str:"x"}
+	store["a/aa/aaa"] = &browse.Value{Str:"hi"}
+	store["b=x/ba"] = &browse.Value{Str:"x"}
 	var actualBytes bytes.Buffer
 	json := browse.NewJsonWriter(&actualBytes, m)
 	browse.Insert(browse.NewPath(""), kv, json)
@@ -115,8 +115,8 @@ func TestKeyValueEdit(t *testing.T) {
 		path string
 		value string
 	} {
-		{"/a/aa/aaa", "hi"},
-		{"/b=x/ba", "x"},
+		{"a/aa/aaa", "hi"},
+		{"b=x/ba", "x"},
 	}
 	if len(expectations) != len(store) {
 		t.Errorf("Expected %d items but got", len(expectations), len(store))
@@ -124,9 +124,25 @@ func TestKeyValueEdit(t *testing.T) {
 	for _, expected := range expectations {
 		v, found := store[expected.path]
 		if !found {
-			t.Error("Could not find item", expected.path)
+			t.Error("Could not find item", expected.path, "\nItems: ", store)
 		} else if v.Str != expected.value {
 			t.Error("Expected value to be %s but was %s", expected.value, v.Str)
 		}
+	}
+
+	// change key
+	inputJson = `{"ba":"y"}`
+	json = browse.NewJsonReader(strings.NewReader(inputJson), m)
+	err = browse.Update(browse.NewPath("b=x"), json, kv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, newKeyExists := store["b=y/ba"]; !newKeyExists {
+		t.Error("Edit key value not made")
+	} else if v.Str != "y" {
+		t.Error("Wrong key value")
+	}
+	if _, oldKeyExists := store["/b=x/ba"]; oldKeyExists {
+		t.Error("Old key was not removed")
 	}
 }
