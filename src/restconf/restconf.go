@@ -92,6 +92,42 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (reg *registration) operation(path *browse.Path, src browse.Browser, dest browse.Browser, output browse.Browser) (err error) {
+	var destSel, srcSel browse.Selection
+	var destState, srcState *browse.WalkState
+	if destSel, destState, err = dest.Selector(path, browse.INSERT); err != nil {
+		return err
+	}
+	if destSel == nil {
+		return browse.NotFound(path.URL)
+	}
+	state := destState
+	if state == nil {
+		state = srcState
+		if state == nil {
+			return browse.NotFound(path.URL)
+		}
+	}
+	if srcSel, srcState, err = src.Selector(path, browse.READ); err != nil {
+		return nil, err
+	}
+	if schema.IsAction(srcState.SelectedMeta()) {
+		var outputDestSel, outputSel browse.Selection
+		actionMeta := state.SelectedMeta().(*schema.Rpc)
+		if outputSel, err = srcSel.Action(state, actionMeta); err != nil {
+			return err
+		}
+
+		if outputDestSel, err = output.Selector(browse.NewPath(""), browse.INSERT); err != nil {
+			return err
+		}
+		browse.Edit(state, outputSel, outputDestSel, browse.INSERT, browse.NewFullWalk(path.Query))
+	} else {
+		err = browse.Edit(state, srcSel, destSel, browse.INSERT, browse.NewFullWalk(path.Query))
+	}
+	return
+}
+
 type docRootImpl struct {
 	docroot schema.StreamSource
 }

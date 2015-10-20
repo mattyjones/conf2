@@ -24,7 +24,7 @@ func TestSimpleLexExample(t *testing.T) {
 		}
 		tokens.PushBack(token)
 	}
-	if tokens.Len() != 281 {
+	if tokens.Len() != 308 {
 		for e := tokens.Front() ; e != nil; e  = e.Next() {
 			fmt.Println(e.Value)
 		}

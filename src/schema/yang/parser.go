@@ -159,7 +159,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line parser.y:562
+//line parser.y:560
 
 //line yacctab:1
 var yyExca = [...]int{
@@ -866,7 +866,7 @@ yydefault:
 		}
 	case 68:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:346
+		//line parser.y:345
 		{
 			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
@@ -874,7 +874,7 @@ yydefault:
 		}
 	case 69:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:351
+		//line parser.y:350
 		{
 			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
@@ -882,19 +882,19 @@ yydefault:
 		}
 	case 70:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:358
+		//line parser.y:357
 		{
 			yylval.stack.Push(&schema.RpcInput{})
 		}
 	case 71:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:363
+		//line parser.y:362
 		{
 			yylval.stack.Push(&schema.RpcOutput{})
 		}
 	case 72:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:371
+		//line parser.y:370
 		{
 			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
@@ -902,13 +902,13 @@ yydefault:
 		}
 	case 73:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:378
+		//line parser.y:377
 		{
 			yylval.stack.Push(&schema.Rpc{Ident: yyDollar[2].token})
 		}
 	case 78:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:389
+		//line parser.y:387
 		{
 			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
@@ -916,7 +916,7 @@ yydefault:
 		}
 	case 79:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:394
+		//line parser.y:392
 		{
 			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
@@ -924,19 +924,19 @@ yydefault:
 		}
 	case 80:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:401
+		//line parser.y:399
 		{
 			yylval.stack.Push(&schema.RpcInput{})
 		}
 	case 81:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:406
+		//line parser.y:404
 		{
 			yylval.stack.Push(&schema.RpcOutput{})
 		}
 	case 82:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:414
+		//line parser.y:412
 		{
 			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
@@ -944,13 +944,13 @@ yydefault:
 		}
 	case 83:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:421
+		//line parser.y:419
 		{
 			yylval.stack.Push(&schema.Notification{Ident: yyDollar[2].token})
 		}
 	case 89:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:437
+		//line parser.y:435
 		{
 			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
@@ -958,13 +958,13 @@ yydefault:
 		}
 	case 91:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:449
+		//line parser.y:447
 		{
 			yylval.stack.Push(&schema.Grouping{Ident: yyDollar[2].token})
 		}
 	case 97:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:465
+		//line parser.y:463
 		{
 			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
@@ -972,13 +972,13 @@ yydefault:
 		}
 	case 98:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:472
+		//line parser.y:470
 		{
 			yylval.stack.Push(&schema.List{Ident: yyDollar[2].token})
 		}
 	case 107:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:488
+		//line parser.y:486
 		{
 			if list, valid := yylval.stack.Peek().(*schema.List); valid {
 				list.Keys = strings.Split(tokenString(yyDollar[2].token), " ")
@@ -989,7 +989,7 @@ yydefault:
 		}
 	case 108:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:502
+		//line parser.y:500
 		{
 			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
@@ -997,13 +997,13 @@ yydefault:
 		}
 	case 109:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:509
+		//line parser.y:507
 		{
 			yylval.stack.Push(&schema.Leaf{Ident: yyDollar[2].token})
 		}
 	case 117:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:525
+		//line parser.y:523
 		{
 			if hasDetails, valid := yylval.stack.Peek().(schema.HasDetails); valid {
 				hasDetails.Details().SetConfig("true" == yyDollar[2].token)
@@ -1014,7 +1014,7 @@ yydefault:
 		}
 	case 118:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:539
+		//line parser.y:537
 		{
 			if HasError(yylex, popAndAddMeta(&yylval)) {
 				goto ret1
@@ -1022,13 +1022,13 @@ yydefault:
 		}
 	case 119:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:546
+		//line parser.y:544
 		{
 			yylval.stack.Push(&schema.LeafList{Ident: yyDollar[2].token})
 		}
 	case 122:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:555
+		//line parser.y:553
 		{
 			yylval.dataType.Enumeration = append(yylval.dataType.Enumeration, yyDollar[2].token)
 		}

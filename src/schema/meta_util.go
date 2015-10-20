@@ -47,6 +47,11 @@ func FindByIdentExpandChoices(parent MetaList, ident string) Meta {
 	return nil
 }
 
+func IsAction(m Meta) bool {
+	_, isAction := m.(*Rpc)
+	return isAction
+}
+
 func IsLeaf(m Meta) bool {
 	switch m.(type) {
 	case *Leaf, *LeafList:

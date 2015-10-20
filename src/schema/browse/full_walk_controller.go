@@ -12,7 +12,7 @@ type FullWalk struct {
 }
 
 func NewFullWalkFromPath(p *Path) *FullWalk {
-	return NewFullWalk(p.query)
+	return NewFullWalk(p.Query)
 }
 
 func NewFullWalk(query string) *FullWalk {

@@ -6,7 +6,7 @@ import (
 type Path struct {
 	Segments []*PathSegment
 	URL string
-	query string
+	Query string
 }
 
 type PathSegment struct {
@@ -68,6 +68,6 @@ func (p *Path) LastSegment() *PathSegment {
 }
 
 func (p *Path) SetQuery(query string) {
-	p.query = query
+	p.Query = query
 }
 

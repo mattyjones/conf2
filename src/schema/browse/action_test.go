@@ -5,7 +5,6 @@ import (
 	"strings"
 	"bytes"
 	"schema"
-	"errors"
 )
 
 func TestAction(t *testing.T) {
@@ -34,22 +33,22 @@ module m {
 		t.Fatal(err)
 	}
 	store := NewBufferStore()
+	var saidHello bool
 	store.Actions["sayHello"] = func(state *WalkState, meta *schema.Rpc) (input Selection, output Selection, err error) {
-		panic("YEAH")
-		return nil, nil, errors.New("Got here!")
+		
+		saidHello = true
+		return nil, nil, nil
 
 	}
 	in := NewJsonFragmentReader(strings.NewReader(`{"name":"joe"}`))
 	var actual bytes.Buffer
 	out := NewJsonFragmentWriter(&actual)
-	rpc := schema.FindByIdent2(m.DataDefs(), "sayHello")
-	if rpc == nil {
-		t.Error("No rpc")
-	}
 	b := NewStoreBrowser(m, store)
 	err = Action(NewPath("sayHello"), b, in, out)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(string(actual.Bytes()))
+	if ! saidHello {
+		t.Error("Never said hello")
+	}
 }
