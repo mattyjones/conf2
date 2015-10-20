@@ -49,9 +49,9 @@ func (e *FullWalk) maxedLevel(state *WalkState) bool {
 	return state.Level() >= e.finalDepth
 }
 
-func (e *FullWalk) ListIterator(state *WalkState, s Selection, first bool) (hasMore bool, err error) {
+func (e *FullWalk) ListIterator(state *WalkState, s Selection, first bool) (next Selection, err error) {
 	if e.maxedLevel(state) {
-		return false, nil
+		return nil, nil
 	}
 	listMeta := state.SelectedMeta().(*schema.List)
 	return s.Next(state, listMeta, NO_KEYS, first)

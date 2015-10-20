@@ -40,9 +40,9 @@ module json-test {
 			path string
 			expectedMeta	string
 		} {
-			{ "hobbies", 			"json-test.hobbies.<nil>" },
-			{ "hobbies=birding", 	"json-test.hobbies.<nil>" },
-			{ "hobbies=birding/favorite", "json-test.hobbies.favorite.<nil>" },
+			{ "hobbies", 			"json-test/hobbies/<nil>" },
+			{ "hobbies=birding", 	"json-test/hobbies=birding/<nil>" },
+			{ "hobbies=birding/favorite", "json-test/hobbies=birding/favorite/<nil>" },
 		}
 		for _, test := range tests {
 			in := &JsonReader{In:strings.NewReader(json), Meta:module}

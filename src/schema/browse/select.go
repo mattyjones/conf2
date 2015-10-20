@@ -9,7 +9,7 @@ import (
 
 type Selection interface {
 	Select(state *WalkState, meta schema.MetaList) (Selection, error)
-	Next(state *WalkState, meta *schema.List, keys []*Value, isFirst bool) (hasMore bool, err error)
+	Next(state *WalkState, meta *schema.List, keys []*Value, isFirst bool) (next Selection, err error)
 	Read(state *WalkState, meta schema.HasDataType) (*Value, error)
 	Write(state *WalkState, meta schema.Meta, op Operation, val *Value) (error)
 	Choose(state *WalkState, choice *schema.Choice) (m schema.Meta, err error)
@@ -53,9 +53,9 @@ func (s *MySelection) Unselect(state *WalkState, meta schema.MetaList) error {
 	return nil
 }
 
-func (s *MySelection) Next(state *WalkState, meta *schema.List, keys []*Value, isFirst bool) (bool, error) {
+func (s *MySelection) Next(state *WalkState, meta *schema.List, keys []*Value, isFirst bool) (Selection, error) {
 	if s.OnNext == nil {
-		return false, &browseError{
+		return nil, &browseError{
 			Code: http.StatusNotImplemented,
 			Msg: fmt.Sprint("Next not implemented on node ", state.String()),
 		}
@@ -114,7 +114,7 @@ func (my *MySelection) Mixin(delegate Selection) {
 	my.OnChoose = delegate.Choose
 }
 
-type NextFunc func(state *WalkState, meta *schema.List, keys []*Value, first bool) (hasMore bool, err error)
+type NextFunc func(state *WalkState, meta *schema.List, keys []*Value, first bool) (next Selection, err error)
 type SelectFunc func(state *WalkState, meta schema.MetaList) (child Selection, err error)
 type ReadFunc func(state *WalkState, meta schema.HasDataType) (*Value, error)
 type WriteFunc func(state *WalkState, meta schema.Meta, op Operation, val *Value) (error)

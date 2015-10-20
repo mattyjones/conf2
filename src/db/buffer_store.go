@@ -52,7 +52,6 @@ func (kvs BufferStore) Value(key string, dataType *schema.DataType) (*browse.Val
 }
 
 func (kvs BufferStore) SetValue(key string, v *browse.Value) error {
-fmt.Printf("buffer_store SetValue %s\n", key)
 	kvs[key] = v
 	return nil
 }

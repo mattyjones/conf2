@@ -21,19 +21,17 @@ func Walk(state *WalkState, selection Selection, controller WalkController) (err
 
 func walk(state *WalkState, selection Selection, controller WalkController) (err error) {
 	if schema.IsList(state.SelectedMeta()) && !state.InsideList() {
-		var hasMore bool
-		if hasMore, err = controller.ListIterator(state, selection, true); err != nil {
+		var next Selection
+		if next, err = controller.ListIterator(state, selection, true); err != nil {
 			return
 		}
-		for i := 0; hasMore; i++ {
+		for next != nil {
+			listItemState := state.SelectListItem(state.Key())
 
-			// important flag, otherwise we recurse indefinitely
-			state.SetInsideList()
-
-			if err = walk(state, selection, controller); err != nil {
+			if err = walk(listItemState, next, controller); err != nil {
 				return
 			}
-			if hasMore, err = controller.ListIterator(state, selection, false); err != nil {
+			if next, err = controller.ListIterator(state, selection, false); err != nil {
 				return
 			}
 		}

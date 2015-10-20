@@ -51,12 +51,12 @@ module m {
 	{
 		t.Log("Testing Init")
 		oper := BufferStore{}
-		oper["/a/aa/aab"] = &browse.Value{Str:"b"}
-		operBrowser := NewConfig(m, oper)
+		oper["a/aa/aab"] = &browse.Value{Str:"b"}
+		operBrowser := NewStoreBrowser(m, oper)
 
 		config := BufferStore{}
-		configBrowser := NewConfig(m, config)
-		config["/a/aa/aaa"] = &browse.Value{Str:"a"}
+		configBrowser := NewStoreBrowser(m, config)
+		config["a/aa/aaa"] = &browse.Value{Str:"a"}
 		pair := NewBrowserPair(operBrowser, configBrowser)
 		pair.Init()
 		if len(oper) != 2 {
@@ -66,14 +66,14 @@ module m {
 	{
 		t.Log("Testing Edit")
 		edit := BufferStore{}
-		edit["/a/ab"] = &browse.Value{Str:"ab"}
-		edit["/a/aa/aab"] = &browse.Value{Str:"ab"}
-		editBrowser := NewConfig(m, edit)
+		edit["a/ab"] = &browse.Value{Str:"ab"}
+		edit["a/aa/aab"] = &browse.Value{Str:"ab"}
+		editBrowser := NewStoreBrowser(m, edit)
 
 		oper := BufferStore{}
-		operBrowser := NewConfig(m, oper)
+		operBrowser := NewStoreBrowser(m, oper)
 		config := BufferStore{}
-		configBrowser := NewConfig(m, config)
+		configBrowser := NewStoreBrowser(m, config)
 		pair := NewBrowserPair(operBrowser, configBrowser)
 
 		browse.Upsert(browse.NewPath("a"), editBrowser, pair)

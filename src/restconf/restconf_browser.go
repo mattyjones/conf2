@@ -50,7 +50,12 @@ func (rcb *RestconfBrowser) Selector(path *browse.Path, stategy browse.Strategy)
 func enterRegistrations(registrations map[string]*registration) (browse.Selection, error) {
 	s := &browse.MySelection{}
 	index := newRegIndex(registrations)
-	s.OnNext = index.Index.OnNext
+	s.OnNext = func(state *browse.WalkState, meta *schema.List, keys []*browse.Value, isFirst bool) (browse.Selection, error) {
+		if hasMore, err := index.Index.OnNext(state, meta, keys, isFirst); hasMore {
+			return s, err
+		}
+		return nil, nil
+	}
 	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
 		switch meta.GetIdent() {
 		case "module":

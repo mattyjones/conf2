@@ -44,7 +44,13 @@ func (bb *BridgeBrowser) Selector(path *browse.Path, strategy browse.Strategy) (
 func (bb *BridgeBrowser) SelectBridges(bridges map[string]*Bridge) (browse.Selection, error) {
 	s := &browse.MySelection{}
 	index := newBridgeIndex(bridges)
-	s.OnNext = index.Index.OnNext
+	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (next browse.Selection, err error) {
+		var hasNext bool
+		if hasNext, err = index.Index.OnNext(state, meta, key, first); hasNext {
+			return s, err
+		}
+		return nil, nil
+	}
 	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
 		internal := index.Selected.internal.Module()
 		external := index.Selected.external
@@ -73,7 +79,13 @@ func (bb *BridgeBrowser) SelectBridges(bridges map[string]*Bridge) (browse.Selec
 func (bb *BridgeBrowser) selectMapping(mapping *BridgeMapping, external schema.MetaList, internal schema.MetaList) (browse.Selection, error) {
 	s := &browse.MySelection{}
 	index := newMappingIndex(mapping.Children)
-	s.OnNext = index.Index.OnNext
+	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (next browse.Selection, err error) {
+		var hasNext bool
+		if hasNext, err = index.Index.OnNext(state, meta, key, first); hasNext {
+			return s, err
+		}
+		return nil, nil
+	}
 	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
 		externalChild := bb.findMetaList(external, index.Index.CurrentKey())
 		if externalChild == nil {

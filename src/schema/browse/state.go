@@ -28,10 +28,15 @@ func (state *WalkState) Select() *WalkState {
 }
 
 func (state *WalkState) SelectListItem(key []*Value) *WalkState {
-	child := &WalkState{}
-	child.path.ParentPath = &state.path
-	child.key = key
-	return child
+	next := *state
+	// important flag, otherwise we recurse indefinitely
+	next.insideList = true
+	if len(key) > 0 {
+		// TODO: Support compound keys
+		next.path.Key = key[0].String()
+		next.key = key
+	}
+	return &next
 }
 
 func (state *WalkState) Position() schema.Meta {
@@ -52,10 +57,6 @@ func (state *WalkState) String() string {
 
 func (state *WalkState) InsideList() bool {
 	return state.insideList
-}
-
-func (state *WalkState) SetInsideList() {
-	state.insideList = true
 }
 
 func (state *WalkState) Key() []*Value {

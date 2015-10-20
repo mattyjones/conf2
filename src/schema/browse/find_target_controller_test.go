@@ -46,8 +46,8 @@ module m {
 		t.Fatal(err)
 	}
 	selection := &MySelection{}
-	selection.OnNext = func(*WalkState, *schema.List, []*Value, bool) (bool, error) {
-		return true, nil
+	selection.OnNext = func(*WalkState, *schema.List, []*Value, bool) (Selection, error) {
+		return selection, nil
 	}
 	selection.OnSelect = func(*WalkState, schema.MetaList) (Selection, error) {
 		return selection, nil
@@ -59,11 +59,11 @@ module m {
 		path string
 		expected string
 	}{
-		{"", 					"m.<nil>"},
-		{"a", 					"m.a.<nil>"},
-		{"b", 					"m.b.<nil>"},
-		{"b=x",					"m.b.<nil>"},
-		{"a/aa=key/aab",     	"m.a.aa.aab.<nil>"},
+		{"", 					"m/<nil>"},
+		{"a", 					"m/a/<nil>"},
+		{"b", 					"m/b/<nil>"},
+		{"b=x",					"m/b=x/<nil>"},
+		{"a/aa=key/aab",     	"m/a/aa=key/aab/<nil>"},
 	}
 	for _, test := range tests {
 		s, state, err = WalkPath(rootState, selection, NewPath(test.path))

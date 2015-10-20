@@ -63,10 +63,12 @@ func (d *Dumper) Enter(level int) (Selection, error) {
 		d.dumpValue(v, level)
 		return
 	}
-	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (hasMore bool, err error) {
+	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (next Selection, err error) {
 		d.out.WriteString(fmt.Sprintf("%sITERATE row=%d, first=%v\n", Padding[:level], row, first))
 		row++
-		return false, nil
+		nest := created
+		created = nil
+		return nest, nil
 	}
 	return s, nil
 }

@@ -120,7 +120,11 @@ func Action(path *Path, impl Browser, input Browser, output Browser) (err error)
 func edit(state *WalkState, from Selection, dest Selection, strategy Strategy, controller WalkController) (err error) {
 	e := editor{}
 	var s Selection
-	s, err = e.editTarget(from, dest, false, state.InsideList(), strategy)
+	if schema.IsList(state.SelectedMeta()) && !state.InsideList() {
+		s, err = e.editList(state, from, dest, strategy)
+	} else {
+		s, err = e.editTarget(state, from, dest, strategy)
+	}
 	if err == nil {
 		// sync dest and from
 		if err = dest.Write(state, state.SelectedMeta(), BEGIN_EDIT, nil); err == nil {
@@ -132,12 +136,105 @@ func edit(state *WalkState, from Selection, dest Selection, strategy Strategy, c
 	return
 }
 
-func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsideList bool, strategy Strategy) (Selection, error) {
+func (e *editor) editList(state *WalkState, from Selection, to Selection, strategy Strategy) (Selection, error) {
+	if to == nil {
+		return nil, &browseError{Msg:fmt.Sprint("Unable to get target list selection for ", state.String())}
+	}
+	if from == nil {
+		return nil, &browseError{Msg:fmt.Sprint("Unable to get source list selection for ", state.String())}
+	}
+	s := &MySelection{}
+	var createdListItem bool
+	createListItem := func(state *WalkState, meta *schema.List, key []*Value) (next Selection, sube error) {
+		sube = to.Write(state, state.SelectedMeta(), CREATE_LIST_ITEM, nil)
+		createdListItem = true
+		if sube == nil {
+			return to.Next(state, meta, key, true)
+		}
+
+		return
+	}
+
+	// List Edit - See "List Edit State Machine" diagram for additional documentation
+	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, first bool) (next Selection, err error) {
+		if createdListItem {
+			err = to.Write(state, meta, POST_CREATE_LIST_ITEM, nil)
+			createdListItem = false
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		var fromNext Selection
+		fromNext, err = from.Next(state, meta, key, first)
+		if err != nil || fromNext == nil {
+			return nil, err
+		}
+
+		//		if !listIterationInitialized {
+		//			listIterationInitialized = true
+		//			if isNewList {
+		//				autoCreateListItems = true
+		//			} else {
+		//				var isListNotEmpty bool
+		//				if isListNotEmpty, err = to.Next(state, meta, NO_KEYS, true); err != nil {
+		//					return nil, err
+		//				}
+		//				if ! isListNotEmpty { // is empty
+		//					autoCreateListItems = true
+		//				}
+		//			}
+		//		}
+		//		if autoCreateListItems {
+		//			fromNext
+		//			return true, createListItem(state)
+		//		}
+
+		var toKey []*Value
+		var toNext Selection
+		if toKey, err = e.loadKey(state, key, from); err != nil {
+			return nil, err
+		}
+		if toNext, err = to.Next(state, meta, toKey, true); err != nil {
+			return nil, err
+		}
+		switch strategy {
+		case UPDATE:
+			if toNext == nil {
+				msg := fmt.Sprint("No item found with given key in list ", state.String())
+				return nil, &browseError{Code:http.StatusNotFound, Msg:msg}
+			}
+			return e.editTarget(state, fromNext, toNext, strategy)
+		case UPSERT:
+			if toNext == nil {
+				if toNext, err = createListItem(state, meta, toKey); err != nil {
+					return nil, err
+				}
+				return e.editTarget(state, fromNext, toNext, strategy)
+			}
+		case INSERT:
+			if toNext != nil {
+				msg := fmt.Sprint("Duplicate item found with same key in list ", state.String())
+				return nil, &browseError{Code:http.StatusConflict, Msg:msg}
+			}
+			if toNext, err = createListItem(state, meta, toKey); err != nil {
+				return nil, err
+			}
+			return e.editTarget(state, fromNext, toNext, strategy)
+		default:
+			return nil, &browseError{Msg:"Stratgey not implmented"}
+		}
+		return nil, nil
+	}
+	return s, nil
+}
+
+func (e *editor) editTarget(state *WalkState, from Selection, to Selection, strategy Strategy) (Selection, error) {
+	if to == nil {
+		return nil, &browseError{Msg:fmt.Sprint("Unable to get target container selection for ", state.String())}
+	}
 	var createdContainer bool
 	var createdList bool
-	var createdListItem bool
-	var autoCreateListItems bool
-	var listIterationInitialized bool
 	s := &MySelection{}
 	s.OnChoose = func(state *WalkState, choice *schema.Choice) (schema.Meta, error) {
 		return from.Choose(state, choice)
@@ -211,10 +308,12 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 		if err != nil {
 			return nil, err
 		}
-		if toChild == nil {
-			return nil, &browseError{Msg:fmt.Sprint("Unable to create edit destination item for ", state.String())}
+		// we always switch to upsert strategy because if there were any conflicts, it would have been
+		// discovered in top-most level.
+		if isList {
+			return e.editList(state, fromChild, toChild, UPSERT)
 		}
-		return e.editTarget(fromChild, toChild, createdList, false, UPSERT)
+		return e.editTarget(state, fromChild, toChild, UPSERT)
 	}
 
 	s.OnUnselect = func(state *WalkState, meta schema.MetaList) (err error) {
@@ -249,75 +348,6 @@ func (e *editor) editTarget(from Selection, to Selection, isNewList bool, isInsi
 			}
 		}
 		return
-	}
-	createListItem := func(state *WalkState) (sube error) {
-		sube = to.Write(state, state.SelectedMeta(), CREATE_LIST_ITEM, nil)
-		createdListItem = true
-		return
-	}
-
-	// List Edit - See "List Edit State Machine" diagram for additional documentation
-	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
-		if createdListItem {
-			err = to.Write(state, meta, POST_CREATE_LIST_ITEM, nil)
-			createdListItem = false
-			if err != nil {
-				return false, err
-			}
-		}
-
-fmt.Printf("edit from == nil %v?\n", from == nil)
-		hasMore, err = from.Next(state, meta, key, first)
-		if err != nil || ! hasMore {
-			return hasMore, err
-		}
-
-		if !listIterationInitialized {
-			listIterationInitialized = true
-			if isNewList {
-				autoCreateListItems = true
-			} else {
-				var isListNotEmpty bool
-				if isListNotEmpty, err = to.Next(state, meta, NO_KEYS, true); err != nil {
-					return false, err
-				}
-				if ! isListNotEmpty { // is empty
-					autoCreateListItems = true
-				}
-			}
-		}
-		if autoCreateListItems {
-			return true, createListItem(state)
-		}
-
-		var toKey []*Value
-		var foundItem bool
-		if toKey, err = e.loadKey(state, key, from); err != nil {
-			return false, err
-		}
-		if foundItem, err = to.Next(state, meta, toKey, true); err != nil {
-			return false, err
-		}
-		switch strategy {
-		case UPDATE:
-			if !foundItem {
-				msg := fmt.Sprint("No item found with given key in list ", state.String())
-				return false, &browseError{Code:http.StatusNotFound, Msg:msg}
-			}
-		case UPSERT:
-			if !foundItem {
-				return true, createListItem(state)
-			}
-		case INSERT:
-			if foundItem {
-				msg := fmt.Sprint("Duplicate item found with same key in list ", state.String())
-				return false, &browseError{Code:http.StatusConflict, Msg:msg}
-			}
-			return true, createListItem(state)
-		default:
-			return false, &browseError{Msg:"Stratgey not implmented"}
-		}
-		return true, nil
 	}
 
 	return s, nil

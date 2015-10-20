@@ -50,13 +50,13 @@ func (self *mongoBrowserWriter) writeResults(data bson.M, list []bson.M) (browse
 	s := &browse.MySelection{}
 	var created browse.Selection
 	container := data
-	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {
-		return false, nil
+	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (next browse.Selection, err error) {
+		next, created = created, nil
+		return
 	}
-	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
-		next := created
-		created = nil
-		return next, nil
+	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (child browse.Selection, err error) {
+		child, created = created, nil
+		return
 	}
 	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, v *browse.Value) (err error) {
 		switch op {
@@ -69,6 +69,7 @@ func (self *mongoBrowserWriter) writeResults(data bson.M, list []bson.M) (browse
 			list = append(list, container)
 			// refresh parent reference in case list reference changed
 			data[meta.GetIdent()] = list
+			created, _ = self.writeResults(container, nil)
 		case browse.CREATE_CHILD:
 			child := make(bson.M, 10)
 			container[meta.GetIdent()] = child
@@ -113,7 +114,7 @@ func (self *MongoBrowser) ReadSelector(p *browse.Path) (s browse.Selection, stat
 		return nil, nil, nil
 	}
 	var root browse.Selection
-	root, err = r.readResults(results, nil)
+	root, err = r.readContainer(results)
 
 	// the result tree goes all the way back to the document root.  we need to navigate to
 	// the point of the path and throw away results.
@@ -121,41 +122,15 @@ func (self *MongoBrowser) ReadSelector(p *browse.Path) (s browse.Selection, stat
 	return
 }
 
-func (self *mongoBrowserReader) readResults(result bson.M, list []interface{}) (browse.Selection, error) {
+func (self *mongoBrowserReader) readContainer(container bson.M) (browse.Selection, error) {
 	s := &browse.MySelection{}
-	record := result
-	var i int
-	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {
-		if len(key) > 0 {
-			for _, candidate := range list {
-				if m, ok := candidate.(bson.M); ok {
-					if m[meta.Keys[0]] == key[0].Value() {
-						record = m
-						return true, nil
-					}
-				}
-			}
-			return false, nil
-		} else {
-			if first {
-				i = 0
-			} else {
-				i++
-			}
-			hasMore = i < len(list)
-			if hasMore {
-				record = list[i].(bson.M)
-			}
-		}
-		return hasMore, nil
-	}
 	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
-		selectValue, found := record[meta.GetIdent()]
+		selectValue, found := container[meta.GetIdent()]
 		if found {
 			if schema.IsList(meta) {
-				return self.readResults(nil, selectValue.([]interface{}))
+				return self.readList(selectValue.([]interface{}))
 			} else {
-				return self.readResults(selectValue.(bson.M), nil)
+				return self.readContainer(selectValue.(bson.M))
 			}
 		}
 		return nil, nil
@@ -164,13 +139,40 @@ func (self *mongoBrowserReader) readResults(result bson.M, list []interface{}) (
 		if meta == nil {
 			return nil, nil
 		}
-		value := record[meta.GetIdent()]
+		value := container[meta.GetIdent()]
 		switch meta.GetDataType().Format {
 		case schema.FMT_BOOLEAN:
 			b := value.(int64) > 0
 			return browse.SetValue(meta.GetDataType(), b)
 		}
 		return browse.SetValue(meta.GetDataType(), value)
+	}
+	return s, nil
+}
+
+func (self *mongoBrowserReader) readList(list []interface{}) (browse.Selection, error) {
+	s := &browse.MySelection{}
+	var i int
+	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (browse.Selection, error) {
+		if len(key) > 0 {
+			for _, candidate := range list {
+				if m, ok := candidate.(bson.M); ok {
+					if m[meta.Keys[0]] == key[0].Value() {
+						return self.readContainer(m)
+					}
+				}
+			}
+		} else {
+			if first {
+				i = 0
+			} else {
+				i++
+			}
+			if i < len(list) {
+				return self.readContainer(list[i].(bson.M))
+			}
+		}
+		return nil, nil
 	}
 	return s, nil
 }

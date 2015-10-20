@@ -2,7 +2,6 @@ package schema
 import (
 	"strings"
 	"strconv"
-	"fmt"
 )
 
 ///////////////////
@@ -70,40 +69,6 @@ type MetaProxy interface {
 ///////////////////////
 // Base structs
 ///////////////////////
-
-type MetaPath struct {
-	ParentPath *MetaPath
-	Meta Meta
-}
-
-func (p *MetaPath) Parent() MetaList {
-	// we know it's a list otherwise it couldn't have a child
-	if p.ParentPath == nil {
-		return nil
-	}
-	return p.ParentPath.Meta.(MetaList)
-}
-
-func (p *MetaPath) String() string {
-	if p.ParentPath == nil {
-		if p.Meta == nil {
-			return "<nil>"
-		}
-		return p.Meta.GetIdent()
-	}
-	if p.Meta == nil {
-		return fmt.Sprint(p.ParentPath.String(), ".<nil>")
-	}
-	return fmt.Sprint(p.ParentPath.String(), ".", p.Meta.GetIdent())
-}
-
-func (p *MetaPath) Root() (root *MetaPath) {
-	root = p
-	for root.ParentPath != nil {
-		root = root.ParentPath
-	}
-	return
-}
 
 
 // MetaList implementation helper(s)
@@ -521,6 +486,14 @@ func (y *List) GetTypedefs() MetaList {
 // HasDetails
 func (y *List) Details() *Details {
 	return &y.details
+}
+// List
+func (y *List) KeyMeta() (keyMeta []HasDataType) {
+	keyMeta = make([]HasDataType, len(y.Keys))
+	for i, keyIdent := range y.Keys {
+		keyMeta[i] = FindByIdent2(y, keyIdent).(HasDataType)
+	}
+	return
 }
 
 

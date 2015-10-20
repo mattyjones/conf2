@@ -70,10 +70,14 @@ func (self *BrowserPair) Module() *schema.Module {
 func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
 	s := &browse.MySelection{}
 	IsContainerConfig := config != nil
-	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (hasMore bool, err error) {
-		hasMore, err = oper.Next(state, meta, key, first)
-		if err == nil && hasMore && IsContainerConfig {
-			_, err = config.Next(state, meta, state.Key(), true)
+	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (next browse.Selection, err error) {
+		var operNext, configNext browse.Selection
+		operNext, err = oper.Next(state, meta, key, first)
+		if err == nil && operNext != nil && IsContainerConfig {
+			configNext, err = config.Next(state, meta, state.Key(), true)
+			if err == nil {
+				return self.selectPair(operNext, configNext)
+			}
 		}
 
 		return

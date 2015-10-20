@@ -74,7 +74,7 @@ func (v *Value) String() string {
 // Incoming value should be of appropriate type according to given data type format
 func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
 	reflectVal := reflect.ValueOf(val)
-	v := &Value{}
+	v := &Value{Type:typ}
 	switch typ.Format {
 	case schema.FMT_BOOLEAN:
 		v.Bool = reflectVal.Bool()

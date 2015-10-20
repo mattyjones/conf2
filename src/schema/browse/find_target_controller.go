@@ -15,30 +15,37 @@ func NewFindTarget(p *Path) *FindTarget {
 	return &FindTarget{path:p}
 }
 
-func (n *FindTarget) ListIterator(state *WalkState, s Selection, first bool) (hasMore bool, err error) {
+func (n *FindTarget) ListIterator(state *WalkState, s Selection, first bool) (next Selection, err error) {
 	if !first {
 		// when we're finding targets, we never iterate more than one item in a list
-		return false, nil
+		return nil, nil
 	}
 	level := state.Level()
 	if level == len(n.path.Segments) {
-		n.setTarget(state, s)
 		if len(n.path.Segments[level - 1].Keys) == 0 {
-			return false, nil
+			n.setTarget(state, s)
+			return nil, nil
 		}
 	}
 
 	if len(n.path.Segments[level - 1].Keys) == 0 {
-		return false, errors.New("Key required when navigating lists")
+		return nil, errors.New("Key required when navigating lists")
 	}
 	list := state.SelectedMeta().(*schema.List)
 	var key []*Value
 	key, err = CoerseKeys(list, n.path.Segments[level - 1].Keys)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	state.SetKey(key)
-	return s.Next(state, list, key, true)
+	if next, err = s.Next(state, list, key, true); err != nil {
+		return nil, err
+	}
+	if level == len(n.path.Segments) {
+		//state.SetInsideList()
+		n.setTarget(state, next)
+	}
+	return
 }
 
 func (p *FindTarget) CloseSelection(s Selection) error {
@@ -57,7 +64,6 @@ func (n *FindTarget) setTarget(state *WalkState, s Selection) {
 }
 
 func (n *FindTarget) ContainerIterator(state *WalkState, s Selection) schema.MetaIterator {
-	//n.path.Key = nil
 	level := state.Level()
 	if level == len(n.path.Segments) {
 		n.setTarget(state, s)

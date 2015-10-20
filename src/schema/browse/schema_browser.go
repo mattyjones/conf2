@@ -66,6 +66,7 @@ func (self *SchemaBrowser) Selector(p *Path, strategy Strategy) (Selection, *Wal
 
 func (self *SchemaBrowser) SelectModule(module *schema.Module) (Selection, error) {
 	s := &MySelection{}
+	delegate, _ := self.selectMetaList(module)
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, err error) {
 		switch meta.GetIdent() {
 		case "revision":
@@ -77,7 +78,7 @@ func (self *SchemaBrowser) SelectModule(module *schema.Module) (Selection, error
 		case "notifications":
 			return self.selectNotifications(module.GetNotifications())
 		default:
-			return self.groupingsTypedefsDefinitions(s, meta, module)
+			return delegate.Select(state, meta)
 		}
 		return nil, nil
 	}
@@ -145,22 +146,22 @@ func (self *SchemaBrowser) selectGroupings(groupings schema.MetaList) (Selection
 	s := &MySelection{}
 	i := listIterator{dataList:groupings, resolve:self.resolve}
 	var created *schema.Grouping
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		return self.groupingsTypedefsDefinitions(s, meta, i.data)
-	}
-	s.OnNext = i.iterate
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return ReadField(meta, i.data)
+	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+		if created != nil {
+			return self.selectMetaList(created)
+		}
+		if i.iterate(state, meta, keys, first) {
+			return self.selectMetaList(i.data.(schema.MetaList))
+		}
+		return nil, nil
 	}
 	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case CREATE_LIST_ITEM:
 			created = &schema.Grouping{}
-			i.data = created
 		case POST_CREATE_LIST_ITEM:
 			groupings.AddMeta(created)
-		case UPDATE_VALUE:
-			return WriteField(meta.(schema.HasDataType), i.data, val)
+			created = nil
 		}
 		return nil
 	}
@@ -168,27 +169,13 @@ func (self *SchemaBrowser) selectGroupings(groupings schema.MetaList) (Selection
 }
 
 func (self *SchemaBrowser) selectRpcIO(i *schema.RpcInput, o *schema.RpcOutput) (Selection, error) {
-	s := &MySelection{}
 	var io schema.MetaList
 	if i != nil {
 		io = i
 	} else {
 		io = o
 	}
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		return self.groupingsTypedefsDefinitions(s, meta, io)
-	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return ReadField(meta, io)
-	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
-		switch op {
-		case UPDATE_VALUE:
-			return WriteField(meta.(schema.HasDataType), io, val)
-		}
-		return nil
-	}
-	return s, nil
+	return self.selectMetaList(io);
 }
 
 func (self *SchemaBrowser) createGroupingsTypedefsDefinitions(parent schema.MetaList, childMeta schema.Meta) (schema.Meta, error) {
@@ -218,45 +205,54 @@ func (self *SchemaBrowser) createGroupingsTypedefsDefinitions(parent schema.Meta
 func (self *SchemaBrowser) selectRpcs(rpcs schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:rpcs, resolve:self.resolve}
+	var selected *schema.Rpc
 	var created *schema.Rpc
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		rpc := i.data.(*schema.Rpc)
 		switch meta.GetIdent() {
 		case "input":
-			if rpc.Input != nil {
-				return self.selectRpcIO(rpc.Input, nil)
+			if selected.Input != nil {
+				return self.selectRpcIO(selected.Input, nil)
 			}
 		case "output":
-			if rpc.Output != nil {
-				return self.selectRpcIO(nil, rpc.Output)
+			if selected.Output != nil {
+				return self.selectRpcIO(nil, selected.Output)
 			}
 		}
 		return nil, nil
 	}
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return ReadField(meta, i.data)
+		return ReadField(meta, selected)
 	}
 	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 			case CREATE_LIST_ITEM:
 				created = &schema.Rpc{}
-				i.data = created
 			case POST_CREATE_LIST_ITEM:
 				rpcs.AddMeta(created)
+				created = nil
 			case CREATE_CHILD:
-				rpc := i.data.(*schema.Rpc)
 				switch meta.GetIdent() {
 				case "input":
-					rpc.AddMeta(&schema.RpcInput{})
+					selected.AddMeta(&schema.RpcInput{})
 				case "output":
-					rpc.AddMeta(&schema.RpcOutput{})
+					selected.AddMeta(&schema.RpcOutput{})
 				}
 			case UPDATE_VALUE:
-				return WriteField(meta.(schema.HasDataType), i.data, val)
+				return WriteField(meta.(schema.HasDataType), selected, val)
 		}
 		return nil
 	}
-	s.OnNext = i.iterate
+	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+		if created != nil {
+			selected = created
+			return s, nil
+		}
+		if i.iterate(state, meta, keys, first) {
+			selected = i.data.(*schema.Rpc)
+			return s, nil
+		}
+		return nil, nil
+	}
 	return s, nil
 }
 
@@ -264,118 +260,108 @@ func (self *SchemaBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, 
 	s := &MySelection{}
 	i := listIterator{dataList:typedefs, resolve:self.resolve}
 	var created *schema.Typedef
+	var selected *schema.Typedef
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		tdef := i.data.(*schema.Typedef)
+		if selected == nil {
+			return nil, nil
+		}
 		switch meta.GetIdent() {
 		case "type":
-			if tdef.DataType != nil {
-				return self.selectType(tdef.DataType)
+			if selected.DataType != nil {
+				return self.selectType(selected.DataType)
 			}
 		}
 		return nil, nil
 	}
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return ReadField(meta, i.data)
+		return ReadField(meta, selected)
 	}
-	s.OnNext = i.iterate
+	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+		if created != nil {
+			selected = created
+			return s, nil
+		}
+		if i.iterate(state, meta, keys, first) {
+			selected = i.data.(*schema.Typedef)
+			return s, nil
+		}
+		return nil, nil
+	}
 	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case CREATE_CHILD:
-			tdef := i.data.(*schema.Typedef)
 			switch meta.GetIdent() {
 			case "type":
-				tdef.SetDataType(&schema.DataType{})
+				selected.SetDataType(&schema.DataType{})
 			default:
 				return NotImplemented(meta)
 			}
 		case CREATE_LIST_ITEM:
 			created = &schema.Typedef{}
-			i.data = created
 		case POST_CREATE_LIST_ITEM:
 			typedefs.AddMeta(created)
+			created = nil
 		case UPDATE_VALUE:
-			return WriteField(meta.(schema.HasDataType), i.data, val)
+			return WriteField(meta.(schema.HasDataType), selected, val)
 		}
 		return nil
 	}
 	return s, nil
 }
 
-func (self *SchemaBrowser) groupingsTypedefsDefinitions(s Selection, meta schema.MetaList, data schema.Meta) (Selection, error) {
-	switch meta.GetIdent() {
-	case "groupings":
-		if !self.resolve {
-			groupings := data.(schema.HasGroupings).GetGroupings()
-			return self.selectGroupings(groupings)
+func (self *SchemaBrowser) selectMetaList(data schema.MetaList) (Selection, error) {
+	s := &MySelection{}
+	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
+		switch meta.GetIdent() {
+		case "groupings":
+			if !self.resolve {
+				groupings := data.(schema.HasGroupings).GetGroupings()
+				return self.selectGroupings(groupings)
+			}
+		case "typedefs":
+			if !self.resolve {
+				typedefs := data.(schema.HasTypedefs).GetTypedefs()
+				return self.selectTypedefs(typedefs)
+			}
+		case "definitions":
+			defs := data.(schema.MetaList)
+			return self.SelectDefinitionsList(defs)
 		}
-	case "typedefs":
-		if !self.resolve {
-			typedefs := data.(schema.HasTypedefs).GetTypedefs()
-			return self.selectTypedefs(typedefs)
-		}
-	case "definitions":
-		defs := data.(schema.MetaList)
-		return self.SelectDefinitionsList(defs)
+		return nil, nil
 	}
-	return nil, nil
+	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+		return ReadField(meta, data)
+	}
+	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+		switch op {
+		case UPDATE_VALUE:
+			return WriteField(meta.(schema.HasDataType), data, val)
+		}
+		return nil
+	}
+	return s, nil
 }
 
 func (self *SchemaBrowser) selectNotifications(notifications schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:notifications, resolve:self.resolve}
 	var created *schema.Notification
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		return self.groupingsTypedefsDefinitions(s, meta, i.data)
-	}
-	s.OnNext = i.iterate
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return ReadField(meta, i.data)
+	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+		if created != nil {
+			return self.selectMetaList(created)
+		}
+		if i.iterate(state, meta, keys, first) {
+			return self.selectMetaList(i.data.(schema.MetaList))
+		}
+		return nil, nil
 	}
 	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case CREATE_LIST_ITEM:
 			created = &schema.Notification{}
-			i.data = created
 		case POST_CREATE_LIST_ITEM:
 			notifications.AddMeta(created)
-		case UPDATE_VALUE:
-			return WriteField(meta.(schema.HasDataType), i.data, val)
-		}
-		return nil
-	}
-	return s, nil
-}
-
-func (self *SchemaBrowser) selectMetaList(data *schema.List) (Selection, error) {
-	s := &MySelection{}
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		return self.groupingsTypedefsDefinitions(s, meta, data)
-	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return ReadField(meta, data)
-	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
-		switch op {
-		case UPDATE_VALUE:
-			return WriteField(meta.(schema.HasDataType), data, val)
-		}
-		return nil
-	}
-	return s, nil
-}
-
-func (self *SchemaBrowser) selectMetaContainer(data schema.MetaList) (Selection, error) {
-	s := &MySelection{}
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		return self.groupingsTypedefsDefinitions(s, meta, data)
-	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return ReadField(meta, data)
-	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
-		switch op {
-		case UPDATE_VALUE:
-			return WriteField(meta.(schema.HasDataType), data, val)
+			created = nil
 		}
 		return nil
 	}
@@ -455,19 +441,26 @@ func (self *SchemaBrowser) selectMetaUses(data *schema.Uses) (Selection, error) 
 	return s, nil
 }
 
+
 func (self *SchemaBrowser) selectMetaCases(choice *schema.Choice) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:choice, resolve:self.resolve}
-	s.OnNext = i.iterate
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		switch meta.GetIdent() {
-		case "definitions":
-			return self.SelectDefinitionsList(choice)
+	var created *schema.ChoiceCase
+	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+		if i.iterate(state, meta, keys, first) {
+			return self.selectMetaList(i.data.(schema.MetaList))
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return ReadField(meta, choice)
+	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+		switch op {
+		case CREATE_LIST_ITEM:
+			created = &schema.ChoiceCase{}
+		case POST_CREATE_LIST_ITEM:
+			choice.AddMeta(created)
+			created = nil
+		}
+		return nil
 	}
 	return s, nil
 }
@@ -501,10 +494,10 @@ type listIterator struct {
 	resolve bool
 }
 
-func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Value, first bool) (bool, error) {
+func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Value, first bool) (bool) {
 	i.data = nil
 	if i.dataList == nil {
-		return false, nil
+		return false
 	}
 	if len(keys) > 0 {
 		state.SetKey(keys)
@@ -525,22 +518,22 @@ func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Valu
 			})
 		}
 	}
-	return i.data != nil, nil
+	return i.data != nil
 }
 
 func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Selection, error) {
 	s := &MySelection{}
 	i := listIterator{dataList:dataList, resolve:self.resolve}
+	var selected schema.Meta
+	var createMode bool
 	s.OnChoose = func(state *WalkState, choice *schema.Choice) (m schema.Meta, err error) {
-		return self.resolveDefinitionCase(choice, i.data)
+		return self.resolveDefinitionCase(choice, selected)
 	}
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		if i.data == nil {
+		if selected == nil {
 			return nil, nil
 		}
 		switch meta.GetIdent() {
-		case "list":
-			return self.selectMetaList(i.data.(*schema.List))
 		case "leaf":
 			return self.selectMetaLeafy(i.data.(*schema.Leaf), nil)
 		case "leaf-list":
@@ -550,7 +543,7 @@ func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Sele
 		case "choice":
 			return self.selectMetaChoice(i.data.(*schema.Choice))
 		default:
-			return self.selectMetaContainer(i.data.(schema.MetaList))
+			return self.selectMetaList(i.data.(schema.MetaList))
 		}
 	}
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
@@ -558,17 +551,28 @@ func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Sele
 	}
 	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
+		case CREATE_LIST_ITEM:
+			createMode = true
 		case CREATE_CHILD:
 			var err error
-			if i.data, err = self.createGroupingsTypedefsDefinitions(dataList, meta); err != nil {
+			if selected, err = self.createGroupingsTypedefsDefinitions(dataList, meta); err != nil {
 				return err
 			}
 		case POST_CREATE_CHILD:
-			i.data = nil
+			selected = nil
 		}
 		return nil
 	}
-	s.OnNext = i.iterate
+	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+		if createMode {
+			createMode = false
+			return s, nil
+		}
+		if i.iterate(state, meta, keys, first) {
+			return s, nil
+		}
+		return nil, nil
+	}
 	return s, nil
 
 }

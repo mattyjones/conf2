@@ -63,7 +63,7 @@ func (bb *BucketBrowser) selectContainer(container map[string]interface{}) (Sele
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
 		if data, found := container[meta.GetIdent()]; found {
 			if schema.IsList(meta) {
-				return bb.enterList(container, data.([]map[string]interface{}))
+				return bb.selectList(container, data.([]map[string]interface{}))
 			}
 			return bb.selectContainer(data.(map[string]interface{}))
 		}
@@ -86,16 +86,33 @@ func (bb *BucketBrowser) selectContainer(container map[string]interface{}) (Sele
 	return s, nil
 }
 
-func (bb *BucketBrowser) enterList(parent map[string]interface{}, initialList []map[string]interface{}) (Selection, error) {
+func (bb *BucketBrowser) readKey(meta *schema.List, container map[string]interface{}) (key []*Value, err error) {
+	keyMeta := meta.KeyMeta()
+	key = make([]*Value, len(keyMeta))
+	for i, m := range keyMeta {
+		if key[i], err = bb.readLeaf(m, container); err != nil {
+			return nil, err
+		}
+	}
+	return
+}
+
+func (bb *BucketBrowser) selectList(parent map[string]interface{}, initialList []map[string]interface{}) (Selection, error) {
 	var i int
 	list := initialList
 	s := &MySelection{}
+	var next Selection
 	var selection map[string]interface{}
-	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, isFirst bool) (bool, error) {
+	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, isFirst bool) (Selection, error) {
+		if next != nil {
+			s := next
+			next = nil
+			return s, nil
+		}
 		selection = nil
 		if len(key) > 0 {
 			if !isFirst {
-				return false, nil
+				return nil, nil
 			}
 
 			// looping not very efficient, but we do not have an index
@@ -103,10 +120,9 @@ func (bb *BucketBrowser) enterList(parent map[string]interface{}, initialList []
 				// TODO: Support compound keys
 				if candidate[meta.Keys[0]] == key[0].Value() {
 					selection = candidate
-					return true, nil
+					break
 				}
 			}
-			return false, nil
 		} else {
 			if isFirst {
 				i = 0
@@ -116,37 +132,30 @@ func (bb *BucketBrowser) enterList(parent map[string]interface{}, initialList []
 			if i < len(initialList) {
 				selection = list[i]
 			}
-		}
-		return selection != nil, nil
-	}
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
-		if data, found := selection[meta.GetIdent()]; found {
-			if schema.IsList(meta) {
-				return bb.enterList(selection, data.([]map[string]interface{}))
+			if key, err := bb.readKey(meta, selection); err != nil {
+				return nil, err
+			} else {
+				state.SetKey(key)
 			}
-			return bb.selectContainer(data.(map[string]interface{}))
+		}
+		if selection != nil {
+			return bb.selectContainer(selection)
 		}
 		return nil, nil
 	}
 	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
-		case UPDATE_VALUE:
-			bb.updateLeaf(meta.(schema.HasDataType), selection, val)
 		case CREATE_LIST_ITEM:
 			selection = make(map[string]interface{}, 10)
 			list = append(list, selection)
 			// list reference may have changed so update parent
 			parent[meta.GetIdent()] = list
-		case CREATE_LIST:
-			selection[meta.GetIdent()] = make([]map[string]interface{}, 0, 10)
-		case CREATE_CHILD:
-			child := make(map[string]interface{}, 10)
-			selection[meta.GetIdent()] = child
+			var err error
+			if next, err = bb.selectContainer(selection); err != nil {
+				return err
+			}
 		}
 		return nil
-	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return bb.readLeaf(meta, selection)
 	}
 
 	return s, nil

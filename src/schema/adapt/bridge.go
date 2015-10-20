@@ -130,9 +130,14 @@ func (b *Bridge) selectBridge(internalSelection browse.Selection, internalState 
 		}
 		return nil, nil
 	}
-	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (bool, error) {
+	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (next browse.Selection, err error) {
+		var internalNext browse.Selection
 		// TODO: translate keys?
-		return internalSelection.Next(internalState, meta, key, first)
+		internalNext, err = internalSelection.Next(internalState, meta, key, first)
+		if internalNext != nil && err == nil {
+			next, err = b.selectBridge(internalNext, internalState, mapping)
+		}
+		return
 	}
 	return s, nil
 }

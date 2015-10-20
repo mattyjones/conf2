@@ -85,6 +85,7 @@ func (json *JsonWriter) selectJson() (Selection, error) {
 			if err = json.conditionallyOpenArrayOnFirstWrite(meta.GetIdent()); err == nil {
 				err = json.beginArrayItem()
 			}
+			created, _ = json.selectJson()
 		case POST_CREATE_LIST_ITEM:
 			err = json.endArrayItem()
 		case CREATE_LIST:
@@ -100,8 +101,10 @@ func (json *JsonWriter) selectJson() (Selection, error) {
 		json.firstWrite = false
 		return
 	}
-	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (hasMore bool, err error) {
-		return false, nil
+	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (next Selection, err error) {
+		next = created
+		created = nil
+		return next, nil
 	}
 	return s, nil
 }

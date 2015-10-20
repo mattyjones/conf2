@@ -17,7 +17,7 @@ func TestKeyListBuilderInBufferStore(t *testing.T) {
 		{ "a/b", "x" },
 		{ "a/c", "y|z" },
 	}
-	s := &configSelector{}
+	s := &storeSelector{}
 	store := make(BufferStore, 10)
 	s.store = store
 	v := &browse.Value{}
@@ -82,15 +82,18 @@ module m {
 	return m
 }
 
-func TestKeyValueRead(t *testing.T) {
+func TestStoreBrowserKeyValueRead(t *testing.T) {
 	store := make(BufferStore, 100)
 	m := keyValuesTestModule()
-	kv := NewConfig(m, store)
+	kv := NewStoreBrowser(m, store)
 	store["a/aa/aaa"] = &browse.Value{Str:"hi"}
 	store["b=x/ba"] = &browse.Value{Str:"x"}
 	var actualBytes bytes.Buffer
 	json := browse.NewJsonWriter(&actualBytes, m)
-	browse.Insert(browse.NewPath(""), kv, json)
+	err := browse.Insert(browse.NewPath(""), kv, json)
+	if err != nil {
+		t.Fatal(err)
+	}
 	actual := string(actualBytes.Bytes())
 	expected := `{"a":{"aa":{"aaa":"hi"}},"b":[{"ba":"x"}]}`
 	if actual != expected {
@@ -98,10 +101,10 @@ func TestKeyValueRead(t *testing.T) {
 	}
 }
 
-func TestKeyValueEdit(t *testing.T) {
+func TestStoreBrowserValueEdit(t *testing.T) {
 	store := make(BufferStore, 100)
 	m := keyValuesTestModule()
-	kv := NewConfig(m, store)
+	kv := NewStoreBrowser(m, store)
 	inputJson := `{"a":{"aa":{"aaa":"hi"}},"b":[{"ba":"x"}]}`
 	json := browse.NewJsonReader(strings.NewReader(inputJson), m)
 	err := browse.Insert(browse.NewPath(""), json, kv)
@@ -114,7 +117,7 @@ func TestKeyValueEdit(t *testing.T) {
 	expectations := []struct {
 		path string
 		value string
-	} {
+	}{
 		{"a/aa/aaa", "hi"},
 		{"b=x/ba", "x"},
 	}
@@ -129,11 +132,18 @@ func TestKeyValueEdit(t *testing.T) {
 			t.Error("Expected value to be %s but was %s", expected.value, v.Str)
 		}
 	}
+}
+
+func TestStoreBrowserKeyValueEdit(t *testing.T) {
+	store := make(BufferStore, 100)
+	m := keyValuesTestModule()
+	kv := NewStoreBrowser(m, store)
+	store["b=x/ba"] = &browse.Value{Str:"z"}
 
 	// change key
-	inputJson = `{"ba":"y"}`
-	json = browse.NewJsonReader(strings.NewReader(inputJson), m)
-	err = browse.Update(browse.NewPath("b=x"), json, kv)
+	inputJson2 := `{"ba":"y"}`
+	json2 := browse.NewJsonFragmentReader(strings.NewReader(inputJson2))
+	err := browse.Update(browse.NewPath("b=x"), json2, kv)
 	if err != nil {
 		t.Fatal(err)
 	}

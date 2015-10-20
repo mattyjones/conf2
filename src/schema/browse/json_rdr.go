@@ -41,31 +41,33 @@ func (self *JsonReader) Selector(path *Path, strategy Strategy) (s Selection,  s
 	if self.Meta == nil {
 		return self.fragmentSelector(path, strategy)
 	}
-	s, err = self.enterJson(self.values, nil, false)
+	s, err = self.enterJson(self.values)
 	return WalkPath(NewWalkState(self.Meta), s, path)
 }
 
 func (self *JsonReader) fragmentSelector(path *Path, strategy Strategy) (s Selection,  state *WalkState, err error) {
 	// try to determine if we're reading a list
 	if (len(self.values) == 1) {
+		// only 1 item - iterates only once
 		for _, value := range self.values {
 			if list, isList := value.([]interface{}); isList {
-				var insideList bool
 				lastSegment := path.LastSegment()
 				if lastSegment != nil {
-					insideList = len(lastSegment.Keys) > 0
+					if len(lastSegment.Keys) == 0 {
+						s, err = self.enterJsonList(list)
+					}
 				}
-				s, err = self.enterJson(self.values, list, insideList)
 			}
 		}
 	}
 	if s == nil {
-		s, err = self.enterJson(self.values, nil, false)
+		s, err = self.enterJson(self.values)
 	}
 	return
 }
 
 func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *Value, err error) {
+	// TODO: Consider using CoerseValue
 	v = &Value{}
 	switch meta.GetDataType().Format {
 	case schema.FMT_INT32:
@@ -103,11 +105,43 @@ func asStringArray(data []interface{}) []string {
 	return s
 }
 
-func (self *JsonReader) enterJson(values map[string]interface{}, list []interface{}, insideList bool) (Selection, error) {
+func (self *JsonReader) enterJsonList(list []interface{}) (Selection, error) {
 	s := &MySelection{}
-	var value interface{}
-	var container = values
 	var i int
+	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, first bool) (next Selection, err error) {
+		if len(key) > 0 {
+			if first {
+				keyFields := meta.Keys
+				for ; i < len(list); i++ {
+					candidate := list[i].(map[string]interface{})
+					if self.jsonKeyMatches(keyFields, candidate, key) {
+						state.SetKey(key)
+						return self.enterJson(candidate)
+					}
+				}
+			}
+		} else {
+			if first {
+				i = 0
+			} else {
+				i++
+			}
+			if i < len(list) {
+				container := list[i].(map[string]interface{})
+				// TODO: compound keys
+				keyStrs := []string{container[meta.Keys[0]].(string)}
+				key, err = CoerseKeys(meta, keyStrs)
+				state.SetKey(key)
+				return self.enterJson(container)
+			}
+		}
+		return nil, nil
+	}
+	return s, nil
+}
+
+func (self *JsonReader) enterJson(container map[string]interface{}) (Selection, error) {
+	s := &MySelection{}
 	s.OnChoose = func(state *WalkState, choice *schema.Choice) (m schema.Meta, err error) {
 		// go thru each case and if there are any properties in the data that are not
 		// part of the schema, that disqualifies that case and we move onto next case
@@ -136,59 +170,20 @@ func (self *JsonReader) enterJson(values map[string]interface{}, list []interfac
 		return nil, &browseError{Msg:msg}
 	}
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, e error) {
-		var found bool
-		if value, found = container[meta.GetIdent()]; found {
+		if value, found := container[meta.GetIdent()]; found {
 			if schema.IsList(meta) {
-				return self.enterJson(nil, value.([]interface{}), false)
+				return self.enterJsonList(value.([]interface{}))
 			} else {
-				return self.enterJson(value.(map[string]interface{}), nil, false)
+				return self.enterJson(value.(map[string]interface{}))
 			}
 		}
 		return
 	}
 	s.OnRead = func (state *WalkState, meta schema.HasDataType) (val *Value, err error) {
-		var found bool
-		if value, found = container[meta.GetIdent()]; found {
+		if value, found := container[meta.GetIdent()]; found {
 			return self.readLeafOrLeafList(meta, value)
 		}
 		return
-	}
-	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
-		container = nil
-		if len(key) > 0 {
-			if insideList {
-				if first && len(list) > 0 {
-					container = list[0].(map[string]interface{})
-					return true, nil
-				} else {
-					return false, nil
-				}
-			} else if first {
-				keyFields := meta.Keys
-				for ; i < len(list); i++ {
-					candidate := list[i].(map[string]interface{})
-					if self.jsonKeyMatches(keyFields, candidate, key) {
-						container = candidate
-						break
-					}
-				}
-			}
-			state.SetKey(key)
-		} else {
-			if first {
-				i = 0
-			} else {
-				i++
-			}
-			if i < len(list) {
-				container = list[i].(map[string]interface{})
-				// TODO: compound keys
-				keyStrs := []string{container[meta.Keys[0]].(string)}
-				key, err = CoerseKeys(meta, keyStrs)
-				state.SetKey(key)
-			}
-		}
-		return container != nil, nil
 	}
 	return s, nil
 }
