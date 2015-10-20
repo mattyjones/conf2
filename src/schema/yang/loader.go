@@ -30,7 +30,6 @@ func moduleCopy(dest *schema.Module, src *schema.Module) {
 		schema.NewMetaListIterator(src.GetGroupings(), false),
 		schema.NewMetaListIterator(src.GetTypedefs(), false),
 		schema.NewMetaListIterator(src.DataDefs(), false),
-		schema.NewMetaListIterator(src.GetRpcs(), false),
 		schema.NewMetaListIterator(src.GetNotifications(), false),
 	}
 	for _, iter := range iters {

@@ -78,6 +78,7 @@ var keywords = [...]string{
 	"case",
 	"import",
 	"include",
+	"action",
 }
 
 const eof rune = 0
@@ -330,6 +331,7 @@ func lexBegin(l *lexer) stateFunc {
 		kywd_list,
 		kywd_case,
 		kywd_rpc,
+		kywd_action,
 	}
 	for _, ttype := range defTypes {
 		if l.acceptToken(ttype) {

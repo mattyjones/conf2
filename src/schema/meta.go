@@ -205,9 +205,6 @@ func (y *Module) SetSibling(sibling Meta) {
 // MetaList
 func (y *Module) AddMeta(meta Meta) error {
 	switch x := meta.(type) {
-	case *Rpc:
-		y.Rpcs.SetParent(y)
-		return y.Rpcs.linkMeta(y, x)
 	case *Notification:
 		y.Notifications.SetParent(y)
 		return y.Notifications.linkMeta(y, x)
@@ -228,9 +225,6 @@ func (y *Module) GetFirstMeta() Meta {
 }
 func (y *Module) DataDefs() MetaList {
 	return &y.Defs
-}
-func (y *Module) GetRpcs() MetaList {
-	return &y.Rpcs
 }
 func (y *Module) GetNotifications() MetaList {
 	return &y.Notifications
@@ -806,10 +800,8 @@ func (y *Rpc) AddMeta(meta Meta) error {
 	return nil
 }
 func (y *Rpc) GetFirstMeta() Meta {
-	if y.Input != nil {
-		return y.Input
-	}
-	return y.Output
+	// input and output are not official "children" of an rpc
+	return nil
 }
 func (y *Rpc) ReplaceMeta(oldChild Meta, newChild Meta) error {
 	return y.AddMeta(newChild)

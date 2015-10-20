@@ -73,8 +73,6 @@ func (self *SchemaBrowser) SelectModule(module *schema.Module) (Selection, error
 			if module.Revision != nil {
 				return self.selectRevision(module.Revision)
 			}
-		case "rpcs":
-			return self.selectRpcs(module.GetRpcs())
 		case "notifications":
 			return self.selectNotifications(module.GetNotifications())
 		default:
@@ -195,6 +193,8 @@ func (self *SchemaBrowser) createGroupingsTypedefsDefinitions(parent schema.Meta
 			child = &schema.Grouping{}
 		case "typedef":
 			child = &schema.Typedef{}
+		case "rpc":
+			child = &schema.Rpc{}
 		default:
 			return nil, NotImplemented(childMeta)
 	}
@@ -202,56 +202,37 @@ func (self *SchemaBrowser) createGroupingsTypedefsDefinitions(parent schema.Meta
 	return child, nil
 }
 
-func (self *SchemaBrowser) selectRpcs(rpcs schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) selectRpc(rpc *schema.Rpc) (Selection, error) {
 	s := &MySelection{}
-	i := listIterator{dataList:rpcs, resolve:self.resolve}
-	var selected *schema.Rpc
-	var created *schema.Rpc
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
 		switch meta.GetIdent() {
 		case "input":
-			if selected.Input != nil {
-				return self.selectRpcIO(selected.Input, nil)
+			if rpc.Input != nil {
+				return self.selectRpcIO(rpc.Input, nil)
 			}
 		case "output":
-			if selected.Output != nil {
-				return self.selectRpcIO(nil, selected.Output)
+			if rpc.Output != nil {
+				return self.selectRpcIO(nil, rpc.Output)
 			}
 		}
 		return nil, nil
 	}
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return ReadField(meta, selected)
+		return ReadField(meta, rpc)
 	}
 	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
-			case CREATE_LIST_ITEM:
-				created = &schema.Rpc{}
-			case POST_CREATE_LIST_ITEM:
-				rpcs.AddMeta(created)
-				created = nil
 			case CREATE_CHILD:
 				switch meta.GetIdent() {
 				case "input":
-					selected.AddMeta(&schema.RpcInput{})
+					rpc.AddMeta(&schema.RpcInput{})
 				case "output":
-					selected.AddMeta(&schema.RpcOutput{})
+					rpc.AddMeta(&schema.RpcOutput{})
 				}
 			case UPDATE_VALUE:
-				return WriteField(meta.(schema.HasDataType), selected, val)
+				return WriteField(meta.(schema.HasDataType), rpc, val)
 		}
 		return nil
-	}
-	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
-		if created != nil {
-			selected = created
-			return s, nil
-		}
-		if i.iterate(state, meta, keys, first) {
-			selected = i.data.(*schema.Rpc)
-			return s, nil
-		}
-		return nil, nil
 	}
 	return s, nil
 }
@@ -542,6 +523,8 @@ func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Sele
 			return self.selectMetaUses(i.data.(*schema.Uses))
 		case "choice":
 			return self.selectMetaChoice(i.data.(*schema.Choice))
+		case "rpc":
+			return self.selectRpc(i.data.(*schema.Rpc))
 		default:
 			return self.selectMetaList(i.data.(schema.MetaList))
 		}

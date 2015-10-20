@@ -101,6 +101,19 @@ module turing-machine {
         "The contents of the tape.";
       config "false";
       uses tape-cells;
+      action rewind {
+        description "be kind";
+        input {
+          leaf position {
+            type int32;
+          }
+        }
+        output {
+          leaf estimatedTime {
+            type int32;
+          }
+        }
+      }
     }
     container transition-function {
       description

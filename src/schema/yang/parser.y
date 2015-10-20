@@ -107,6 +107,7 @@ func popAndAddMeta(yylval *yySymType) error {
 %token kywd_case
 %token kywd_import
 %token kywd_include
+%token kywd_action
 
 %%
 
@@ -196,6 +197,7 @@ body_stmt :
     | leaf_list_stmt
     | uses_stmt
     | choice_stmt
+    | action_stmt
 
 body_stmts :
     body_stmt | body_stmts body_stmt;
@@ -337,7 +339,6 @@ rpc_def :
 rpc_body_stmts :
     rpc_body_stmt | rpc_body_stmts rpc_body_stmt;
 
-/* TODO: add if, status, typedef, grouping, output  */
 rpc_body_stmt:
     description token_semi
     | reference_stmt
@@ -358,6 +359,48 @@ rpc_input :
     };
 
 rpc_output :
+    kywd_output token_curly_open {
+        yylval.stack.Push(&schema.RpcOutput{})
+    };
+
+action_stmt :
+    action_def
+    token_curly_open
+    action_body_stmts
+    token_curly_close {
+        if HasError(yylex, popAndAddMeta(&yylval)) {
+            goto ret1
+        }
+    };
+
+action_def :
+    kywd_action token_ident {
+        yylval.stack.Push(&schema.Rpc{Ident:$2})
+    };
+
+action_body_stmts :
+    action_body_stmt | action_body_stmts action_body_stmt;
+
+action_body_stmt:
+    description token_semi
+    | reference_stmt
+    | action_input optional_body_stmts token_curly_close {
+        if HasError(yylex, popAndAddMeta(&yylval)) {
+            goto ret1
+        }
+    }
+    | action_output optional_body_stmts token_curly_close {
+        if HasError(yylex, popAndAddMeta(&yylval)) {
+            goto ret1
+        }
+    };
+
+action_input :
+    kywd_input token_curly_open {
+        yylval.stack.Push(&schema.RpcInput{})
+    };
+
+action_output :
     kywd_output token_curly_open {
         yylval.stack.Push(&schema.RpcOutput{})
     };
