@@ -5,7 +5,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"schema"
 	"strings"
-	"db"
 	"fmt"
 )
 
@@ -29,6 +28,11 @@ func NewStore(collection *mgo.Collection, rootPath string) *Store {
 	return store
 }
 
+func (s *Store) Action(key string) (browse.ActionFunc, error) {
+	// useful for registered searches or imports
+	return nil, nil
+}
+
 func (s *Store) HasValues(path string) bool {
 	// TODO: performance - most efficient way? sort first?
 	for k, _ := range s.entry.Values {
@@ -40,7 +44,7 @@ func (s *Store) HasValues(path string) bool {
 }
 
 func (s *Store) KeyList(path string, meta *schema.List) ([]string, error) {
-	builder := db.NewKeyListBuilder(path)
+	builder := browse.NewKeyListBuilder(path)
 	for k, _ := range s.entry.Values {
 		builder.ParseKey(k)
 	}

@@ -1,4 +1,5 @@
-package db
+package browse
+
 import (
 	"strings"
 	"fmt"

@@ -3,6 +3,7 @@ import (
 	"schema"
 	"fmt"
 	"net/http"
+	"errors"
 )
 
 type Operation int
@@ -101,7 +102,10 @@ func Action(path *Path, impl Browser, input Browser, output Browser) (err error)
 	if aSel, aState, err = impl.Selector(path, ACTION); err != nil {
 		return err
 	}
-	rpc := aState.Position().(*schema.Rpc)
+	if aSel == nil {
+		return errors.New(fmt.Sprint("No action found at ", path.URL))
+	}
+	rpc := aState.SelectedMeta().(*schema.Rpc)
 	if rpcInput, rpcOutput, err = aSel.Action(aState, rpc); err != nil {
 		return err
 	}

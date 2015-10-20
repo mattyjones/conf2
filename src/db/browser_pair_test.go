@@ -50,38 +50,38 @@ module m {
 	}
 	{
 		t.Log("Testing Init")
-		oper := BufferStore{}
-		oper["a/aa/aab"] = &browse.Value{Str:"b"}
-		operBrowser := NewStoreBrowser(m, oper)
+		oper := browse.NewBufferStore()
+		oper.Values["a/aa/aab"] = &browse.Value{Str:"b"}
+		operBrowser := browse.NewStoreBrowser(m, oper)
 
-		config := BufferStore{}
-		configBrowser := NewStoreBrowser(m, config)
-		config["a/aa/aaa"] = &browse.Value{Str:"a"}
+		config := browse.NewBufferStore()
+		configBrowser := browse.NewStoreBrowser(m, config)
+		config.Values["a/aa/aaa"] = &browse.Value{Str:"a"}
 		pair := NewBrowserPair(operBrowser, configBrowser)
 		pair.Init()
-		if len(oper) != 2 {
-			t.Error("Expected 2 items got ", len(oper))
+		if len(oper.Values) != 2 {
+			t.Error("Expected 2 items got ", len(oper.Values))
 		}
 	}
 	{
 		t.Log("Testing Edit")
-		edit := BufferStore{}
-		edit["a/ab"] = &browse.Value{Str:"ab"}
-		edit["a/aa/aab"] = &browse.Value{Str:"ab"}
-		editBrowser := NewStoreBrowser(m, edit)
+		edit := browse.NewBufferStore()
+		edit.Values["a/ab"] = &browse.Value{Str:"ab"}
+		edit.Values["a/aa/aab"] = &browse.Value{Str:"ab"}
+		editBrowser := browse.NewStoreBrowser(m, edit)
 
-		oper := BufferStore{}
-		operBrowser := NewStoreBrowser(m, oper)
-		config := BufferStore{}
-		configBrowser := NewStoreBrowser(m, config)
+		oper := browse.NewBufferStore()
+		operBrowser := browse.NewStoreBrowser(m, oper)
+		config := browse.NewBufferStore()
+		configBrowser := browse.NewStoreBrowser(m, config)
 		pair := NewBrowserPair(operBrowser, configBrowser)
 
 		browse.Upsert(browse.NewPath("a"), editBrowser, pair)
-		if len(oper) != 2 {
-			t.Error("Expected 2 items got ", len(oper))
+		if len(oper.Values) != 2 {
+			t.Error("Expected 2 items got ", len(oper.Values))
 		}
-		if len(config) != 1 {
-			t.Error("Expected 1 items got ", len(config))
+		if len(config.Values) != 1 {
+			t.Error("Expected 1 items got ", len(config.Values))
 		}
 	}
 }
