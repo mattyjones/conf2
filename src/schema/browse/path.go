@@ -30,8 +30,12 @@ func NewPath(path string) (p *Path) {
 func ParsePath(path string) (p *Path, err error) {
 	p = &Path{}
 
-	if path == "" {
+	if path == "" || path == "/" {
 		return
+	}
+	// UNSUPPORTED OPINION: little reason not to just fix absolute positioned url
+	if path[0] == '/' {
+		path = path[1:]
 	}
 
 	qmark := strings.Index(path, "?")

@@ -25,16 +25,16 @@ func (err *restconfError) HttpCode() int {
 	return err.Code
 }
 
-type Service interface {
-	Listen()
-	RegisterBrowser(browser browse.Browser) error
-	RegisterBrowserWithName(browser browse.Browser, name string) error
-	SetDocRoot(schema.StreamSource)
-	Stop()
-}
+//type Service interface {
+//	Listen()
+//	RegisterBrowser(browser browse.Browser) error
+//	RegisterBrowserWithName(browser browse.Browser, name string) error
+//	SetDocRoot(schema.StreamSource)
+//	Stop()
+//}
 
-func NewService() (Service, error) {
-	service := &serviceImpl{restconfPath:"/restconf/"}
+func NewService() (*Service, error) {
+	service := &Service{restconfPath:"/restconf/"}
 	service.registrations = make(map[string]*registration, 5)
 	service.mux = http.NewServeMux()
 	service.mux.HandleFunc("/.well-known/host-meta", service.resources)
@@ -49,7 +49,7 @@ func NewService() (Service, error) {
 	return service, nil
 }
 
-type serviceImpl struct {
+type Service struct {
 	restconfPath string
 	registrations map[string]*registration
 	mux *http.ServeMux
@@ -135,12 +135,12 @@ type docRootImpl struct {
 	docroot schema.StreamSource
 }
 
-func (service *serviceImpl) RegisterBrowser(browser browse.Browser) error {
+func (service *Service) RegisterBrowser(browser browse.Browser) error {
 	ident := browser.Schema().GetIdent()
 	return service.RegisterBrowserWithName(browser, ident)
 }
 
-func (service *serviceImpl) RegisterBrowserWithName(browser browse.Browser, ident string) error {
+func (service *Service) RegisterBrowserWithName(browser browse.Browser, ident string) error {
 	reg := &registration{browser}
 	service.registrations[ident] = reg
 	fullPath := fmt.Sprint(service.restconfPath, ident, "/")
@@ -149,12 +149,16 @@ func (service *serviceImpl) RegisterBrowserWithName(browser browse.Browser, iden
 	return nil
 }
 
-func (service *serviceImpl) SetDocRoot(docroot schema.StreamSource) {
+func (service *Service) SetDocRoot(docroot schema.StreamSource) {
 	service.docroot = &docRootImpl{docroot:docroot}
 	service.mux.Handle("/ui/", http.StripPrefix("/ui/", service.docroot))
 }
 
-func (service *serviceImpl) Listen() {
+func (service *Service) AddHandler(pattern string, handler http.Handler) {
+	service.mux.Handle(pattern, http.StripPrefix(pattern, handler))
+}
+
+func (service *Service) Listen() {
 	s := &http.Server{
 		Addr:           ":8008",
 		Handler:        service.mux,
@@ -166,7 +170,7 @@ func (service *serviceImpl) Listen() {
 	log.Fatal(s.ListenAndServe())
 }
 
-func (service *serviceImpl) Stop() {
+func (service *Service) Stop() {
 	if service.docroot != nil && service.docroot.docroot != nil {
 		schema.CloseResource(service.docroot.docroot)
 	}
@@ -193,7 +197,7 @@ func (service *docRootImpl) ServeHTTP(wtr http.ResponseWriter, req *http.Request
 	}
 }
 
-func (service *serviceImpl) resources(w http.ResponseWriter, r *http.Request) {
+func (service *Service) resources(w http.ResponseWriter, r *http.Request) {
 	// RESTCONF Sec. 3.1
 	fmt.Fprintf(w, `"xrd" : { "link" : { "@rel" : "restconf", "@href" : "/restconf" } } }`)
 }

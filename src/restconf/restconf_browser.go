@@ -7,11 +7,11 @@ import (
 )
 
 type RestconfBrowser struct {
-	Service *serviceImpl
+	Service *Service
 	Meta *schema.Module
 }
 
-func NewBrowser(restconf *serviceImpl) (rcb *RestconfBrowser, err error) {
+func NewBrowser(restconf *Service) (rcb *RestconfBrowser, err error) {
 	var module *schema.Module
 	module, err = yang.LoadModuleFromByteArray([]byte(restconfYang), nil)
 	if err == nil {
