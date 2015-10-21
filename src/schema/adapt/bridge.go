@@ -9,11 +9,11 @@ import (
 type Bridge struct {
 	internal browse.Browser
 	path string
-	external *schema.Module
+	external schema.MetaList
 	Mapping *BridgeMapping
 }
 
-func NewBridge(internal browse.Browser, external *schema.Module) *Bridge {
+func NewBridge(internal browse.Browser, external schema.MetaList) *Bridge {
 	bridge := &Bridge{
 		internal: internal,
 		external: external,
@@ -142,7 +142,7 @@ func (b *Bridge) selectBridge(internalSelection browse.Selection, internalState 
 	return s, nil
 }
 
-func (b *Bridge) Module() *schema.Module {
+func (b *Bridge) Schema() schema.MetaList {
 	return b.external
 }
 

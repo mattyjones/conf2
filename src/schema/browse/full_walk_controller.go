@@ -5,23 +5,27 @@ import (
 	"strings"
 )
 
-type FullWalk struct {
+type ControlledWalk struct {
 	MaxDepth int
 	finalDepth int
 	InitialKey []*Value
 }
 
-func NewFullWalkFromPath(p *Path) *FullWalk {
-	return NewFullWalk(p.Query)
-}
+//func NewFullWalkFromPath(p *Path) *FullWalk {
+//	return LimitedWalk(p.Query)
+//}
 
-func NewFullWalk(query string) *FullWalk {
-	c := &FullWalk{MaxDepth:32}
+func LimitedWalk(query string) *ControlledWalk {
+	c := FullWalk()
 	c.parseQuery(query)
 	return c
 }
 
-func (p *FullWalk) parseQuery(q string) (err error) {
+func FullWalk() *ControlledWalk {
+	return &ControlledWalk{MaxDepth:32}
+}
+
+func (p *ControlledWalk) parseQuery(q string) (err error) {
 	if len(q) == 0 {
 		return nil
 	}
@@ -38,18 +42,18 @@ func (p *FullWalk) parseQuery(q string) (err error) {
 	return
 }
 
-func (p *FullWalk) CloseSelection(s Selection) error {
+func (p *ControlledWalk) CloseSelection(s Selection) error {
 	return schema.CloseResource(s)
 }
 
-func (e *FullWalk) maxedLevel(state *WalkState) bool {
+func (e *ControlledWalk) maxedLevel(state *WalkState) bool {
 	if e.finalDepth == 0 {
 		e.finalDepth = state.Level() + e.MaxDepth
 	}
 	return state.Level() >= e.finalDepth
 }
 
-func (e *FullWalk) ListIterator(state *WalkState, s Selection, first bool) (next Selection, err error) {
+func (e *ControlledWalk) ListIterator(state *WalkState, s Selection, first bool) (next Selection, err error) {
 	if e.maxedLevel(state) {
 		return nil, nil
 	}
@@ -57,7 +61,7 @@ func (e *FullWalk) ListIterator(state *WalkState, s Selection, first bool) (next
 	return s.Next(state, listMeta, NO_KEYS, first)
 }
 
-func (e *FullWalk) ContainerIterator(state *WalkState, s Selection) schema.MetaIterator {
+func (e *ControlledWalk) ContainerIterator(state *WalkState, s Selection) schema.MetaIterator {
 	if e.maxedLevel(state) {
 		return schema.EmptyInterator(0)
 	}

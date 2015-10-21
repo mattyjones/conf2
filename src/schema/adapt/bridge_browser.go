@@ -52,7 +52,7 @@ func (bb *BridgeBrowser) SelectBridges(bridges map[string]*Bridge) (browse.Selec
 		return nil, nil
 	}
 	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
-		internal := index.Selected.internal.Module()
+		internal := index.Selected.internal.Schema()
 		external := index.Selected.external
 		switch meta.GetIdent() {
 		case "mapping":

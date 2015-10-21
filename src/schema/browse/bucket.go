@@ -28,7 +28,7 @@ func (bb *BucketBrowser) Selector(path *Path, strategy Strategy) (s Selection, s
 	return
 }
 
-func (bb *BucketBrowser) Module() *schema.Module {
+func (bb *BucketBrowser) Schema() schema.MetaList {
 	return bb.Meta
 }
 

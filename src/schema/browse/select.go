@@ -14,7 +14,7 @@ type Selection interface {
 	Write(state *WalkState, meta schema.Meta, op Operation, val *Value) (error)
 	Choose(state *WalkState, choice *schema.Choice) (m schema.Meta, err error)
 	Unselect(state *WalkState, meta schema.MetaList) error
-	Action(state *WalkState, meta *schema.Rpc) (input Selection, output Selection, err error)
+	Action(state *WalkState, meta *schema.Rpc, input Selection) (output Selection, outputState *WalkState, err error)
 }
 
 type MySelection struct {
@@ -94,14 +94,14 @@ func (s *MySelection) Choose(state *WalkState, choice *schema.Choice) (m schema.
 	return s.OnChoose(state, choice)
 }
 
-func (s *MySelection) Action(state *WalkState, rpc *schema.Rpc) (input Selection, output Selection, err error) {
+func (s *MySelection) Action(state *WalkState, meta *schema.Rpc, input Selection) (output Selection, outputState *WalkState, err error) {
 	if s.OnAction == nil {
 		return nil, nil, &browseError{
 			Code: http.StatusNotImplemented,
 			Msg: fmt.Sprint("Action not implemented on node ", state.String()),
 		}
 	}
-	return s.OnAction(state, rpc)
+	return s.OnAction(state, meta, input)
 }
 
 func (my *MySelection) Mixin(delegate Selection) {
@@ -120,4 +120,4 @@ type ReadFunc func(state *WalkState, meta schema.HasDataType) (*Value, error)
 type WriteFunc func(state *WalkState, meta schema.Meta, op Operation, val *Value) (error)
 type UnselectFunc func(state *WalkState, meta schema.MetaList) (error)
 type ChooseFunc func(state *WalkState, choice *schema.Choice) (m schema.Meta, err error)
-type ActionFunc func(state *WalkState, rpc *schema.Rpc) (input Selection, output Selection, err error)
+type ActionFunc func(state *WalkState, rpc *schema.Rpc, input Selection) (output Selection, outputState *WalkState, err error)

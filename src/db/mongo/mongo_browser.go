@@ -7,11 +7,11 @@ import (
 )
 
 type MongoBrowser struct {
-	schema *schema.Module
+	schema schema.MetaList
 	c *mgo.Collection
 }
 
-func NewMongoBrowser(schema *schema.Module, c *mgo.Collection) *MongoBrowser {
+func NewMongoBrowser(schema schema.MetaList, c *mgo.Collection) *MongoBrowser {
 	return &MongoBrowser{schema:schema, c:c}
 }
 
@@ -23,7 +23,7 @@ func (self *MongoBrowser) Selector(path *browse.Path, strategy browse.Strategy) 
 	return self.WriteSelector(path, strategy)
 }
 
-func (self *MongoBrowser) Module() *schema.Module {
+func (self *MongoBrowser) Schema() schema.MetaList {
 	return self.schema
 }
 

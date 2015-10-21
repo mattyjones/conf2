@@ -109,21 +109,23 @@ func (reg *registration) operation(path *browse.Path, src browse.Browser, dest b
 		}
 	}
 	if srcSel, srcState, err = src.Selector(path, browse.READ); err != nil {
-		return nil, err
+		return err
 	}
 	if schema.IsAction(srcState.SelectedMeta()) {
-		var outputDestSel, outputSel browse.Selection
+		var outputSel, rpcOutput browse.Selection
+		var outputState *browse.WalkState
 		actionMeta := state.SelectedMeta().(*schema.Rpc)
-		if outputSel, err = srcSel.Action(state, actionMeta); err != nil {
+		if rpcOutput, outputState, err = destSel.Action(state, actionMeta, srcSel); err != nil {
 			return err
 		}
-
-		if outputDestSel, err = output.Selector(browse.NewPath(""), browse.INSERT); err != nil {
-			return err
+		if rpcOutput != nil {
+			outputSel, _, err = output.Selector(browse.NewPath(""), browse.INSERT)
+			if err = browse.Edit(outputState, rpcOutput, outputSel, browse.INSERT, browse.LimitedWalk(path.Query)); err != nil {
+				return err
+			}
 		}
-		browse.Edit(state, outputSel, outputDestSel, browse.INSERT, browse.NewFullWalk(path.Query))
 	} else {
-		err = browse.Edit(state, srcSel, destSel, browse.INSERT, browse.NewFullWalk(path.Query))
+		err = browse.Edit(state, srcSel, destSel, browse.INSERT, browse.LimitedWalk(path.Query))
 	}
 	return
 }
@@ -133,7 +135,7 @@ type docRootImpl struct {
 }
 
 func (service *serviceImpl) RegisterBrowser(browser browse.Browser) error {
-	ident := browser.Module().GetIdent()
+	ident := browser.Schema().GetIdent()
 	return service.RegisterBrowserWithName(browser, ident)
 }
 

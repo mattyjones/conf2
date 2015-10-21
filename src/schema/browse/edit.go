@@ -93,15 +93,13 @@ func modifyingOperationWithInput(path *Path, src Browser, dest Browser, strategy
 			return NotFound(path.URL)
 		}
 	}
-	return Edit(state, srcSel, destSel, strategy, NewFullWalk(path.Query))
+	return Edit(state, srcSel, destSel, strategy, LimitedWalk(path.Query))
 }
 
-func Action(state *WalkState, src Selection) (output Selection, err error) {
-	actionMeta := state.SelectedMeta().(*schema.Rpc)
-	return src.Action(state, actionMeta)
 
-	var aSel, inputSel, outputSel, rpcInput, rpcOutput Selection
-	var aState *WalkState
+func Action(path *Path, impl Browser, input Browser, output Browser) (err error) {
+	var aSel, inputSel, outputSel, rpcOutput Selection
+	var aState, outputState *WalkState
 	if aSel, aState, err = impl.Selector(path, ACTION); err != nil {
 		return err
 	}
@@ -109,44 +107,19 @@ func Action(state *WalkState, src Selection) (output Selection, err error) {
 		return errors.New(fmt.Sprint("No action found at ", path.URL))
 	}
 	rpc := aState.SelectedMeta().(*schema.Rpc)
-	if rpcOutput, err = aSel.Action(aState, rpc, input); err != nil {
+	if inputSel, _, err = input.Selector(NewPath(""), READ); err != nil {
 		return err
 	}
-
-	inputSel, _, err = input.Selector(path, READ)
-	if err = Edit(aState, inputSel, rpcInput, INSERT, NewFullWalk(path.Query)); err != nil {
+	if rpcOutput, outputState, err = aSel.Action(aState, rpc, inputSel); err != nil {
 		return err
 	}
-	outputSel, _, err = input.Selector(path, INSERT)
-	if err = Edit(aState, rpcOutput, outputSel, INSERT, NewFullWalk(path.Query)); err != nil {
-		return err
+	if rpcOutput != nil {
+		outputSel, _, err = output.Selector(NewPath(""), INSERT)
+		if err = Edit(outputState, rpcOutput, outputSel, INSERT, LimitedWalk(path.Query)); err != nil {
+			return err
+		}
 	}
-	return nil
-}
-
-func Action2(path *Path, impl Browser, input Browser) (output Selection, err error) {
-	var aSel, inputSel, outputSel, rpcInput, rpcOutput Selection
-	var aState *WalkState
-	if aSel, aState, err = impl.Selector(path, ACTION); err != nil {
-		return err
-	}
-	if aSel == nil {
-		return errors.New(fmt.Sprint("No action found at ", path.URL))
-	}
-	rpc := aState.SelectedMeta().(*schema.Rpc)
-	if rpcOutput, err = aSel.Action(aState, rpc, input); err != nil {
-		return err
-	}
-
-	inputSel, _, err = input.Selector(path, READ)
-	if err = Edit(aState, inputSel, rpcInput, INSERT, NewFullWalk(path.Query)); err != nil {
-		return err
-	}
-	outputSel, _, err = input.Selector(path, INSERT)
-	if err = Edit(aState, rpcOutput, outputSel, INSERT, NewFullWalk(path.Query)); err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func Edit(state *WalkState, from Selection, dest Selection, strategy Strategy, controller WalkController) (err error) {

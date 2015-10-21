@@ -75,7 +75,7 @@ func TestPathParams(t *testing.T) {
 		{"depth=99", 		99},
 	}
 	for _, test := range tests {
-		p := NewFullWalk(test.in)
+		p := LimitedWalk(test.in)
 		if p.MaxDepth != test.expected {
 			desc := fmt.Sprintf("\"%s\" - expected depth \"%d\" - got \"%d\"",
 				test.in, test.expected, p.MaxDepth)

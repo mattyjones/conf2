@@ -59,10 +59,10 @@ func (self *BrowserPair) Selector(path *browse.Path, strategy browse.Strategy) (
 	return combo, state, nil
 }
 
-func (self *BrowserPair) Module() *schema.Module {
-	m := self.oper.Module()
+func (self *BrowserPair) Schema() schema.MetaList {
+	m := self.oper.Schema()
 	if m == nil {
-		m = self.config.Module()
+		m = self.config.Schema()
 	}
 	return m
 }

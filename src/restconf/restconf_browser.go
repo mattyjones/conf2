@@ -27,12 +27,8 @@ func NewBrowser(restconf *serviceImpl) (rcb *RestconfBrowser, err error) {
 	return
 }
 
-func (rcb *RestconfBrowser) Module() (*schema.Module) {
+func (rcb *RestconfBrowser) Schema() (schema.MetaList) {
 	return rcb.Meta
-}
-
-func (rcb *RestconfBrowser) Close() error {
-	return nil
 }
 
 func (rcb *RestconfBrowser) Selector(path *browse.Path, stategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
@@ -60,8 +56,10 @@ func enterRegistrations(registrations map[string]*registration) (browse.Selectio
 		switch meta.GetIdent() {
 		case "module":
 			if index.Selected != nil {
-				browser := browse.NewSchemaBrowser(index.Selected.browser.Module(), true)
-				return browser.SelectModule(index.Selected.browser.Module())
+				// TODO: support browsing schema at any point, not assume module
+				data := index.Selected.browser.Schema().(*schema.Module)
+				browser := browse.NewSchemaBrowser(data, true)
+				return browser.SelectModule(data)
 			}
 		}
 		return nil, nil

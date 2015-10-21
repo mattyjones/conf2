@@ -10,12 +10,12 @@ import (
 
 type JsonReader struct {
 	In io.Reader
-	Meta *schema.Module
+	Meta schema.MetaList
 	values map[string]interface{}
 }
 
-func NewJsonReader(in io.Reader, module *schema.Module) *JsonReader {
-	r := &JsonReader{In:in, Meta:module}
+func NewJsonReader(in io.Reader, meta schema.MetaList) *JsonReader {
+	r := &JsonReader{In:in, Meta:meta}
 	return r
 }
 
@@ -24,7 +24,7 @@ func NewJsonFragmentReader(in io.Reader) *JsonReader {
 	return r
 }
 
-func (self *JsonReader) Module() *schema.Module {
+func (self *JsonReader) Schema() schema.MetaList {
 	return self.Meta
 }
 

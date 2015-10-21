@@ -8,19 +8,19 @@ import (
 )
 
 type StoreBrowser struct {
-	module *schema.Module
+	schema schema.MetaList
 	store Store
 }
 
-func NewStoreBrowser(module *schema.Module, store Store) *StoreBrowser {
+func NewStoreBrowser(schema schema.MetaList, store Store) *StoreBrowser {
 	return &StoreBrowser{
-		module : module,
+		schema : schema,
 		store : store,
 	}
 }
 
-func (kv *StoreBrowser) Module() *schema.Module {
-	return kv.module
+func (kv *StoreBrowser) Schema() schema.MetaList {
+	return kv.schema
 }
 
 func (kv *StoreBrowser) Selector(path *Path, strategy Strategy) (s Selection, state *WalkState, err error) {
@@ -32,7 +32,7 @@ func (kv *StoreBrowser) Selector(path *Path, strategy Strategy) (s Selection, st
 			return nil, nil, err
 		}
 	}
-	state = NewWalkState(kv.module)
+	state = NewWalkState(kv.schema)
 	if strategy == READ {
 		// we walk to the destination and legitimately return nil if nothing is there
 		s, err = selector.selectContainer("")
@@ -123,6 +123,7 @@ func (kvs *storeSelector) selectList(parentPath string) (Selection, error) {
 		}
 		return
 	}
+	s.OnAction, _ = kvs.store.Action(parentPath)
 	return s, nil
 }
 

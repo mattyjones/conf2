@@ -51,7 +51,7 @@ func (json *JsonWriter) Selector(path *Path, strategy Strategy) (s Selection, st
 	return
 }
 
-func (self *JsonWriter) Module() *schema.Module {
+func (self *JsonWriter) Schema() schema.MetaList {
 	return nil
 }
 

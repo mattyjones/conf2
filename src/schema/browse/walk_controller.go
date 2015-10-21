@@ -11,6 +11,6 @@ type WalkController interface {
 }
 
 func WalkAll() WalkController {
-	return &FullWalk{MaxDepth:32}
+	return FullWalk()
 }
 

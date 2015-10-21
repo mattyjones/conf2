@@ -5,6 +5,7 @@ import (
 	"strings"
 	"bytes"
 	"schema"
+	"fmt"
 )
 
 func TestAction(t *testing.T) {
@@ -22,7 +23,7 @@ module m {
         }
       }
       output {
-        leaf salutaion {
+        leaf salutation {
           type string;
         }
       }
@@ -33,12 +34,21 @@ module m {
 		t.Fatal(err)
 	}
 	store := NewBufferStore()
-	var saidHello bool
-	store.Actions["sayHello"] = func(state *WalkState, meta *schema.Rpc) (input Selection, output Selection, err error) {
-		
-		saidHello = true
-		return nil, nil, nil
-
+	var yourName *Value
+	store.Actions["sayHello"] = func(state *WalkState, meta *schema.Rpc, input Selection) (output Selection, outputState *WalkState, err error) {
+		var read Selection
+		var inputState *WalkState
+		b := NewStoreBrowser(meta.Input, store)
+		if read, inputState, err = b.Selector(NewPath(""), INSERT); err != nil {
+			return nil, nil, err
+		}
+		if err = Edit(inputState, input, read, INSERT, FullWalk()); err != nil {
+			return nil, nil, err
+		}
+		yourName = store.Values["name"]
+		store.Values["salutation"] = &Value{Str:fmt.Sprint("Hello ", yourName)}
+		b = NewStoreBrowser(meta.Output, store)
+		return b.Selector(NewPath(""), READ)
 	}
 	in := NewJsonFragmentReader(strings.NewReader(`{"name":"joe"}`))
 	var actual bytes.Buffer
@@ -48,7 +58,10 @@ module m {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ! saidHello {
-		t.Error("Never said hello")
+	if yourName.Str != "joe" {
+		t.Error("Your name ", yourName)
+	}
+	if actual.String() != `{"salutation":"Hello joe"}` {
+		t.Error(actual.String())
 	}
 }

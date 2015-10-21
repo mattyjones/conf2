@@ -2,12 +2,11 @@ package browse
 
 import (
 	"schema"
-	"fmt"
 )
 
 type Browser interface {
 	Selector(path *Path, strategy Strategy) (Selection, *WalkState, error)
-	Module() (*schema.Module)
+	Schema() (schema.MetaList)
 }
 
 func WalkPath(state *WalkState, from Selection, path *Path) (Selection, *WalkState, error) {
@@ -41,7 +40,6 @@ func walk(state *WalkState, selection Selection, controller WalkController) (err
 		i := controller.ContainerIterator(state, selection)
 		for i.HasNextMeta() {
 			state.SetPosition(i.NextMeta())
-fmt.Printf("browse - meta %s\n", state.String())
 			if choice, isChoice := state.Position().(*schema.Choice); isChoice {
 				var choosen schema.Meta
 				if choosen, err = selection.Choose(state, choice); err != nil {
@@ -55,7 +53,6 @@ fmt.Printf("browse - meta %s\n", state.String())
 					return err
 				}
 			} else {
-fmt.Printf("browse - here\n")
 				metaList := state.Position().(schema.MetaList)
 				child, err = selection.Select(state, metaList)
 				if err != nil {

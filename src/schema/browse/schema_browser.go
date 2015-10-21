@@ -11,7 +11,7 @@ import (
  * meta.
  */
 type SchemaBrowser struct {
-	module *schema.Module  // read: data
+	data *schema.Module  // read: data
 	meta *schema.Module    // read: meta-data
 
 	// resolve all uses, groups and typedefs.  if this is false, then depth must be
@@ -19,12 +19,13 @@ type SchemaBrowser struct {
 	resolve bool
 }
 
-func (self *SchemaBrowser) Module() *schema.Module {
+func (self *SchemaBrowser) Schema() schema.MetaList {
 	return self.meta
 }
 
-func NewSchemaBrowser(module *schema.Module, resolve bool) *SchemaBrowser {
-	browser := &SchemaBrowser{module:module, meta:GetSchemaSchema(), resolve:resolve}
+func NewSchemaBrowser(data *schema.Module, resolve bool) *SchemaBrowser {
+	// TODO: Not require data to be a module
+	browser := &SchemaBrowser{data:data, meta:GetSchemaSchema(), resolve:resolve}
 	return browser
 }
 
@@ -48,8 +49,8 @@ func (self *SchemaBrowser) Selector(p *Path, strategy Strategy) (Selection, *Wal
 	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
 		switch meta.GetIdent() {
 		case "module" :
-			if self.module != nil {
-				return self.SelectModule(self.module)
+			if self.data != nil {
+				return self.SelectModule(self.data)
 			}
 		}
 		return nil, nil
@@ -57,7 +58,7 @@ func (self *SchemaBrowser) Selector(p *Path, strategy Strategy) (Selection, *Wal
 	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 			case CREATE_CHILD:
-				self.module = &schema.Module{}
+				self.data = &schema.Module{}
 		}
 		return nil
 	}

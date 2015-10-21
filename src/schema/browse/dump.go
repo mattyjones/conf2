@@ -41,7 +41,7 @@ func (d *Dumper) Selector(path *Path, strategy Strategy) (s Selection, state *Wa
 	return s, nil, err
 }
 
-func (self *Dumper) Module() *schema.Module {
+func (self *Dumper) Schema() schema.MetaList {
 	return nil
 }
 
