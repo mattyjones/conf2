@@ -6,7 +6,7 @@ import (
 )
 
 type BridgeBrowser struct {
-	Meta *schema.Module
+	Meta schema.MetaList
 	Bridges map[string]*Bridge
 }
 
@@ -21,7 +21,7 @@ func NewBridgeBrowser() *BridgeBrowser {
 	}
 }
 
-func (bb *BridgeBrowser) Module() *schema.Module {
+func (bb *BridgeBrowser) Schema() schema.MetaList {
 	return bb.Meta
 }
 

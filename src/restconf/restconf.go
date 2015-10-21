@@ -75,9 +75,10 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			err = browse.Upsert(path, rdr, reg.browser)
 		}
 		case "POST": {
-			// TODO: Detect RPC Actions
 			rdr := browse.NewJsonFragmentReader(r.Body)
-			err = browse.Insert(path, rdr, reg.browser)
+			dest := browse.NewJsonFragmentWriter(w)
+			err = reg.operation(path, rdr, reg.browser, dest)
+			//err = browse.Insert(path, rdr, reg.browser)
 		}
 		default:
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
