@@ -41,6 +41,9 @@ func (kv *StoreBrowser) Selector(path *Path, strategy Strategy) (s Selection, st
 
 	// here we fast-forward to the destination prepared to insert into the parse hierarchy
 	state, err = fastForwardState(state, path)
+	if err != nil {
+		return nil, nil, err
+	}
 	if schema.IsList(state.SelectedMeta()) && !state.InsideList() {
 		s, _ = selector.selectList(path.URL)
 	} else {

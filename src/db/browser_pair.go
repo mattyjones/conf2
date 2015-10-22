@@ -73,10 +73,12 @@ func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selecti
 	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (next browse.Selection, err error) {
 		var operNext, configNext browse.Selection
 		operNext, err = oper.Next(state, meta, key, first)
-		if err == nil && IsContainerConfig && operNext != nil {
-			configNext, err = config.Next(state, meta, state.Key(), true)
-			if err != nil {
-				return nil, err
+		if err == nil && operNext != nil {
+			if IsContainerConfig {
+				configNext, err = config.Next(state, meta, state.Key(), true)
+				if err != nil {
+					return nil, err
+				}
 			}
 			return self.selectPair(operNext, configNext)
 		}

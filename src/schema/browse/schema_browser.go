@@ -553,6 +553,7 @@ func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Sele
 			return s, nil
 		}
 		if i.iterate(state, meta, keys, first) {
+			selected = i.data
 			return s, nil
 		}
 		return nil, nil
