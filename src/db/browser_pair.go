@@ -31,7 +31,7 @@ func NewBrowserPair(operational browse.Browser, config browse.Browser) *BrowserP
 
 func (self *BrowserPair) Init() error {
 	// Here we initialize the operational browser with the current configuration
-	return browse.Update(browse.NewPath(""), self.config, self.oper)
+	return browse.Upsert(browse.NewPath(""), self.config, self.oper)
 }
 
 func (self *BrowserPair) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {

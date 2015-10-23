@@ -19,6 +19,9 @@ func CoerseKeys(list *schema.List, keyStrs []string) ([]*Value, error) {
 	values := make([]*Value, len(keyStrs))
 	for i, keyStr := range keyStrs {
 		keyProp := schema.FindByIdent2(list, list.Keys[i])
+if keyProp == nil {
+panic(fmt.Sprintf("no key prop %s on %s", list.Keys[i], list.GetIdent()))
+}
 		values[i] = &Value {
 			Type : keyProp.(schema.HasDataType).GetDataType(),
 		}

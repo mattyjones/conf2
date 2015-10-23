@@ -155,3 +155,15 @@ func TestStoreBrowserKeyValueEdit(t *testing.T) {
 		t.Error("Old key was not removed")
 	}
 }
+
+func TestStoreBrowserReadListList(t *testing.T) {
+	store := NewBufferStore()
+	m := keyValuesTestModule()
+	kv := NewStoreBrowser(m, store)
+	store.Values["b=x/ba"] = &Value{Str:"x"}
+	store.Values["b=x/bc=y/bca"] = &Value{Str:"y"}
+	var actual bytes.Buffer
+	w := NewJsonWriter(&actual, m)
+	Upsert(NewPath(""), kv, w)
+	t.Log(actual.String())
+}

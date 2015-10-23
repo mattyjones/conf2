@@ -7,6 +7,7 @@ type MetaIterator interface {
 
 type MetaListIterator struct {
 	position Meta
+	next Meta
 	currentProxy MetaIterator
 	resolveProxies bool
 }
@@ -35,21 +36,34 @@ func (s *SingletonIterator) NextMeta() Meta {
 
 
 func NewMetaListIterator(list MetaList, resolveProxies bool) MetaIterator {
-	return &MetaListIterator{position:list.GetFirstMeta(), resolveProxies:resolveProxies}
+	i := &MetaListIterator{position:list.GetFirstMeta(), resolveProxies:resolveProxies}
+	i.next = i.lookAhead()
+	return i
 }
 
 func (self *MetaListIterator) HasNextMeta() bool {
-	if self.position != nil {
-		return true
-	}
-	if self.currentProxy != nil {
-		return self.currentProxy.HasNextMeta()
-	}
-	return false
+	return self.next != nil
 }
 
-func (self *MetaListIterator) NextMeta() Meta {
-	for self.HasNextMeta() {
+//func (self *MetaListIterator) lookAhead() {
+//	if self.position != nil {
+//fmt.Printf("iterator here\n")
+//		return true
+//	}
+//	if self.currentProxy != nil {
+//fmt.Printf("iterator here\n")
+//		return self.currentProxy.HasNextMeta()
+//	}
+//	return false
+//}
+
+func (self *MetaListIterator) NextMeta() (next Meta) {
+	next, self.next = self.next, self.lookAhead()
+	return next
+}
+
+func (self *MetaListIterator) lookAhead() Meta {
+	for self.position != nil || self.currentProxy != nil {
 		if self.currentProxy != nil {
 			if self.currentProxy.HasNextMeta() {
 				return self.currentProxy.NextMeta()

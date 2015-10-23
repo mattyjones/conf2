@@ -62,7 +62,7 @@ func (self *SchemaBrowser) Selector(p *Path, strategy Strategy) (Selection, *Wal
 		}
 		return nil
 	}
-	return s, NewWalkState(self.meta), nil
+	return WalkPath(NewWalkState(self.meta), s, p)
 }
 
 func (self *SchemaBrowser) SelectModule(module *schema.Module) (Selection, error) {
@@ -474,6 +474,7 @@ type listIterator struct {
 	dataList schema.MetaList
 	iterator schema.MetaIterator
 	resolve bool
+	temp int
 }
 
 func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Value, first bool) (bool) {
@@ -492,6 +493,9 @@ func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Valu
 		}
 		if i.iterator.HasNextMeta() {
 			i.data = i.iterator.NextMeta()
+			if i.data == nil {
+				panic(fmt.Sprintf("Bad iterator at %s, item number %d", state.String(), i.temp))
+			}
 			state.SetKey([]*Value{
 				&Value{
 					Str:i.data.GetIdent(),
@@ -499,15 +503,14 @@ func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Valu
 				},
 			})
 		}
+		i.temp++
 	}
 	return i.data != nil
 }
 
-func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) SelectDefinition(parent schema.MetaList, data schema.Meta) (Selection, error) {
 	s := &MySelection{}
-	i := listIterator{dataList:dataList, resolve:self.resolve}
-	var selected schema.Meta
-	var createMode bool
+	selected := data
 	s.OnChoose = func(state *WalkState, choice *schema.Choice) (m schema.Meta, err error) {
 		return self.resolveDefinitionCase(choice, selected)
 	}
@@ -517,49 +520,58 @@ func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Sele
 		}
 		switch meta.GetIdent() {
 		case "leaf":
-			return self.selectMetaLeafy(i.data.(*schema.Leaf), nil)
+			return self.selectMetaLeafy(selected.(*schema.Leaf), nil)
 		case "leaf-list":
-			return self.selectMetaLeafy(nil, i.data.(*schema.LeafList))
+			return self.selectMetaLeafy(nil, selected.(*schema.LeafList))
 		case "uses":
-			return self.selectMetaUses(i.data.(*schema.Uses))
+			return self.selectMetaUses(selected.(*schema.Uses))
 		case "choice":
-			return self.selectMetaChoice(i.data.(*schema.Choice))
-		case "rpc":
-			return self.selectRpc(i.data.(*schema.Rpc))
+			return self.selectMetaChoice(selected.(*schema.Choice))
+		case "rpc", "action":
+			return self.selectRpc(selected.(*schema.Rpc))
 		default:
-			return self.selectMetaList(i.data.(schema.MetaList))
+			return self.selectMetaList(selected.(schema.MetaList))
 		}
 	}
 	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
-		return ReadField(meta, i.data)
+		return ReadField(meta, selected)
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) (err error) {
 		switch op {
-		case CREATE_LIST_ITEM:
-			createMode = true
 		case CREATE_CHILD:
-			var err error
-			if selected, err = self.createGroupingsTypedefsDefinitions(dataList, meta); err != nil {
-				return err
-			}
+			selected, err = self.createGroupingsTypedefsDefinitions(parent, meta)
 		case POST_CREATE_CHILD:
 			selected = nil
 		}
-		return nil
+		return err
+	}
+	return s, nil
+}
+
+
+func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Selection, error) {
+	s := &MySelection{}
+	i := listIterator{dataList:dataList, resolve:self.resolve}
+	var selected Selection
+	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) (err error) {
+		switch op {
+		case CREATE_LIST_ITEM:
+			selected, err = self.SelectDefinition(dataList, nil)
+		case POST_CREATE_LIST_ITEM:
+			selected = nil
+		}
+		return err
 	}
 	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
-		if createMode {
-			createMode = false
-			return s, nil
+		if selected != nil {
+			return selected, nil
 		}
 		if i.iterate(state, meta, keys, first) {
-			selected = i.data
-			return s, nil
+			return self.SelectDefinition(dataList, i.data)
 		}
 		return nil, nil
 	}
 	return s, nil
-
 }
 
 func (self *SchemaBrowser) resolveDefinitionCase(choice *schema.Choice, data schema.Meta) (caseMeta schema.MetaList, err error) {

@@ -215,8 +215,8 @@ func (e *editor) editList(state *WalkState, from Selection, to Selection, strate
 				if toNext, err = createListItem(state, meta, toKey); err != nil {
 					return nil, err
 				}
-				return e.editTarget(state, fromNext, toNext, strategy)
 			}
+			return e.editTarget(state, fromNext, toNext, strategy)
 		case INSERT:
 			if toNext != nil {
 				msg := fmt.Sprint("Duplicate item found with same key in list ", state.String())
