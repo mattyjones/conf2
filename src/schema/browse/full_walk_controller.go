@@ -53,6 +53,10 @@ func (e *ControlledWalk) maxedLevel(state *WalkState) bool {
 	return state.Level() >= e.finalDepth
 }
 
+func (n *ControlledWalk) VisitAction(state *WalkState, s Selection) error {
+	return nil
+}
+
 func (e *ControlledWalk) ListIterator(state *WalkState, s Selection, first bool) (next Selection, err error) {
 	if e.maxedLevel(state) {
 		return nil, nil

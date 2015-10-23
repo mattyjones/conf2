@@ -78,7 +78,6 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			rdr := browse.NewJsonFragmentReader(r.Body)
 			dest := browse.NewJsonFragmentWriter(w)
 			err = reg.operation(path, rdr, reg.browser, dest)
-			//err = browse.Insert(path, rdr, reg.browser)
 		}
 		default:
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -112,10 +111,10 @@ func (reg *registration) operation(path *browse.Path, src browse.Browser, dest b
 	if srcSel, srcState, err = src.Selector(path, browse.READ); err != nil {
 		return err
 	}
-	if schema.IsAction(srcState.SelectedMeta()) {
+	if destState.Position() != nil && schema.IsAction(destState.Position()) {
 		var outputSel, rpcOutput browse.Selection
 		var outputState *browse.WalkState
-		actionMeta := state.SelectedMeta().(*schema.Rpc)
+		actionMeta := state.Position().(*schema.Rpc)
 		if rpcOutput, outputState, err = destSel.Action(state, actionMeta, srcSel); err != nil {
 			return err
 		}

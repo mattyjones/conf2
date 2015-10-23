@@ -2,6 +2,7 @@ package browse
 import (
 	"schema"
 	"errors"
+	"fmt"
 )
 
 type FindTarget struct {
@@ -61,6 +62,16 @@ func (n *FindTarget) setTarget(state *WalkState, s Selection) {
 	// we take ownership of resource so it's not released until target is used
 	//	n.resource = s.Resource
 	//	s.Resource = nil
+}
+
+func (n *FindTarget) VisitAction(state *WalkState, s Selection) error {
+	level := state.Level()
+	if level + 1 != len(n.path.Segments) {
+		return errors.New(fmt.Sprint("Target is an action or rpc ", state.String()))
+	}
+fmt.Printf("find_target_controller - VisitAction state=%s\n", state.String())
+	n.setTarget(state, s)
+	return nil
 }
 
 func (n *FindTarget) ContainerIterator(state *WalkState, s Selection) schema.MetaIterator {

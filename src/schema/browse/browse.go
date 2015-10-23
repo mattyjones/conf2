@@ -52,6 +52,10 @@ func walk(state *WalkState, selection Selection, controller WalkController) (err
 				if _, err = selection.Read(state, state.Position().(schema.HasDataType)); err != nil {
 					return err
 				}
+			} else if schema.IsAction(state.Position()) {
+				if err = controller.VisitAction(state, selection); err != nil {
+					return err
+				}
 			} else {
 				metaList := state.Position().(schema.MetaList)
 				child, err = selection.Select(state, metaList)
