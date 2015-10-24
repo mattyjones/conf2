@@ -69,7 +69,6 @@ func (n *FindTarget) VisitAction(state *WalkState, s Selection) error {
 	if level + 1 != len(n.path.Segments) {
 		return errors.New(fmt.Sprint("Target is an action or rpc ", state.String()))
 	}
-fmt.Printf("find_target_controller - VisitAction state=%s\n", state.String())
 	n.setTarget(state, s)
 	return nil
 }

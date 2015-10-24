@@ -83,8 +83,13 @@ func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interfa
 	case schema.FMT_STRING_LIST:
 		v.Strlist = asStringArray(data.([]interface{}))
 	case schema.FMT_BOOLEAN:
-		s := data.(string)
-		v.Bool = ("true" == s)
+		switch vdata := data.(type) {
+		case string:
+			s := data.(string)
+			v.Bool = ("true" == s)
+		case bool:
+			v.Bool = vdata
+		}
 	case schema.FMT_BOOLEAN_LIST:
 		a := data.([]interface{})
 		v.Boollist = make([]bool, len(a))
