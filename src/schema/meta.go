@@ -917,6 +917,7 @@ type DataType struct {
 	MaxLength int
 	Path string
 	Pattern string
+	Default string
 	/*
 	FractionDigits
 	Bit
@@ -933,7 +934,6 @@ func NewDataType(ident string) (t *DataType) {
 	t.Format = internalTypes[ident]
 	return
 }
-
 
 func (y *DataType) Resolve() *DataType {
 	// TODO: Will look into hierarchy and overlay constraints

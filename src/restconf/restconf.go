@@ -54,6 +54,7 @@ type Service struct {
 	registrations map[string]*registration
 	mux *http.ServeMux
 	docroot *docRootImpl
+	Port string
 }
 
 type registration struct {
@@ -159,7 +160,7 @@ func (service *Service) AddHandler(pattern string, handler http.Handler) {
 
 func (service *Service) Listen() {
 	s := &http.Server{
-		Addr:           ":8008",
+		Addr:           service.Port,
 		Handler:        service.mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,

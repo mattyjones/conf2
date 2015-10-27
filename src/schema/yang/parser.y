@@ -262,8 +262,16 @@ typedef_stmt_body :
 typedef_stmt_body_stmt:
         type_stmt
         | description token_semi
-        | kywd_default token_string token_semi
+        | default_stmt
         ;
+default_stmt : kywd_default token_string token_semi {
+     if hasType, valid := yylval.stack.Peek().(schema.HasDataType); valid {
+        hasType.GetDataType().Default = tokenString($2)
+     } else {
+        yylex.Error("expected default statement on schema supporting details")
+        goto ret1
+     }
+}
 
 type_stmt : type_stmt_def type_stmt_body {
          y := yylval.stack.Peek().(schema.HasDataType)
@@ -517,7 +525,7 @@ leaf_body_stmt :
     type_stmt
     | description token_semi
     | config_stmt
-    | kywd_default token_string token_semi
+    | default_stmt
     | kywd_mandatory token_string token_semi
 
 config_stmt : kywd_config token_string token_semi {
