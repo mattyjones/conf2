@@ -11,7 +11,7 @@ type BridgeBrowser struct {
 }
 
 func NewBridgeBrowser() *BridgeBrowser {
-	meta, err := yang.LoadModuleFromByteArray([]byte(bridgeBrowserYang), nil)
+	meta, err := yang.LoadModule(yang.YangPath(), "bridge.yang")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -223,51 +223,3 @@ func (impl *mappingIndex) Build() []string {
 	}
 	return index
 }
-
-var bridgeBrowserYang = `
-module bridge {
-    prefix "bridge";
-    namespace "conf2.org/bridge";
-    revision 0000-00-00 {
-    	description "Bridges transform one schema into another given a mapping";
-    }
-    grouping field-options {
-		leaf-list leafs {
-			type string;
-		}
-		leaf-list containers {
-			type string;
-		}
-		leaf-list lists {
-			type string;
-		}
-    }
-
-    grouping meta-mapping {
-        list mapping {
-            key "externalIdent";
-            leaf externalIdent {
-                type string;
-            }
-            leaf internalIdent {
-                type string;
-            }
-            uses meta-mapping;
-        }
-		container externalOptions {
-			uses field-options;
-		}
-		container internalOptions {
-			uses field-options;
-		}
-    }
-
-    list bridges {
-        key "name";
-        leaf name {
-            type string;
-        }
-        uses meta-mapping;
-    }
-}
-`

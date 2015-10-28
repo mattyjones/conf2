@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"fmt"
 	"schema"
+	"os"
 )
 
 type ImportModule func (into *schema.Module, name string) (e error)
@@ -37,6 +38,18 @@ func moduleCopy(dest *schema.Module, src *schema.Module) {
 			dest.AddMeta(iter.NextMeta())
 		}
 	}
+}
+
+var gYangPath schema.StreamSource
+func YangPath() schema.StreamSource {
+	if gYangPath == nil {
+		path := os.Getenv("YANGPATH")
+		if len(path) == 0 {
+			panic("Environment variable YANGPATH not set")
+		}
+		gYangPath = schema.PathStreamSource(path)
+	}
+	return gYangPath
 }
 
 func LoadModule(source schema.StreamSource, yangfile string) (*schema.Module, error) {

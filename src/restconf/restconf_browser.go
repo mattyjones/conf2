@@ -13,7 +13,7 @@ type RestconfBrowser struct {
 
 func NewBrowser(restconf *Service) (rcb *RestconfBrowser, err error) {
 	var module *schema.Module
-	module, err = yang.LoadModuleFromByteArray([]byte(restconfYang), nil)
+	module, err = yang.LoadModule(yang.YangPath(), "restconf.yang")
 	if err == nil {
 		parent := schema.FindByPath(module, "modules").(*schema.List)
 		placeholder := schema.FindByPath(parent, "module")
@@ -100,24 +100,3 @@ func (ndx *regIndex) Build() []string {
 	}
 	return names
 }
-
-var restconfYang = `
-module restconf {
-	namespace "http://org.conf2/ns/modules";
-	prefix "modules";
-	revision 0000-00-00 {
-		description "initial ver";
-	}
-	list modules {
-		key "name";
-		leaf name {
-			type string;
-		}
-		container module {
-			/* replace with YANG-1.0 meta */
-			leaf nop {
-				type string;
-			}
-		}
-	}
-}`

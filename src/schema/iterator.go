@@ -45,18 +45,6 @@ func (self *MetaListIterator) HasNextMeta() bool {
 	return self.next != nil
 }
 
-//func (self *MetaListIterator) lookAhead() {
-//	if self.position != nil {
-//fmt.Printf("iterator here\n")
-//		return true
-//	}
-//	if self.currentProxy != nil {
-//fmt.Printf("iterator here\n")
-//		return self.currentProxy.HasNextMeta()
-//	}
-//	return false
-//}
-
 func (self *MetaListIterator) NextMeta() (next Meta) {
 	next, self.next = self.next, self.lookAhead()
 	return next

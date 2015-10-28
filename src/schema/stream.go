@@ -14,6 +14,30 @@ type StreamSource interface {
 	OpenStream(streamId string) (DataStream, error)
 }
 
+func PathStreamSource(path string) StreamSource {
+	dirs := strings.Split(path, ":")
+	sources := make([]StreamSource, len(dirs))
+	for i, dir := range dirs {
+		sources[i] = &FileStreamSource{Root:dir}
+		i++
+	}
+	return &MulticastStreamSource{sources}
+}
+
+type MulticastStreamSource struct {
+	Sources []StreamSource
+}
+
+func (s *MulticastStreamSource) OpenStream(resourceId string) (DataStream, error) {
+	for _, source := range s.Sources {
+		found, err := source.OpenStream(resourceId)
+		if found != nil {
+			return found, err
+		}
+	}
+	return nil, os.ErrNotExist
+}
+
 type FileStreamSource struct {
 	Root string
 }
@@ -31,7 +55,6 @@ type StringStreamer func(resource string) (string, error)
 
 type stringStream strings.Reader
 
-
 func (s *StringSource) OpenStream(resourceId string) (DataStream, error) {
 	str, err := s.Streamer(resourceId)
 	if err != nil {
@@ -42,7 +65,11 @@ func (s *StringSource) OpenStream(resourceId string) (DataStream, error) {
 
 func (src *FileStreamSource) OpenStream(resourceId string) (DataStream, error) {
 	path := fmt.Sprint(src.Root, "/", resourceId)
-	return os.Open(path)
+	stream, err := os.Open(path)
+	if os.IsNotExist(err) {
+		return nil, err
+	}
+	return stream, err
 }
 
 type FsError struct {

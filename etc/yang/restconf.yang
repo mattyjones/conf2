@@ -1,0 +1,19 @@
+module restconf {
+	namespace "http://org.conf2/ns/modules";
+	prefix "modules";
+	revision 0000-00-00 {
+		description "initial ver";
+	}
+	list modules {
+		key "name";
+		leaf name {
+			type string;
+		}
+		container module {
+			/* replace with YANG-1.0 meta */
+			leaf nop {
+				type string;
+			}
+		}
+	}
+}

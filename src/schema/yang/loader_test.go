@@ -6,10 +6,10 @@ import (
 )
 
 func LoadSampleModule(t *testing.T) (*schema.Module) {
-	f := &schema.FileStreamSource{Root:"../testdata"}
-	m, err:= LoadModule(f, "romancing-the-stone.yang")
+//	f := &schema.FileStreamSource{Root:"../testdata"}
+	m, err:= LoadModule(YangPath(), "romancing-the-stonex.yang")
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatal(err.Error())
 	}
 	return m
 }
