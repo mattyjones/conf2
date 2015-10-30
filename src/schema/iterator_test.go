@@ -1,7 +1,6 @@
 package schema
 import (
 	"testing"
-	"fmt"
 )
 
 func TestEmptyIterator(t *testing.T) {

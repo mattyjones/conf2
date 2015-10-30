@@ -19,9 +19,9 @@ func CoerseKeys(list *schema.List, keyStrs []string) ([]*Value, error) {
 	values := make([]*Value, len(keyStrs))
 	for i, keyStr := range keyStrs {
 		keyProp := schema.FindByIdent2(list, list.Keys[i])
-if keyProp == nil {
-panic(fmt.Sprintf("no key prop %s on %s", list.Keys[i], list.GetIdent()))
-}
+		if keyProp == nil {
+			return nil, errors.New(fmt.Sprintf("no key prop %s on %s", list.Keys[i], list.GetIdent()))
+		}
 		values[i] = &Value {
 			Type : keyProp.(schema.HasDataType).GetDataType(),
 		}
@@ -34,16 +34,16 @@ panic(fmt.Sprintf("no key prop %s on %s", list.Keys[i], list.GetIdent()))
 	return values, nil
 }
 
-func ReadKeys(state *WalkState, s Selection) (values []*Value, err error) {
-	if len(state.Key()) > 0 {
-		return state.Key(), nil
+func ReadKeys(selection *Selection) (values []*Value, err error) {
+	if len(selection.Key()) > 0 {
+		return selection.Key(), nil
 	}
-	list := state.SelectedMeta().(*schema.List)
+	list := selection.SelectedMeta().(*schema.List)
 	values = make([]*Value, len(list.Keys))
 	var key *Value
 	for i, keyIdent := range list.Keys {
-		keyMeta := schema.FindByIdent2(state.SelectedMeta(), keyIdent).(schema.HasDataType)
-		if key, err = s.Read(state, keyMeta); err != nil {
+		keyMeta := schema.FindByIdent2(selection.SelectedMeta(), keyIdent).(schema.HasDataType)
+		if key, err = selection.Node().Read(selection, keyMeta); err != nil {
 			return nil, err
 		}
 		if key == nil {

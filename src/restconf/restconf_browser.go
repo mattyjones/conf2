@@ -31,28 +31,28 @@ func (rcb *RestconfBrowser) Schema() (schema.MetaList) {
 	return rcb.Meta
 }
 
-func (rcb *RestconfBrowser) Selector(path *browse.Path, stategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
-	s := &browse.MySelection{}
-	s.OnSelect = func (state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
+func (rcb *RestconfBrowser) Selector(path *browse.Path) (*browse.Selection, error) {
+	s := &browse.MyNode{}
+	s.OnSelect = func (state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
 		switch meta.GetIdent() {
 			case "modules":
 				return enterRegistrations(rcb.Service.registrations)
 		}
 		return nil, nil
 	}
-	return browse.WalkPath(browse.NewWalkState(rcb.Meta), s, path)
+	return browse.WalkPath(browse.NewSelection(s, rcb.Meta), path)
 }
 
-func enterRegistrations(registrations map[string]*registration) (browse.Selection, error) {
-	s := &browse.MySelection{}
+func enterRegistrations(registrations map[string]*registration) (browse.Node, error) {
+	s := &browse.MyNode{}
 	index := newRegIndex(registrations)
-	s.OnNext = func(state *browse.WalkState, meta *schema.List, keys []*browse.Value, isFirst bool) (browse.Selection, error) {
+	s.OnNext = func(state *browse.Selection, meta *schema.List, keys []*browse.Value, isFirst bool) (browse.Node, error) {
 		if hasMore, err := index.Index.OnNext(state, meta, keys, isFirst); hasMore {
 			return s, err
 		}
 		return nil, nil
 	}
-	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (browse.Selection, error) {
+	s.OnSelect = func(state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
 		switch meta.GetIdent() {
 		case "module":
 			if index.Selected != nil {
@@ -64,7 +64,7 @@ func enterRegistrations(registrations map[string]*registration) (browse.Selectio
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
+	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
 		switch meta.GetIdent() {
 			case "name":
 				return &browse.Value{Str : index.Index.CurrentKey()}, nil

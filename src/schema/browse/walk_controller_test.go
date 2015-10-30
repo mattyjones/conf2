@@ -47,14 +47,14 @@ func TestPathIntoListItemContainer(t *testing.T) {
 	if b, err = LoadPathTestData(); err != nil {
 		t.Fatal(err)
 	}
-	var target Selection
-	if target, _, err = b.Selector(NewPath("fruits=apple/origin"), READ); err != nil {
+	var target *Selection
+	if target, err = b.Selector(NewPath("fruits=apple/origin")); err != nil {
 		t.Fatal(err)
 	} else if target == nil {
 		t.Fatal("Could not find target");
 	}
 
-	if target, _, err = b.Selector(NewPath("fruits=apple/boat"), READ); err != nil {
+	if target, err = b.Selector(NewPath("fruits=apple/boat")); err != nil {
 		t.Fatal(err)
 	} else if target == nil {
 		t.Fatal("Could not find target");

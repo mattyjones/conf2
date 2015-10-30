@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"schema"
-	"errors"
 )
 
 var editOps = map[Operation]string {
@@ -33,44 +32,40 @@ func NewDumper(out io.Writer) *Dumper {
 	}
 }
 
-func (d *Dumper) Selector(path *Path, strategy Strategy) (s Selection, state *WalkState, err error) {
-	if strategy != INSERT && strategy != UPSERT {
-		return nil, nil, errors.New("Only INSERT supported")
-	}
-	s, err = d.Enter(0)
-	return s, nil, err
-}
-
 func (self *Dumper) Schema() schema.MetaList {
 	return nil
 }
 
-func (d *Dumper) Enter(level int) (Selection, error) {
+func (d *Dumper) Node() Node {
+	return d.enter(0)
+}
+
+func (d *Dumper) enter(level int) (Node) {
 	row := 0
-	s := &MySelection{}
-	var created Selection
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, err error) {
+	s := &MyNode{}
+	var created Node
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, err error) {
 		nest := created
 		created = nil
 		return nest, nil
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, v *Value) (err error) {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
 		switch op {
 			case CREATE_CHILD, CREATE_LIST, CREATE_LIST_ITEM:
-				created, _ = d.Enter(level + 1)
+				created = d.enter(level + 1)
 		}
 		d.dumpEditOp(state, op, level)
 		d.dumpValue(v, level)
 		return
 	}
-	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (next Selection, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, keys []*Value, first bool) (next Node, err error) {
 		d.out.WriteString(fmt.Sprintf("%sITERATE row=%d, first=%v\n", Padding[:level], row, first))
 		row++
 		nest := created
 		created = nil
 		return nest, nil
 	}
-	return s, nil
+	return s
 }
 
 func (d *Dumper) dumpValue(v *Value, level int) {
@@ -101,7 +96,7 @@ func (d *Dumper) dumpValue(v *Value, level int) {
 	d.out.WriteString(line)
 }
 
-func (d *Dumper) dumpEditOp(state *WalkState, op Operation, level int) {
+func (d *Dumper) dumpEditOp(state *Selection, op Operation, level int) {
 	line := fmt.Sprintf("%s%s %s\n", Padding[:level], editOps[op], state.String())
 	d.out.WriteString(line)
 }

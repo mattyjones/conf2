@@ -43,9 +43,11 @@ module json-test {
 		t.Error("bad module", err)
 	} else {
 		var actual bytes.Buffer
-		json := NewJsonFragmentWriter(&actual)
+		var in *Selection
 		b := NewSchemaBrowser(module, false)
-		if err = Insert(NewPath(""), b, json); err != nil {
+		in, err = b.Selector(NewPath(""))
+		json := NewJsonWriter(&actual).Selector(in)
+		if err = Insert(in, json); err != nil {
 			t.Error("failed to transmit json", err)
 		} else {
 			t.Log("Round Trip:", string(actual.Bytes()))
@@ -54,13 +56,16 @@ module json-test {
 }
 
 func TestYangWrite(t *testing.T) {
-	simple, err := yang.LoadModule(schema.NewCwdSource(), "../testdata/simple.yang")
+	simple, err := yang.LoadModuleFromByteArray([]byte(yang.TestDataSimpleYang), nil)
 	if err != nil {
 		t.Error(err)
 	} else {
+		var in, out *Selection
 		from := NewSchemaBrowser(simple, false)
+		in, err = from.Selector(NewPath(""))
 		to := NewSchemaBrowser(nil, false)
-		err = Insert(NewPath(""), from, to)
+		out, err = from.Selector(NewPath(""))
+		err = Upsert(in, out)
 		if err != nil {
 			t.Error(err)
 		} else {
@@ -88,8 +93,9 @@ func TestYangWrite(t *testing.T) {
 
 func DumpModule(b *SchemaBrowser) (string, error) {
 	var buff bytes.Buffer
-	dumper := NewDumper(&buff)
-	err := Insert(NewPath(""), b, dumper)
+	in, _ := b.Selector(NewPath(""))
+	dumper := in.Copy(NewDumper(&buff).Node())
+	err := Insert(in, dumper)
 	if err != nil {
 		return "", err
 	}

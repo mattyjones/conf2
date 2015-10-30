@@ -11,7 +11,7 @@ func TestRestconfBrowserMetaLoad(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	} else {
-		s, _, err := b.Selector(browse.NewPath("modules"), browse.READ)
+		s, err := b.Selector(browse.NewPath("modules"))
 		if err != nil {
 			t.Error(err.Error())
 		} else if s == nil {

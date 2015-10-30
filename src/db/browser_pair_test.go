@@ -75,8 +75,17 @@ module m {
 		config := browse.NewBufferStore()
 		configBrowser := browse.NewStoreBrowser(m, config)
 		pair := NewBrowserPair(operBrowser, configBrowser)
-
-		browse.Upsert(browse.NewPath("a"), editBrowser, pair)
+		var in, out *browse.Selection
+		p := browse.NewPath("")
+		if in, err = editBrowser.Selector(p); err != nil {
+			t.Fatal(err)
+		}
+		if out, err = pair.Selector(p); err != nil {
+			t.Fatal(err)
+		}
+		if err = browse.Upsert(in, out); err != nil {
+			t.Fatal(err)
+		}
 		if len(oper.Values) != 2 {
 			t.Error("Expected 2 items got ", len(oper.Values))
 		}

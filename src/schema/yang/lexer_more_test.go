@@ -1,18 +1,12 @@
 package yang
 import (
 	"testing"
-	"io/ioutil"
 	"container/list"
 	"fmt"
 )
 
 func TestSimpleLexExample(t *testing.T) {
-	data, err := ioutil.ReadFile("../testdata/simple.yang")
-
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	l := lex(string(data), nil)
+	l := lex(TestDataSimpleYang, nil)
 	tokens := list.New()
 	for  {
 		token, err := l.nextToken()
@@ -35,9 +29,5 @@ func TestSimpleLexExample(t *testing.T) {
 
 
 func TestStoneLex(t *testing.T) {
-	stone, err := ioutil.ReadFile("../testdata/romancing-the-stone.yang")
-	if err != nil {
-		t.Errorf("could not load file %s", err)
-	}
-	lex(string(stone), nil)
+	lex(TestDataRomancingTheStone, nil)
 }

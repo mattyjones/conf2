@@ -25,14 +25,6 @@ func (err *restconfError) HttpCode() int {
 	return err.Code
 }
 
-//type Service interface {
-//	Listen()
-//	RegisterBrowser(browser browse.Browser) error
-//	RegisterBrowserWithName(browser browse.Browser, name string) error
-//	SetDocRoot(schema.StreamSource)
-//	Stop()
-//}
-
 func NewService() (*Service, error) {
 	service := &Service{restconfPath:"/restconf/"}
 	service.registrations = make(map[string]*registration, 5)
@@ -61,75 +53,106 @@ type registration struct {
 	browser browse.Browser
 }
 
+
 func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var err error
-	var path *browse.Path
-	if path, err = browse.ParsePath(r.URL.Path); err == nil {
-		path.SetQuery(r.URL.RawQuery)
-		switch r.Method {
-		case "GET":
-			w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
-			dest := browse.NewJsonFragmentWriter(w)
-			err = browse.Insert(path, reg.browser, dest)
-		case "PUT":{
-			rdr := browse.NewJsonFragmentReader(r.Body)
-			err = browse.Upsert(path, rdr, reg.browser)
-		}
-		case "POST": {
-			rdr := browse.NewJsonFragmentReader(r.Body)
-			dest := browse.NewJsonFragmentWriter(w)
-			err = reg.operation(path, rdr, reg.browser, dest)
-		}
-		default:
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		}
-	}
-	if err != nil  {
+	handleError := func (err error) {
 		if httpErr, ok := err.(browse.HttpError); ok {
 			http.Error(w, httpErr.Error(), httpErr.HttpCode())
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
-}
-
-func (reg *registration) operation(path *browse.Path, src browse.Browser, dest browse.Browser, output browse.Browser) (err error) {
-	var destSel, srcSel browse.Selection
-	var destState, srcState *browse.WalkState
-	if destSel, destState, err = dest.Selector(path, browse.INSERT); err != nil {
-		return err
-	}
-	if destSel == nil {
-		return browse.NotFound(path.URL)
-	}
-	state := destState
-	if state == nil {
-		state = srcState
-		if state == nil {
-			return browse.NotFound(path.URL)
+	var err error
+	var path *browse.Path
+	if path, err = browse.ParsePath(r.URL.Path); err == nil {
+		var selection *browse.Selection
+		if selection, err = reg.browser.Selector(path); err == nil {
+			handleError(err)
+			return
 		}
-	}
-	if srcSel, srcState, err = src.Selector(path, browse.READ); err != nil {
-		return err
-	}
-	if destState.Position() != nil && schema.IsAction(destState.Position()) {
-		var outputSel, rpcOutput browse.Selection
-		var outputState *browse.WalkState
-		actionMeta := state.Position().(*schema.Rpc)
-		if rpcOutput, outputState, err = destSel.Action(state, actionMeta, srcSel); err != nil {
-			return err
+		switch r.Method {
+		case "GET":
+			w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
+			output := selection.Copy(browse.NewJsonWriter(w).Container())
+			err = browse.ControlledInsert(selection, output, browse.LimitedWalk(r.URL.RawQuery))
+		case "PUT":{
+			var payload *browse.Selection
+			if payload, err = browse.NewJsonReader(r.Body).FragmentSelector(selection); err != nil {
+				handleError(err)
+				return
+			}
+			err = browse.Upsert(payload, selection)
 		}
-		if rpcOutput != nil {
-			outputSel, _, err = output.Selector(browse.NewPath(""), browse.INSERT)
-			if err = browse.Edit(outputState, rpcOutput, outputSel, browse.INSERT, browse.LimitedWalk(path.Query)); err != nil {
-				return err
+		case "POST": {
+			if schema.IsAction(selection.SelectedMeta()) {
+				rpc := selection.SelectedMeta().(*schema.Rpc)
+				var rpcInput, rpcOutput *browse.Selection
+				if rpcInput, err = browse.NewJsonReader(r.Body).Selector(rpc.Input); err != nil {
+					handleError(err)
+					return
+				}
+				if rpcOutput, err = browse.Action(selection, rpcInput); err != nil {
+					handleError(err)
+					return
+				}
+				output := rpcOutput.Copy(browse.NewJsonWriter(w).Container())
+				browse.Insert(rpcOutput, output)
+			} else {
+				var payload *browse.Selection
+				if payload, err = browse.NewJsonReader(r.Body).FragmentSelector(selection); err != nil {
+					handleError(err)
+					return
+				}
+				err = browse.Insert(payload, selection)
 			}
 		}
-	} else {
-		err = browse.Edit(state, srcSel, destSel, browse.INSERT, browse.LimitedWalk(path.Query))
+		default:
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		}
 	}
-	return
+
+	if err != nil  {
+		handleError(err)
+	}
 }
+
+//func (reg *registration) operation(path *browse.Path, src browse.Browser, dest browse.Browser, output browse.Browser) (err error) {
+//	var destSel, srcSel browse.Node
+//	var destState, srcState *browse.Selection
+//	if destSel, destState, err = dest.Selector(path, browse.INSERT); err != nil {
+//		return err
+//	}
+//	if destSel == nil {
+//		return browse.NotFound(path.URL)
+//	}
+//	state := destState
+//	if state == nil {
+//		state = srcState
+//		if state == nil {
+//			return browse.NotFound(path.URL)
+//		}
+//	}
+//	if srcSel, srcState, err = src.Selector(path, browse.READ); err != nil {
+//		return err
+//	}
+//	if destState.Position() != nil && schema.IsAction(destState.Position()) {
+//		var outputSel, rpcOutput browse.Node
+//		var outputState *browse.Selection
+//		actionMeta := state.Position().(*schema.Rpc)
+//		if rpcOutput, outputState, err = destSel.Action(state, actionMeta, srcSel); err != nil {
+//			return err
+//		}
+//		if rpcOutput != nil {
+//			outputSel, _, err = output.Selector(browse.NewPath(""), browse.INSERT)
+//			if err = browse.Edit(outputState, rpcOutput, outputSel, browse.INSERT, browse.LimitedWalk(path.Query)); err != nil {
+//				return err
+//			}
+//		}
+//	} else {
+//		err = browse.Edit(state, srcSel, destSel, browse.INSERT, browse.LimitedWalk(path.Query))
+//	}
+//	return
+//}
 
 type docRootImpl struct {
 	docroot schema.StreamSource

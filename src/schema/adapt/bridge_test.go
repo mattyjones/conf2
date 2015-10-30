@@ -19,12 +19,19 @@ func TestBridge(t *testing.T) {
 		t.Error(err)
 	} else {
 		var actualBuff bytes.Buffer
-		internal := browse.NewJsonWriter(&actualBuff, internalModule)
+		internal := browse.NewSelection(browse.NewJsonWriter(&actualBuff).Container(), internalModule)
 		b := NewBridge(internal, externalModule)
 		a := b.Mapping.AddMapping("a", "x")
 		a.AddMapping("b", "y")
-		input := browse.NewJsonReader(strings.NewReader(externalData), externalModule)
-		err = browse.Upsert(browse.NewPath(""), input, b)
+		var in, out *browse.Selection
+		in, err = browse.NewJsonReader(strings.NewReader(externalData)).Selector(externalModule)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if out, err = b.Selector(browse.NewPath("")); err != nil {
+			t.Fatal(err)
+		}
+		err = browse.Upsert(in, out)
 		if err != nil {
 			t.Error(err)
 		} else {

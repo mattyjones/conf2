@@ -45,16 +45,15 @@ module m {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection := &MySelection{}
-	selection.OnNext = func(*WalkState, *schema.List, []*Value, bool) (Selection, error) {
-		return selection, nil
+	node := &MyNode{}
+	node.OnNext = func(*Selection, *schema.List, []*Value, bool) (Node, error) {
+		return node, nil
 	}
-	selection.OnSelect = func(*WalkState, schema.MetaList) (Selection, error) {
-		return selection, nil
+	node.OnSelect = func(*Selection, schema.MetaList) (Node, error) {
+		return node, nil
 	}
-	rootState := NewWalkState(module)
-	var s Selection
-	var state *WalkState
+	root := NewSelection(node, module)
+	var selection *Selection
 	tests := []struct {
 		path string
 		expected string
@@ -66,11 +65,11 @@ module m {
 		{"a/aa=key/aab",     	"m/a/aa=key/aab/<nil>"},
 	}
 	for _, test := range tests {
-		s, state, err = WalkPath(rootState, selection, NewPath(test.path))
-		if s == nil {
+		selection, err = WalkPath(root, NewPath(test.path))
+		if selection == nil {
 			t.Errorf("Target for %s not found", test.path)
 		} else {
-			actual := state.String()
+			actual := selection.String()
 			if test.expected != actual {
 				t.Errorf("Wrong state path for %s\nExpected:%s\n  Actual:%s", test.path, test.expected, actual)
 			}
@@ -124,15 +123,20 @@ module json-test {
 			{ "birding/reference", `{"name":"Peterson's Guide"}` },
 		}
 
+		var in *Selection
 		for i, test := range tests {
 			inIo := strings.NewReader(json)
-			in := &JsonReader{In:inIo, Meta:module}
+			in, err = NewJsonReader(inIo).Selector(module)
 			if err != nil {
 				t.Error(err)
 			}
+			p := NewPath(test.path)
+			if in, err = WalkPath(in, p); err != nil {
+				t.Error(err)
+			}
 			var actualBuff bytes.Buffer
-			out := NewJsonFragmentWriter(&actualBuff)
-			err = Upsert(NewPath(test.path), in, out)
+			out := NewJsonWriter(&actualBuff).Selector(in)
+			err = ControlledUpsert(in, out, LimitedWalk(p.Query))
 			if err != nil {
 				t.Error(err)
 			} else {

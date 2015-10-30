@@ -47,13 +47,13 @@ func conf2_testharness_test_run(harness_hnd_id unsafe.Pointer, c_testname *C.cha
 
 	testname := C.GoString(c_testname)
 	details := strings.Split(testname, " ")
-	var root browse.Selection
-	var state *browse.WalkState
+	var root browse.Node
+	var state *browse.Selection
 	if root, state, err = harness.browser.RootSelector(); err != nil {
 		harness.failure(testname, err.Error())
 		return FALSE_SHORT
 	}
-	var s browse.Selection
+	var s browse.Node
 	var path *browse.Path
 	if path, err = browse.ParsePath(details[1]); err != nil {
 		harness.failure(testname, err.Error())
@@ -110,7 +110,7 @@ func (h *testHarness) failure(testname string, reason string) {
 	h.failed = append(h.failed, failure)
 }
 
-func tojson(state *browse.WalkState, s browse.Selection) (json string, err error) {
+func tojson(state *browse.Selection, s browse.Node) (json string, err error) {
 	var actual bytes.Buffer
 	w := browse.NewJsonWriter(&actual)
 	out, _ := w.GetSelector()

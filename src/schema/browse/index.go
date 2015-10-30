@@ -52,7 +52,7 @@ func (i *StringIndex) CurrentKey() string {
 	return i.Keys[i.Position]
 }
 
-func (i *StringIndex) OnNext(state *WalkState, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
+func (i *StringIndex) OnNext(state *Selection, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
 	if (len(key) > 0) {
 		if first {
 			i.Position = 0

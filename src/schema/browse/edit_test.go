@@ -33,14 +33,21 @@ func TestEditListItem(t *testing.T) {
 	if b, err = LoadEditTestData(); err != nil {
 		t.Fatal(err)
 	}
-	in := NewJsonFragmentReader(strings.NewReader(`{"origin":{"country":"Canada"}}`))
+	json := NewJsonReader(strings.NewReader(`{"origin":{"country":"Canada"}}`))
+	var in, out *Selection
+	if out, err = b.Selector(NewPath("fruits=apple")); err != nil {
+		t.Fatal(err)
+	}
+	if in, err = json.FragmentSelector(out); err != nil {
+		t.Fatal(err)
+	}
 
 	// UPDATE
 	// Here we're testing editing a specific list item. With FindTarget walk controller
 	// needs to leave walkstate in a position for WalkTarget controller to make the edit
 	// on the right item.
 	log.Println("Testing edit\n")
-	err = Update(NewPath("fruits=apple"), in, b)
+	err = Update(in, out)
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -53,20 +60,30 @@ func TestEditListItem(t *testing.T) {
 	}
 
 	// INSERT
-	in = NewJsonFragmentReader(strings.NewReader(`{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`))
 	log.Println("Testing insert\n")
-	err = Insert(NewPath("fruits"), in, b)
-	if err != nil {
+	json = NewJsonReader(strings.NewReader(`{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`))
+	var selection *Selection
+	if selection, err = b.Selector(NewPath("fruits")); err != nil {
+		t.Fatal(err)
+	}
+//	if in, err = json.FragmentSelector(out); err != nil {
+//		t.Fatal(err)
+//	}
+	var jsonNode Node
+	if jsonNode, err = json.Node(selection); err != nil {
+		t.Fatal(err)
+	}
+	if err = InsertByNode(selection, jsonNode, selection.Node()); err != nil {
+		t.Error(err)
+	}
+
+	var actual interface{}
+	if actual, err = b.Read("fruits"); err != nil {
 		t.Error(err)
 	} else {
-		var actual interface{}
-		if actual, err = b.Read("fruits"); err != nil {
-			t.Error(err)
-		} else {
-			fruits := actual.([]map[string]interface{})
-			if len(fruits) != 3 {
-				t.Error("Expected 3 fruits but got ", len(fruits))
-			}
+		fruits := actual.([]map[string]interface{})
+		if len(fruits) != 3 {
+			t.Error("Expected 3 fruits but got ", len(fruits))
 		}
 	}
 }

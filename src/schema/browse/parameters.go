@@ -32,9 +32,9 @@ func (p *Parameters) Value(ident string) *Value {
 	return nil
 }
 
-func (p *Parameters) Collect() (Selection, error) {
-	s := &MySelection{}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, v *Value) (err error) {
+func (p *Parameters) Collect() (Node, error) {
+	s := &MyNode{}
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
 		switch op {
 		case UPDATE_VALUE:
 			p.Given[meta.GetIdent()] = v

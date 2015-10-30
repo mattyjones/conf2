@@ -78,12 +78,12 @@ func conf2_load_module(
 		browser_hnd: browser_hnd,
 	}
 
-	var to browse.Selection
+	var to browse.Node
 	to, _, err = apiModuleBrowser.RootSelector()
 	defer schema.CloseResource(to)
 	if err == nil {
-		var from browse.Selection
-		var state *browse.WalkState
+		var from browse.Node
+		var state *browse.Selection
 		from, state, err = module_browser.RootSelector()
 		defer schema.CloseResource(from)
 		if err == nil {
@@ -141,7 +141,7 @@ func conf2_new_browser(
 	return NewGoHandle(browser).ID
 }
 
-func (cb *apiBrowser) RootSelector() (s browse.Selection, state *browse.WalkState, err error) {
+func (cb *apiBrowser) RootSelector() (s browse.Node, state *browse.Selection, err error) {
 	errPtr := unsafe.Pointer(&err)
 	selector := &apiSelector{browser:cb}
 	root_selection_hnd_id := C.conf2_browse_root_selector(cb.root_selector_impl, cb.browser_hnd.ID, errPtr)
@@ -150,7 +150,7 @@ func (cb *apiBrowser) RootSelector() (s browse.Selection, state *browse.WalkStat
 		panic(fmt.Sprint("Root selector handle not found", root_selection_hnd_id))
 	}
 	s, err = selector.selection(root_selection_hnd)
-	state = browse.NewWalkState(cb.module)
+	state = browse.NewSelection(cb.module)
 	return
 }
 
@@ -166,24 +166,24 @@ type apiSelector struct {
 	browser *apiBrowser
 }
 
-func (cb *apiSelector) selection(selectionHnd *ApiHandle) (browse.Selection, error) {
-	s := &browse.MySelection{}
-	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (child browse.Selection, err error) {
+func (cb *apiSelector) selection(selectionHnd *ApiHandle) (browse.Node, error) {
+	s := &browse.MyNode{}
+	s.OnSelect = func(state *browse.Selection, meta schema.MetaList) (child browse.Node, err error) {
 		return cb.enter(meta, selectionHnd)
 	}
-	s.OnNext = func(state *browse.WalkState, meta *schema.List, keys []*browse.Value, first bool) (bool, error) {
+	s.OnNext = func(state *browse.Selection, meta *schema.List, keys []*browse.Value, first bool) (bool, error) {
 		return cb.iterate(s, selectionHnd, keys, first)
 	}
-	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (*browse.Value, error) {
+	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
 		return cb.read(meta, selectionHnd)
 	}
-	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, val *browse.Value) error {
+	s.OnWrite = func(state *browse.Selection, meta schema.Meta, op browse.Operation, val *browse.Value) error {
 		return cb.edit(meta, selectionHnd, op, val)
 	}
-	s.OnUnselect = func(state *browse.WalkState, meta schema.MetaList) error {
+	s.OnUnselect = func(state *browse.Selection, meta schema.MetaList) error {
 		return cb.exit(meta, selectionHnd)
 	}
-	s.OnChoose = func(state *browse.WalkState, m *schema.Choice) (schema.Meta, error) {
+	s.OnChoose = func(state *browse.Selection, m *schema.Choice) (schema.Meta, error) {
 		return cb.choose(state.Position(), selectionHnd, m)
 	}
 	s.Resource = selectionHnd
@@ -191,7 +191,7 @@ func (cb *apiSelector) selection(selectionHnd *ApiHandle) (browse.Selection, err
 }
 
 
-func (cb *apiSelector) iterate(s browse.Selection, selectionHnd *ApiHandle, key []*browse.Value, first bool) (hasMore bool, err error) {
+func (cb *apiSelector) iterate(s browse.Node, selectionHnd *ApiHandle, key []*browse.Value, first bool) (hasMore bool, err error) {
 	errPtr := unsafe.Pointer(&err)
 	var c_encoded_key unsafe.Pointer
 	var encoded_key_len C.int
@@ -214,7 +214,7 @@ func (cb *apiSelector) iterate(s browse.Selection, selectionHnd *ApiHandle, key 
 	return has_more > 0, err
 }
 
-func (cb *apiSelector) enter(meta schema.MetaList, selectionHnd *ApiHandle) (child browse.Selection, err error) {
+func (cb *apiSelector) enter(meta schema.MetaList, selectionHnd *ApiHandle) (child browse.Node, err error) {
 	errPtr := unsafe.Pointer(&err)
 	c_found := C.short(0)
 	ident := encodeIdent(meta)

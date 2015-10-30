@@ -33,30 +33,40 @@ module m {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// lazy trick, we stick all data, input, output into one bucket
 	store := NewBufferStore()
 	var yourName *Value
-	store.Actions["sayHello"] = func(state *WalkState, meta *schema.Rpc, input Selection) (output Selection, outputState *WalkState, err error) {
-		var read Selection
-		var inputState *WalkState
+	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input *Selection) (output *Selection, err error) {
+		var read *Selection
 		b := NewStoreBrowser(meta.Input, store)
-		if read, inputState, err = b.Selector(NewPath(""), INSERT); err != nil {
-			return nil, nil, err
+		if read, err = b.Selector(NewPath("")); err != nil {
+			return nil, err
 		}
-		if err = Edit(inputState, input, read, INSERT, FullWalk()); err != nil {
-			return nil, nil, err
+		if err = Insert(input, read); err != nil {
+			return nil, err
 		}
 		yourName = store.Values["name"]
 		store.Values["salutation"] = &Value{Str:fmt.Sprint("Hello ", yourName)}
 		b = NewStoreBrowser(meta.Output, store)
-		return b.Selector(NewPath(""), READ)
+		return b.Selector(NewPath(""))
 	}
-	in := NewJsonFragmentReader(strings.NewReader(`{"name":"joe"}`))
+	in := NewJsonReader(strings.NewReader(`{"name":"joe"}`))
 	var actual bytes.Buffer
-	out := NewJsonFragmentWriter(&actual)
+	out := NewJsonWriter(&actual)
 	b := NewStoreBrowser(m, store)
-	err = Action(NewPath("sayHello"), b, in, out)
-	if err != nil {
-		t.Fatal(err)
+	var actionSel, rpcOut, rpcIn *Selection
+	if actionSel, err = b.Selector(NewPath("sayHello")); err != nil {
+		t.Error(err)
+	}
+	rpc := actionSel.Position().(*schema.Rpc)
+	if rpcIn, err = in.Selector(rpc.Input); err != nil {
+		t.Error(err)
+	}
+	if rpcOut, err = Action(actionSel, rpcIn); err != nil {
+		t.Error(err)
+	}
+	if err = Insert(rpcOut, out.Selector(rpcOut)); err != nil {
+		t.Error(err)
 	}
 	if yourName.Str != "joe" {
 		t.Error("Your name ", yourName)

@@ -44,15 +44,16 @@ module json-test {
 			{ "hobbies=birding", 	"json-test/hobbies=birding/<nil>" },
 			{ "hobbies=birding/favorite", "json-test/hobbies=birding/favorite/<nil>" },
 		}
+		var in, selection *Selection
 		for _, test := range tests {
-			in := &JsonReader{In:strings.NewReader(json), Meta:module}
-			_, walkedState, err := in.Selector(NewPath(test.path), READ)
+			in, err = NewJsonReader(strings.NewReader(json)).Selector(module)
+			selection, err = WalkPath(in, NewPath(test.path))
 			if err != nil {
 				t.Error("failed to transmit json", err)
-			} else if walkedState == nil {
+			} else if selection == nil {
 				t.Error(test.path, "- Target not found, state nil")
-			} else if (walkedState.String() != test.expectedMeta) {
-				t.Error(test.path, "-", test.expectedMeta, "!=", walkedState.String())
+			} else if (selection.String() != test.expectedMeta) {
+				t.Error(test.path, "-", test.expectedMeta, "!=", selection.String())
 			}
 		}
 	}

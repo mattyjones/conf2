@@ -5,7 +5,6 @@ import (
 	"schema"
 	"bufio"
 	"strconv"
-	"errors"
 )
 
 const QUOTE = '"';
@@ -18,52 +17,32 @@ const COMMA = ',';
 
 type JsonWriter struct {
 	out *bufio.Writer
-	meta *schema.Module
 	firstInContainer bool
 	startingInsideList bool
 	firstWrite bool
 	closeArrayOnExit bool
 }
 
-func NewJsonWriter(out io.Writer, module *schema.Module) *JsonWriter {
-	return &JsonWriter{
-		out:bufio.NewWriter(out),
-		meta:module,
-		firstInContainer:true,
-	}
-}
-
-func NewJsonFragmentWriter(out io.Writer) *JsonWriter {
+func NewJsonWriter(out io.Writer) *JsonWriter {
 	return &JsonWriter{
 		out:bufio.NewWriter(out),
 		firstInContainer:true,
 	}
 }
 
-func (json *JsonWriter) Selector(path *Path, strategy Strategy) (s Selection, state *WalkState, err error) {
-	if strategy != INSERT && strategy != UPSERT {
-		return nil, nil, errors.New("Only [UP,IN]SERT strategy is supported. Consider using bucket first")
-	}
-	s, _ = json.selectJson()
-	if json.meta != nil {
-		s, state, err = WalkPath(NewWalkState(json.meta), s, path)
-	}
-	return
+func (json *JsonWriter) Selector(in *Selection) *Selection {
+	return in.Copy(json.Container())
 }
 
-func (self *JsonWriter) Schema() schema.MetaList {
-	return nil
-}
-
-func (json *JsonWriter) selectJson() (Selection, error) {
-	s := &MySelection{}
-	var created Selection
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, err error) {
+func (json *JsonWriter) Container() Node {
+	s := &MyNode{}
+	var created Node
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, err error) {
 		nest := created
 		created = nil
 		return nest, nil
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, v *Value) (err error) {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
 		switch op {
 		case BEGIN_EDIT:
 			_, err = json.out.WriteRune(OPEN_OBJ)
@@ -78,19 +57,19 @@ func (json *JsonWriter) selectJson() (Selection, error) {
 			}
 		case CREATE_CHILD:
 			err = json.beginContainer(meta.GetIdent())
-			created, _ = json.selectJson()
+			created = json.Container()
 		case POST_CREATE_CHILD:
 			err = json.endContainer()
 		case CREATE_LIST_ITEM:
 			if err = json.conditionallyOpenArrayOnFirstWrite(meta.GetIdent()); err == nil {
 				err = json.beginArrayItem()
 			}
-			created, _ = json.selectJson()
+			created = json.Container()
 		case POST_CREATE_LIST_ITEM:
 			err = json.endArrayItem()
 		case CREATE_LIST:
 			err = json.beginList(meta.GetIdent())
-			created, _ = json.selectJson()
+			created = json.Container()
 		case POST_CREATE_LIST:
 			return json.endList()
 		case UPDATE_VALUE:
@@ -101,12 +80,12 @@ func (json *JsonWriter) selectJson() (Selection, error) {
 		json.firstWrite = false
 		return
 	}
-	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (next Selection, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, keys []*Value, first bool) (next Node, err error) {
 		next = created
 		created = nil
 		return next, nil
 	}
-	return s, nil
+	return s
 }
 
 func (json *JsonWriter) conditionallyOpenArrayOnFirstWrite(ident string) error {

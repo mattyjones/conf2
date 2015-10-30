@@ -2,6 +2,7 @@ package db
 import (
 	"schema/browse"
 	"schema"
+	"errors"
 )
 
 // Details on config nodes v.s. state data
@@ -29,34 +30,43 @@ func NewBrowserPair(operational browse.Browser, config browse.Browser) *BrowserP
 	}
 }
 
-func (self *BrowserPair) Init() error {
+func (self *BrowserPair) Init() (err error) {
 	// Here we initialize the operational browser with the current configuration
-	return browse.Upsert(browse.NewPath(""), self.config, self.oper)
+	var sConfig, sOper *browse.Selection
+	if sConfig, err = self.config.Selector(browse.NewPath("")); err != nil {
+		return err
+	}
+	if sOper, err = self.oper.Selector(browse.NewPath("")); err != nil {
+		return err
+	}
+	return browse.Upsert(sConfig, sOper)
 }
 
-func (self *BrowserPair) Selector(path *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
+func (self *BrowserPair) Selector(path *browse.Path) (*browse.Selection, error) {
 	var err error
-	var oper, config, combo browse.Selection
-	var operState, configState *browse.WalkState
-	if oper, operState, err = self.oper.Selector(path, strategy); err != nil {
-		return nil, nil, err
+	var operSel, configSel *browse.Selection
+	if operSel, err = self.oper.Selector(path); err != nil {
+		return nil, err
 	}
 
-	if config, configState, err = self.config.Selector(path, strategy); err != nil {
-		return nil, nil, err
+	if configSel, err = self.config.Selector(path); err != nil {
+		return nil, err
 	}
 
-	if config == nil && oper == nil {
-		return nil, nil, browse.NotFound(path.URL)
+	if configSel == nil && operSel == nil {
+		return nil, browse.NotFound(path.URL)
+	} else if operSel == nil {
+		return nil, errors.New("Illegal state")
 	}
-	if combo, err = self.selectPair(oper, config); err != nil {
-		return nil, nil, err
+	var configNode, operNode, comboNode browse.Node
+	operNode = operSel.Node()
+	if configSel != nil {
+		configNode = configSel.Node()
 	}
-	state := operState
-	if state == nil {
-		state = configState
+	if comboNode, err = self.selectPair(operNode, configNode); err != nil {
+		return nil, err
 	}
-	return combo, state, nil
+	return operSel.Copy(comboNode), nil
 }
 
 func (self *BrowserPair) Schema() schema.MetaList {
@@ -67,11 +77,11 @@ func (self *BrowserPair) Schema() schema.MetaList {
 	return m
 }
 
-func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selection) (browse.Selection, error) {
-	s := &browse.MySelection{}
+func (self *BrowserPair) selectPair(oper browse.Node, config browse.Node) (browse.Node, error) {
+	s := &browse.MyNode{}
 	IsContainerConfig := config != nil
-	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (next browse.Selection, err error) {
-		var operNext, configNext browse.Selection
+	s.OnNext = func(state *browse.Selection, meta *schema.List, key []*browse.Value, first bool) (next browse.Node, err error) {
+		var operNext, configNext browse.Node
 		operNext, err = oper.Next(state, meta, key, first)
 		if err == nil && operNext != nil {
 			if IsContainerConfig {
@@ -85,7 +95,7 @@ func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selecti
 
 		return
 	}
-	s.OnWrite = func(state *browse.WalkState, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
+	s.OnWrite = func(state *browse.Selection, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
 		err = oper.Write(state, meta, op, val)
 		if err == nil && state.IsConfig() {
 			err = config.Write(state, meta, op, val)
@@ -95,7 +105,7 @@ func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selecti
 
 		return err
 	}
-	s.OnRead = func(state *browse.WalkState, meta schema.HasDataType) (v *browse.Value, err error) {
+	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (v *browse.Value, err error) {
 		if IsContainerConfig && state.IsConfig() {
 			v, err = config.Read(state, meta)
 		}
@@ -104,8 +114,8 @@ func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selecti
 		}
 		return
 	}
-	s.OnSelect = func(state *browse.WalkState, meta schema.MetaList) (child browse.Selection, err error) {
-		var configChild, operChild browse.Selection
+	s.OnSelect = func(state *browse.Selection, meta schema.MetaList) (child browse.Node, err error) {
+		var configChild, operChild browse.Node
 		operChild, err = oper.Select(state, meta)
 		if operChild != nil {
 			if IsContainerConfig && state.IsConfig() {
@@ -115,7 +125,7 @@ func (self *BrowserPair) selectPair(oper browse.Selection, config browse.Selecti
 		}
 		return nil, nil
 	}
-	s.OnChoose = func(state *browse.WalkState, choice *schema.Choice) (choosen schema.Meta, err error) {
+	s.OnChoose = func(state *browse.Selection, choice *schema.Choice) (choosen schema.Meta, err error) {
 		choosen, err = oper.Choose(state, choice)
 		return
 	}

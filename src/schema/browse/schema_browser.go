@@ -42,11 +42,11 @@ func GetSchemaSchema() *schema.Module {
 	return yang1_0
 }
 
-type MetaListSelector func(m schema.Meta) (Selection, error)
+type MetaListSelector func(m schema.Meta) (Node, error)
 
-func (self *SchemaBrowser) Selector(p *Path, strategy Strategy) (Selection, *WalkState, error) {
-	s := &MySelection{}
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) Selector(p *Path) (*Selection, error) {
+	s := &MyNode{}
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (Node, error) {
 		switch meta.GetIdent() {
 		case "module" :
 			if self.data != nil {
@@ -55,20 +55,20 @@ func (self *SchemaBrowser) Selector(p *Path, strategy Strategy) (Selection, *Wal
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 			case CREATE_CHILD:
 				self.data = &schema.Module{}
 		}
 		return nil
 	}
-	return WalkPath(NewWalkState(self.meta), s, p)
+	return WalkPath(NewSelection(s, self.meta), p)
 }
 
-func (self *SchemaBrowser) SelectModule(module *schema.Module) (Selection, error) {
-	s := &MySelection{}
+func (self *SchemaBrowser) SelectModule(module *schema.Module) (Node, error) {
+	s := &MyNode{}
 	delegate, _ := self.selectMetaList(module)
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, err error) {
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, err error) {
 		switch meta.GetIdent() {
 		case "revision":
 			if module.Revision != nil {
@@ -81,10 +81,10 @@ func (self *SchemaBrowser) SelectModule(module *schema.Module) (Selection, error
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, module)
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 			case CREATE_CHILD:
 				switch meta.GetIdent() {
@@ -101,9 +101,9 @@ func (self *SchemaBrowser) SelectModule(module *schema.Module) (Selection, error
 	return s, nil
 }
 
-func (self *SchemaBrowser) selectRevision(rev *schema.Revision) (Selection, error) {
-	s := &MySelection{}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+func (self *SchemaBrowser) selectRevision(rev *schema.Revision) (Node, error) {
+	s := &MyNode{}
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		switch meta.GetIdent() {
 		case "rev-date":
 			return &Value{Str:rev.Ident}, nil
@@ -111,7 +111,7 @@ func (self *SchemaBrowser) selectRevision(rev *schema.Revision) (Selection, erro
 			return ReadField(meta, rev)
 		}
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 			case UPDATE_VALUE:
 				switch meta.GetIdent() {
@@ -126,12 +126,12 @@ func (self *SchemaBrowser) selectRevision(rev *schema.Revision) (Selection, erro
 	return s, nil
 }
 
-func (self *SchemaBrowser) selectType(typeData *schema.DataType) (Selection, error) {
-	s := &MySelection{}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+func (self *SchemaBrowser) selectType(typeData *schema.DataType) (Node, error) {
+	s := &MyNode{}
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, typeData)
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case UPDATE_VALUE:
 			return WriteField(meta.(schema.HasDataType), typeData, val)
@@ -141,11 +141,11 @@ func (self *SchemaBrowser) selectType(typeData *schema.DataType) (Selection, err
 	return s, nil
 }
 
-func (self *SchemaBrowser) selectGroupings(groupings schema.MetaList) (Selection, error) {
-	s := &MySelection{}
+func (self *SchemaBrowser) selectGroupings(groupings schema.MetaList) (Node, error) {
+	s := &MyNode{}
 	i := listIterator{dataList:groupings, resolve:self.resolve}
 	var created *schema.Grouping
-	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+	s.OnNext = func(state *Selection, meta *schema.List, keys []*Value, first bool) (Node, error) {
 		if created != nil {
 			return self.selectMetaList(created)
 		}
@@ -154,7 +154,7 @@ func (self *SchemaBrowser) selectGroupings(groupings schema.MetaList) (Selection
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case CREATE_LIST_ITEM:
 			created = &schema.Grouping{}
@@ -167,7 +167,7 @@ func (self *SchemaBrowser) selectGroupings(groupings schema.MetaList) (Selection
 	return s, nil
 }
 
-func (self *SchemaBrowser) selectRpcIO(i *schema.RpcInput, o *schema.RpcOutput) (Selection, error) {
+func (self *SchemaBrowser) selectRpcIO(i *schema.RpcInput, o *schema.RpcOutput) (Node, error) {
 	var io schema.MetaList
 	if i != nil {
 		io = i
@@ -203,9 +203,9 @@ func (self *SchemaBrowser) createGroupingsTypedefsDefinitions(parent schema.Meta
 	return child, nil
 }
 
-func (self *SchemaBrowser) selectRpc(rpc *schema.Rpc) (Selection, error) {
-	s := &MySelection{}
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) selectRpc(rpc *schema.Rpc) (Node, error) {
+	s := &MyNode{}
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (Node, error) {
 		switch meta.GetIdent() {
 		case "input":
 			if rpc.Input != nil {
@@ -218,10 +218,10 @@ func (self *SchemaBrowser) selectRpc(rpc *schema.Rpc) (Selection, error) {
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, rpc)
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 			case CREATE_CHILD:
 				switch meta.GetIdent() {
@@ -238,12 +238,12 @@ func (self *SchemaBrowser) selectRpc(rpc *schema.Rpc) (Selection, error) {
 	return s, nil
 }
 
-func (self *SchemaBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, error) {
-	s := &MySelection{}
+func (self *SchemaBrowser) selectTypedefs(typedefs schema.MetaList) (Node, error) {
+	s := &MyNode{}
 	i := listIterator{dataList:typedefs, resolve:self.resolve}
 	var created *schema.Typedef
 	var selected *schema.Typedef
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (Node, error) {
 		if selected == nil {
 			return nil, nil
 		}
@@ -255,10 +255,10 @@ func (self *SchemaBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, 
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, selected)
 	}
-	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+	s.OnNext = func(state *Selection, meta *schema.List, keys []*Value, first bool) (Node, error) {
 		if created != nil {
 			selected = created
 			return s, nil
@@ -269,7 +269,7 @@ func (self *SchemaBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, 
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case CREATE_CHILD:
 			switch meta.GetIdent() {
@@ -291,18 +291,20 @@ func (self *SchemaBrowser) selectTypedefs(typedefs schema.MetaList) (Selection, 
 	return s, nil
 }
 
-func (self *SchemaBrowser) selectMetaList(data schema.MetaList) (Selection, error) {
-	s := &MySelection{}
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) selectMetaList(data schema.MetaList) (Node, error) {
+	s := &MyNode{}
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (Node, error) {
+		hasGroupings, implementsHasGroupings := data.(schema.HasGroupings)
+		hasTypedefs, implementsHasTypedefs := data.(schema.HasTypedefs)
 		switch meta.GetIdent() {
 		case "groupings":
-			if !self.resolve {
-				groupings := data.(schema.HasGroupings).GetGroupings()
+			if !self.resolve && implementsHasGroupings {
+				groupings := hasGroupings.GetGroupings()
 				return self.selectGroupings(groupings)
 			}
 		case "typedefs":
-			if !self.resolve {
-				typedefs := data.(schema.HasTypedefs).GetTypedefs()
+			if !self.resolve && implementsHasTypedefs {
+				typedefs := hasTypedefs.GetTypedefs()
 				return self.selectTypedefs(typedefs)
 			}
 		case "definitions":
@@ -311,10 +313,10 @@ func (self *SchemaBrowser) selectMetaList(data schema.MetaList) (Selection, erro
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, data)
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case UPDATE_VALUE:
 			return WriteField(meta.(schema.HasDataType), data, val)
@@ -324,11 +326,11 @@ func (self *SchemaBrowser) selectMetaList(data schema.MetaList) (Selection, erro
 	return s, nil
 }
 
-func (self *SchemaBrowser) selectNotifications(notifications schema.MetaList) (Selection, error) {
-	s := &MySelection{}
+func (self *SchemaBrowser) selectNotifications(notifications schema.MetaList) (Node, error) {
+	s := &MyNode{}
 	i := listIterator{dataList:notifications, resolve:self.resolve}
 	var created *schema.Notification
-	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+	s.OnNext = func(state *Selection, meta *schema.List, keys []*Value, first bool) (Node, error) {
 		if created != nil {
 			return self.selectMetaList(created)
 		}
@@ -337,7 +339,7 @@ func (self *SchemaBrowser) selectNotifications(notifications schema.MetaList) (S
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case CREATE_LIST_ITEM:
 			created = &schema.Notification{}
@@ -350,8 +352,8 @@ func (self *SchemaBrowser) selectNotifications(notifications schema.MetaList) (S
 	return s, nil
 }
 
-func (self *SchemaBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.LeafList) (Selection, error) {
-	s := &MySelection{}
+func (self *SchemaBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.LeafList) (Node, error) {
+	s := &MyNode{}
 	var leafy schema.HasDataType
 	if leaf != nil {
 		leafy = leaf
@@ -359,7 +361,7 @@ func (self *SchemaBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.L
 		leafy = leafList
 	}
 	details := leafy.(schema.HasDetails).Details()
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (Node, error) {
 		switch meta.GetIdent() {
 		case "type":
 			if leafy.GetDataType() != nil {
@@ -368,7 +370,7 @@ func (self *SchemaBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.L
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		switch meta.GetIdent() {
 			case "config":
 				if details.ConfigFlag.IsSet() {
@@ -383,7 +385,7 @@ func (self *SchemaBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.L
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case CREATE_CHILD:
 			switch meta.GetIdent() {
@@ -407,13 +409,13 @@ func (self *SchemaBrowser) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.L
 	return s, nil
 }
 
-func (self *SchemaBrowser) selectMetaUses(data *schema.Uses) (Selection, error) {
-	s := &MySelection{}
+func (self *SchemaBrowser) selectMetaUses(data *schema.Uses) (Node, error) {
+	s := &MyNode{}
 	// TODO: uses has refine container(s)
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, data)
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case UPDATE_VALUE:
 			return WriteField(meta.(schema.HasDataType), data, val)
@@ -424,17 +426,17 @@ func (self *SchemaBrowser) selectMetaUses(data *schema.Uses) (Selection, error) 
 }
 
 
-func (self *SchemaBrowser) selectMetaCases(choice *schema.Choice) (Selection, error) {
-	s := &MySelection{}
+func (self *SchemaBrowser) selectMetaCases(choice *schema.Choice) (Node, error) {
+	s := &MyNode{}
 	i := listIterator{dataList:choice, resolve:self.resolve}
 	var created *schema.ChoiceCase
-	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+	s.OnNext = func(state *Selection, meta *schema.List, keys []*Value, first bool) (Node, error) {
 		if i.iterate(state, meta, keys, first) {
 			return self.selectMetaList(i.data.(schema.MetaList))
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case CREATE_LIST_ITEM:
 			created = &schema.ChoiceCase{}
@@ -447,19 +449,19 @@ func (self *SchemaBrowser) selectMetaCases(choice *schema.Choice) (Selection, er
 	return s, nil
 }
 
-func (self *SchemaBrowser) selectMetaChoice(data *schema.Choice) (Selection, error) {
-	s := &MySelection{}
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
+func (self *SchemaBrowser) selectMetaChoice(data *schema.Choice) (Node, error) {
+	s := &MyNode{}
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (Node, error) {
 		switch meta.GetIdent() {
 		case "cases":
 			return self.selectMetaCases(data);
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, data)
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) error {
 		switch op {
 		case UPDATE_VALUE:
 			return WriteField(meta.(schema.HasDataType), data, val)
@@ -477,7 +479,7 @@ type listIterator struct {
 	temp int
 }
 
-func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Value, first bool) (bool) {
+func (i *listIterator) iterate(state *Selection, meta *schema.List, keys []*Value, first bool) (bool) {
 	i.data = nil
 	if i.dataList == nil {
 		return false
@@ -508,13 +510,13 @@ func (i *listIterator) iterate(state *WalkState, meta *schema.List, keys []*Valu
 	return i.data != nil
 }
 
-func (self *SchemaBrowser) SelectDefinition(parent schema.MetaList, data schema.Meta) (Selection, error) {
-	s := &MySelection{}
+func (self *SchemaBrowser) SelectDefinition(parent schema.MetaList, data schema.Meta) (Node, error) {
+	s := &MyNode{}
 	selected := data
-	s.OnChoose = func(state *WalkState, choice *schema.Choice) (m schema.Meta, err error) {
+	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		return self.resolveDefinitionCase(choice, selected)
 	}
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (Selection, error) {
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (Node, error) {
 		if selected == nil {
 			return nil, nil
 		}
@@ -533,10 +535,10 @@ func (self *SchemaBrowser) SelectDefinition(parent schema.MetaList, data schema.
 			return self.selectMetaList(selected.(schema.MetaList))
 		}
 	}
-	s.OnRead = func(state *WalkState, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, selected)
 	}
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) (err error) {
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) (err error) {
 		switch op {
 		case CREATE_CHILD:
 			selected, err = self.createGroupingsTypedefsDefinitions(parent, meta)
@@ -549,11 +551,11 @@ func (self *SchemaBrowser) SelectDefinition(parent schema.MetaList, data schema.
 }
 
 
-func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Selection, error) {
-	s := &MySelection{}
+func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Node, error) {
+	s := &MyNode{}
 	i := listIterator{dataList:dataList, resolve:self.resolve}
-	var selected Selection
-	s.OnWrite = func(state *WalkState, meta schema.Meta, op Operation, val *Value) (err error) {
+	var selected Node
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, val *Value) (err error) {
 		switch op {
 		case CREATE_LIST_ITEM:
 			selected, err = self.SelectDefinition(dataList, nil)
@@ -562,7 +564,7 @@ func (self *SchemaBrowser) SelectDefinitionsList(dataList schema.MetaList) (Sele
 		}
 		return err
 	}
-	s.OnNext = func(state *WalkState, meta *schema.List, keys []*Value, first bool) (Selection, error) {
+	s.OnNext = func(state *Selection, meta *schema.List, keys []*Value, first bool) (Node, error) {
 		if selected != nil {
 			return selected, nil
 		}

@@ -10,60 +10,75 @@ import (
 
 type JsonReader struct {
 	In io.Reader
-	Meta schema.MetaList
 	values map[string]interface{}
 }
 
-func NewJsonReader(in io.Reader, meta schema.MetaList) *JsonReader {
-	r := &JsonReader{In:in, Meta:meta}
-	return r
-}
-
-func NewJsonFragmentReader(in io.Reader) *JsonReader {
+func NewJsonReader(in io.Reader) *JsonReader {
 	r := &JsonReader{In:in}
 	return r
 }
 
-func (self *JsonReader) Schema() schema.MetaList {
-	return self.Meta
+func (self *JsonReader) Node(selection *Selection) (Node, error) {
+	if values, err := self.decode(); err != nil {
+		return nil, err
+	} else {
+		if schema.IsList(selection.SelectedMeta()) {
+			ident := selection.SelectedMeta().GetIdent()
+			foundValues, found := values[ident]
+			list, ok  := foundValues.([]interface{})
+			if (len(values) != 1 || !found || !ok) {
+				msg := fmt.Sprintf("Expected { %s: [] }", ident)
+				return nil, errors.New(msg)
+			}
+			if selection.InsideList() {
+				if len(list) != 1 {
+					msg := fmt.Sprint("Expected only one item in list for ", ident)
+					return nil, errors.New(msg)
+				}
+				return self.Container(list[0].(map[string]interface{})), nil
+			}
+			return self.List(list), nil
+		}
+		return self.Container(values), nil
+	}
 }
 
-func (self *JsonReader) Selector(path *Path, strategy Strategy) (s Selection,  state *WalkState, err error) {
-	if strategy != READ {
-		return nil, nil, errors.New("Only read is supported")
+func (self *JsonReader) Selector(meta schema.MetaList) (*Selection, error) {
+	if values, err := self.decode(); err != nil {
+		return nil, err
+	} else {
+		return NewSelection(self.Container(values), meta), nil
 	}
+}
+
+func (self *JsonReader) decode() (map[string]interface{}, error) {
 	if self.values == nil {
 		d := json.NewDecoder(self.In)
-		if err = d.Decode(&self.values); err != nil {
-			return nil, nil, err
+		if err := d.Decode(&self.values); err != nil {
+			return nil, err
 		}
 	}
-	if self.Meta == nil {
-		return self.fragmentSelector(path, strategy)
-	}
-	s, err = self.enterJson(self.values)
-	return WalkPath(NewWalkState(self.Meta), s, path)
+	return self.values, nil
 }
 
-func (self *JsonReader) fragmentSelector(path *Path, strategy Strategy) (s Selection,  state *WalkState, err error) {
-	// try to determine if we're reading a list
-	if (len(self.values) == 1) {
-		// only 1 item - iterates only once
-		for _, value := range self.values {
-			if list, isList := value.([]interface{}); isList {
-				lastSegment := path.LastSegment()
-				if lastSegment != nil {
-					if len(lastSegment.Keys) == 0 {
-						s, err = self.enterJsonList(list)
+func (self *JsonReader) FragmentSelector(s *Selection) (state *Selection, err error) {
+	if values, err := self.decode(); err != nil {
+		return nil, err
+	} else {
+		if s.InsideList() {
+			if (len(values) == 1) {
+				// only 1 item - iterates only once
+				for _, value := range values {
+					if list, isList := value.([]interface{}); isList {
+						if len(state.Key()) > 0 {
+							return s.Copy(self.List(list)), nil
+						}
 					}
 				}
 			}
 		}
+		return s.Copy(self.Container(values)), nil
 	}
-	if s == nil {
-		s, err = self.enterJson(self.values)
-	}
-	return
 }
 
 func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *Value, err error) {
@@ -110,10 +125,10 @@ func asStringArray(data []interface{}) []string {
 	return s
 }
 
-func (self *JsonReader) enterJsonList(list []interface{}) (Selection, error) {
-	s := &MySelection{}
+func (self *JsonReader) List(list []interface{}) (Node) {
+	s := &MyNode{}
 	var i int
-	s.OnNext = func(state *WalkState, meta *schema.List, key []*Value, first bool) (next Selection, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, key []*Value, first bool) (next Node, err error) {
 		if len(key) > 0 {
 			if first {
 				keyFields := meta.Keys
@@ -121,7 +136,7 @@ func (self *JsonReader) enterJsonList(list []interface{}) (Selection, error) {
 					candidate := list[i].(map[string]interface{})
 					if self.jsonKeyMatches(keyFields, candidate, key) {
 						state.SetKey(key)
-						return self.enterJson(candidate)
+						return self.Container(candidate), nil
 					}
 				}
 			}
@@ -137,17 +152,17 @@ func (self *JsonReader) enterJsonList(list []interface{}) (Selection, error) {
 				keyStrs := []string{container[meta.Keys[0]].(string)}
 				key, err = CoerseKeys(meta, keyStrs)
 				state.SetKey(key)
-				return self.enterJson(container)
+				return self.Container(container), nil
 			}
 		}
 		return nil, nil
 	}
-	return s, nil
+	return s
 }
 
-func (self *JsonReader) enterJson(container map[string]interface{}) (Selection, error) {
-	s := &MySelection{}
-	s.OnChoose = func(state *WalkState, choice *schema.Choice) (m schema.Meta, err error) {
+func (self *JsonReader) Container(container map[string]interface{}) (Node) {
+	s := &MyNode{}
+	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		// go thru each case and if there are any properties in the data that are not
 		// part of the schema, that disqualifies that case and we move onto next case
 		// until one case aligns with data.  If no cases align then input in inconclusive
@@ -174,23 +189,23 @@ func (self *JsonReader) enterJson(container map[string]interface{}) (Selection, 
 		msg := fmt.Sprintf("No discriminating data for choice schema %s ", state.String())
 		return nil, &browseError{Msg:msg}
 	}
-	s.OnSelect = func(state *WalkState, meta schema.MetaList) (child Selection, e error) {
+	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, e error) {
 		if value, found := container[meta.GetIdent()]; found {
 			if schema.IsList(meta) {
-				return self.enterJsonList(value.([]interface{}))
+				return self.List(value.([]interface{})), nil
 			} else {
-				return self.enterJson(value.(map[string]interface{}))
+				return self.Container(value.(map[string]interface{})), nil
 			}
 		}
 		return
 	}
-	s.OnRead = func (state *WalkState, meta schema.HasDataType) (val *Value, err error) {
+	s.OnRead = func (state *Selection, meta schema.HasDataType) (val *Value, err error) {
 		if value, found := container[meta.GetIdent()]; found {
 			return self.readLeafOrLeafList(meta, value)
 		}
 		return
 	}
-	return s, nil
+	return s
 }
 
 func (self *JsonReader) jsonKeyMatches(keyFields []string, candidate map[string]interface{}, key []*Value) bool {

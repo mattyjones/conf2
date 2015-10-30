@@ -5,71 +5,71 @@ import (
 )
 
 type Browser interface {
-	Selector(path *Path, strategy Strategy) (Selection, *WalkState, error)
+	Selector(path *Path) (*Selection, error)
 	Schema() (schema.MetaList)
 }
 
-func WalkPath(state *WalkState, from Selection, path *Path) (Selection, *WalkState, error) {
+func WalkPath(selection *Selection, path *Path) (*Selection, error) {
 	finder := NewFindTarget(path)
-	err := walk(state, from, finder)
-	return finder.target, finder.targetState, err
+	err := walk(selection, finder)
+	return finder.target, err
 }
 
-func Walk(state *WalkState, selection Selection, controller WalkController) (err error) {
-	return walk(state, selection, controller)
+func Walk(selection *Selection, controller WalkController) (err error) {
+	return walk(selection, controller)
 }
 
-func walk(state *WalkState, selection Selection, controller WalkController) (err error) {
-	if schema.IsList(state.SelectedMeta()) && !state.InsideList() {
-		var next Selection
-		if next, err = controller.ListIterator(state, selection, true); err != nil {
+func walk(selection *Selection, controller WalkController) (err error) {
+	if schema.IsList(selection.SelectedMeta()) && !selection.InsideList() {
+		var next *Selection
+		if next, err = controller.ListIterator(selection, true); err != nil {
 			return
 		}
 		for next != nil {
-			listItemState := state.SelectListItem(state.Key())
-
-			if err = walk(listItemState, next, controller); err != nil {
+			if err = walk(next, controller); err != nil {
 				return
 			}
-			if next, err = controller.ListIterator(state, selection, false); err != nil {
+			if next, err = controller.ListIterator(selection, false); err != nil {
 				return
 			}
 		}
 	} else {
-		var child Selection
-		i := controller.ContainerIterator(state, selection)
+		var child Node
+		i := controller.ContainerIterator(selection)
 		for i.HasNextMeta() {
-			state.SetPosition(i.NextMeta())
-			if choice, isChoice := state.Position().(*schema.Choice); isChoice {
+			selection.SetPosition(i.NextMeta())
+			if choice, isChoice := selection.Position().(*schema.Choice); isChoice {
 				var choosen schema.Meta
-				if choosen, err = selection.Choose(state, choice); err != nil {
+				if choosen, err = selection.Node().Choose(selection, choice); err != nil {
 					return
 				}
-				state.SetPosition(choosen)
+				selection.SetPosition(choosen)
 			}
-			if schema.IsLeaf(state.Position()) {
+			if schema.IsLeaf(selection.Position()) {
 				// only walking here, not interested in value
-				if _, err = selection.Read(state, state.Position().(schema.HasDataType)); err != nil {
-					return err
-				}
-			} else if schema.IsAction(state.Position()) {
-				if err = controller.VisitAction(state, selection); err != nil {
+				if _, err = selection.Node().Read(selection, selection.Position().(schema.HasDataType)); err != nil {
 					return err
 				}
 			} else {
-				metaList := state.Position().(schema.MetaList)
-				child, err = selection.Select(state, metaList)
-				if err != nil {
-					return
-				} else if child == nil {
-					continue
-				}
-				defer schema.CloseResource(child)
-				if err = walk(state.Select(), child, controller); err != nil {
-					return
-				}
+				metaList := selection.Position().(schema.MetaList)
+				if schema.IsAction(selection.Position()) {
+					if err = controller.VisitAction(selection); err != nil {
+						return err
+					}
+				} else {
+					child, err = selection.Node().Select(selection, metaList)
+					if err != nil {
+						return
+					} else if child == nil {
+						continue
+					}
+					defer schema.CloseResource(child)
+					if err = walk(selection.Select(child), controller); err != nil {
+						return
+					}
 
-				err = selection.Unselect(state, metaList)
+					err = selection.Node().Unselect(selection, metaList)
+				}
 			}
 		}
 	}

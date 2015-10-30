@@ -7,19 +7,24 @@ import (
 )
 
 type Bridge struct {
-	internal browse.Browser
+	internal *browse.Selection
 	path string
 	external schema.MetaList
 	Mapping *BridgeMapping
 }
 
-func NewBridge(internal browse.Browser, external schema.MetaList) *Bridge {
+func NewBridge(internal *browse.Selection, external schema.MetaList) *Bridge {
 	bridge := &Bridge{
 		internal: internal,
 		external: external,
 		Mapping: NewBridgeMapping(external.GetIdent()),
 	}
 	return bridge
+}
+
+func (b *Bridge) Selector(externalPath *browse.Path) (s *browse.Selection, err error) {
+	root := b.selectBridge(b.internal, b.Mapping)
+	return browse.WalkPath(browse.NewSelection(root, b.external), externalPath)
 }
 
 type BridgeMapping struct {
@@ -56,21 +61,11 @@ func (m *BridgeMapping) SelectMap(externalMeta schema.Meta, internalParentMeta s
 	return internalMeta, mapping
 }
 
-func (b *Bridge) Selector(externalPath *browse.Path, strategy browse.Strategy) (browse.Selection, *browse.WalkState, error) {
-	internalPath, externalState := b.internalPath(externalPath)
-	internalRoot, internalState, err := b.internal.Selector(internalPath, strategy)
-	if err != nil {
-		return nil, nil, err
-	}
-	bridged, _ := b.selectBridge(internalRoot, internalState, b.Mapping)
-	return bridged, externalState, nil
-}
-
-func (b *Bridge) internalPath(p *browse.Path) (*browse.Path, *browse.WalkState) {
+func (b *Bridge) internalPath(p *browse.Path, meta schema.Meta) (*browse.Path) {
 	mapping := b.Mapping
 	var found bool
 	internalPath := make([]string, len(p.Segments))
-	state := browse.NewWalkState(b.external)
+	m := meta
 	for i, seg := range p.Segments {
 		mapping, found = mapping.Children[seg.Ident]
 		if !found {
@@ -80,14 +75,15 @@ func (b *Bridge) internalPath(p *browse.Path) (*browse.Path, *browse.WalkState) 
 		if len(seg.Keys) > 0 {
 			internalPath[i] = fmt.Sprint(internalPath[i], "=", seg.Keys[0])
 		}
-		position := schema.FindByIdent2(state.SelectedMeta(), seg.Ident)
-		state.SetPosition(position)
-		state = state.Select()
+		m = schema.FindByIdent2(m.(schema.MetaList), seg.Ident)
+		if m == nil {
+			panic("Mapping invalid")
+		}
 	}
-	return browse.NewPath(strings.Join(internalPath, "/")), state
+	return browse.NewPath(strings.Join(internalPath, "/"))
 }
 
-func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState *browse.WalkState, mapping *BridgeMapping) (*BridgeMapping, bool) {
+func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState *browse.Selection, mapping *BridgeMapping) (*BridgeMapping, bool) {
 	var childMapping *BridgeMapping
 	var internalPosition schema.Meta
 	if internalPosition, childMapping = mapping.SelectMap(externalMeta, internalState.SelectedMeta()); internalPosition != nil {
@@ -97,49 +93,47 @@ func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState 
 	return nil, false
 }
 
-func (b *Bridge) selectBridge(internalSelection browse.Selection, internalState *browse.WalkState, mapping *BridgeMapping) (browse.Selection, error) {
-	if internalState == nil {
-		panic("STOP")
-	}
-	s := &browse.MySelection{}
-	s.OnSelect = func(state *browse.WalkState, externalMeta schema.MetaList) (child browse.Selection, err error) {
-		if childMapping, ok := b.updateInternalPosition(externalMeta, internalState, mapping); ok {
-			var internalChild browse.Selection
-			if internalChild, err = internalSelection.Select(internalState, internalState.Position().(schema.MetaList)); err != nil {
+func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping) (browse.Node) {
+	s := &browse.MyNode{}
+	s.OnSelect = func(state *browse.Selection, externalMeta schema.MetaList) (child browse.Node, err error) {
+		if childMapping, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
+			var internalChild browse.Node
+			if internalChild, err = internal.Node().Select(internal, internal.Position().(schema.MetaList)); err != nil {
 				return nil, err
 			} else if internalChild == nil {
 				return nil, nil
 			}
-			return b.selectBridge(internalChild, internalState.Select(), childMapping)
+			return b.selectBridge(internal.Select(internalChild), childMapping), nil
 		}
 		return
 	}
-	s.OnWrite = func(state *browse.WalkState, externalMeta schema.Meta, op browse.Operation, val *browse.Value) error {
+	s.OnWrite = func(state *browse.Selection, externalMeta schema.Meta, op browse.Operation, val *browse.Value) error {
 		if op == browse.BEGIN_EDIT || op == browse.END_EDIT {
-			return internalSelection.Write(internalState, internalState.SelectedMeta(), op, val)
+			return internal.Node().Write(internal, internal.SelectedMeta(), op, val)
 		}
-		if _, ok := b.updateInternalPosition(externalMeta, internalState, mapping); ok {
-			return internalSelection.Write(internalState, internalState.Position(), op, val)
+		if _, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
+			return internal.Node().Write(internal, internal.Position(), op, val)
 		}
 		return nil
 	}
-	s.OnRead = func(state *browse.WalkState, externalMeta schema.HasDataType) (*browse.Value, error) {
-		if _, ok := b.updateInternalPosition(externalMeta, internalState, mapping); ok {
+	s.OnRead = func(state *browse.Selection, externalMeta schema.HasDataType) (*browse.Value, error) {
+		if _, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
 			// TODO: translate val
-			return internalSelection.Read(internalState, internalState.Position().(schema.HasDataType))
+			return internal.Node().Read(internal, internal.Position().(schema.HasDataType))
 		}
 		return nil, nil
 	}
-	s.OnNext = func(state *browse.WalkState, meta *schema.List, key []*browse.Value, first bool) (next browse.Selection, err error) {
-		var internalNext browse.Selection
+	s.OnNext = func(state *browse.Selection, meta *schema.List, key []*browse.Value, first bool) (next browse.Node, err error) {
+		var internalNextNode browse.Node
 		// TODO: translate keys?
-		internalNext, err = internalSelection.Next(internalState, meta, key, first)
-		if internalNext != nil && err == nil {
-			next, err = b.selectBridge(internalNext, internalState, mapping)
+		internalNextNode, err = internal.Node().Next(internal, meta, key, first)
+		if internalNextNode != nil && err == nil {
+			internalNext := internal.SelectListItem(internalNextNode, internal.Key())
+			next = b.selectBridge(internalNext, mapping)
 		}
 		return
 	}
-	return s, nil
+	return s
 }
 
 func (b *Bridge) Schema() schema.MetaList {

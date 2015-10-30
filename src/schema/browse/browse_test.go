@@ -9,7 +9,7 @@ import (
 )
 
 func LoadSampleModule(t *testing.T) (*schema.Module) {
-	m, err:= yang.LoadModule(schema.NewCwdSource(), "../testdata/romancing-the-stone.yang")
+	m, err:= yang.LoadModuleFromByteArray([]byte(yang.TestDataRomancingTheStone), nil)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -29,11 +29,13 @@ func TestWalkJson(t *testing.T) {
 	}
 }`
 	module := LoadSampleModule(t)
-	in := &JsonReader{In:strings.NewReader(config), Meta:module}
-	var err error
+	in, err := NewJsonReader(strings.NewReader(config)).Selector(module)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var actualBuff bytes.Buffer
-	out := NewJsonFragmentWriter(&actualBuff)
-	if err = Upsert(NewPath(""), in, out); err != nil {
+	out := NewSelection(NewJsonWriter(&actualBuff).Container(), module)
+	if err = Upsert(in, out); err != nil {
 		t.Error(err)
 	}
 	t.Log(string(actualBuff.Bytes()))
@@ -43,9 +45,11 @@ func TestWalkYang(t *testing.T) {
 	var err error
 	module := LoadSampleModule(t)
 	var actualBuff bytes.Buffer
-	out := NewJsonFragmentWriter(&actualBuff)
+	out := NewSelection(NewJsonWriter(&actualBuff).Container(), module)
 	browser := NewSchemaBrowser(module, true)
-	if err = Upsert(NewPath(""), browser, out); err != nil {
+	var in *Selection
+	in, err = browser.Selector(NewPath(""))
+	if err = Upsert(in, out); err != nil {
 		t.Error(err)
 	} else {
 		t.Log(string(actualBuff.Bytes()))

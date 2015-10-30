@@ -1,5 +1,5 @@
 export GOPATH=$(abspath .)
-export YANGPATH=$(abspath etc)
+export YANGPATH=$(abspath etc/yang)
 
 API_VER = 0.1
 DESTDIR =

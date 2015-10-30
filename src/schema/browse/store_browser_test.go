@@ -16,9 +16,7 @@ func TestKeyListBuilderInBufferStore(t *testing.T) {
 		{ "a/b", "x" },
 		{ "a/c", "y|z" },
 	}
-	s := &storeSelector{}
 	store := NewBufferStore()
-	s.store = store
 	v := &Value{}
 	store.Values["a/a/c"] = v
 	store.Values["a/b=x/c"] = v
@@ -28,7 +26,7 @@ func TestKeyListBuilderInBufferStore(t *testing.T) {
 	meta := &schema.List{Ident:"c", Keys:[]string{"k"}}
 	meta.AddMeta(&schema.Leaf{Ident:"k", DataType:&schema.DataType{Format:schema.FMT_STRING}})
 	for _, test := range tests {
-		keys, err := s.store.KeyList(test.path, meta)
+		keys, err := store.KeyList(test.path, meta)
 		if err != nil {
 			t.Error(err)
 		}
@@ -88,9 +86,12 @@ func TestStoreBrowserKeyValueRead(t *testing.T) {
 	store.Values["a/aa/aaa"] = &Value{Str:"hi"}
 	store.Values["b=x/ba"] = &Value{Str:"x"}
 	var actualBytes bytes.Buffer
-	json := NewJsonWriter(&actualBytes, m)
-	err := Insert(NewPath(""), kv, json)
+	json := NewSelection(NewJsonWriter(&actualBytes).Container(), m)
+	in, err := kv.Selector(NewPath(""))
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err = Insert(in, json); err != nil {
 		t.Fatal(err)
 	}
 	actual := string(actualBytes.Bytes())
@@ -104,10 +105,13 @@ func TestStoreBrowserValueEdit(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreBrowser(m, store)
+	out, err := kv.Selector(NewPath(""))
 	inputJson := `{"a":{"aa":{"aaa":"hi"}},"b":[{"ba":"x"}]}`
-	json := NewJsonReader(strings.NewReader(inputJson), m)
-	err := Insert(NewPath(""), json, kv)
+	json, err := NewJsonReader(strings.NewReader(inputJson)).Selector(m)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err = Insert(json, out); err != nil {
 		t.Fatal(err)
 	}
 	if len(store.Values) != 2 {
@@ -141,9 +145,13 @@ func TestStoreBrowserKeyValueEdit(t *testing.T) {
 
 	// change key
 	inputJson2 := `{"ba":"y"}`
-	json2 := NewJsonFragmentReader(strings.NewReader(inputJson2))
-	err := Update(NewPath("b=x"), json2, kv)
+	out, err := kv.Selector(NewPath("b=x"))
 	if err != nil {
+		t.Fatal(err)
+	}
+	var in *Selection
+	in, err = NewJsonReader(strings.NewReader(inputJson2)).FragmentSelector(out)
+	if err = Update(in, out); err != nil {
 		t.Fatal(err)
 	}
 	if v, newKeyExists := store.Values["b=y/ba"]; !newKeyExists {
@@ -163,7 +171,11 @@ func TestStoreBrowserReadListList(t *testing.T) {
 	store.Values["b=x/ba"] = &Value{Str:"x"}
 	store.Values["b=x/bc=y/bca"] = &Value{Str:"y"}
 	var actual bytes.Buffer
-	w := NewJsonWriter(&actual, m)
-	Upsert(NewPath(""), kv, w)
+	in, err := kv.Selector(NewPath(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := NewJsonWriter(&actual).Selector(in)
+	Upsert(in, out)
 	t.Log(actual.String())
 }

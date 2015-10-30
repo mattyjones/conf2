@@ -39,10 +39,11 @@ module m {
 		l2[0]["b"] = "bye"
 		l1[0]["l2"] = l2
 		b.Bucket["l1"] = l1
+		var in *Selection
+		in, err = b.Selector(NewPath(""))
 		var json bytes.Buffer
-		w := NewJsonFragmentWriter(&json)
-		err = Upsert(NewPath(""), b, w)
-		if err != nil {
+		w := in.Copy(NewJsonWriter(&json).Container())
+		if err = Upsert(in, w); err != nil {
 			t.Fatal(err)
 		}
 		actual := string(json.Bytes())

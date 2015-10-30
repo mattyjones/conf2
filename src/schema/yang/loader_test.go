@@ -7,7 +7,7 @@ import (
 
 func LoadSampleModule(t *testing.T) (*schema.Module) {
 //	f := &schema.FileStreamSource{Root:"../testdata"}
-	m, err:= LoadModule(YangPath(), "romancing-the-stonex.yang")
+	m, err:= LoadModuleFromByteArray([]byte(TestDataRomancingTheStone), nil)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
