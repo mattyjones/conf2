@@ -7,7 +7,7 @@ import (
 func TestRestconfBrowserMetaLoad(t *testing.T) {
 	rc := &Service{restconfPath:"/restconf/"}
 	rc.registrations = make(map[string]*registration, 5)
-	b, err := NewDoc(rc)
+	b, err := NewData(rc)
 	if err != nil {
 		t.Error(err.Error())
 	} else {

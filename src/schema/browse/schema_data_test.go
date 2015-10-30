@@ -44,7 +44,7 @@ module json-test {
 	} else {
 		var actual bytes.Buffer
 		var in *Selection
-		b := NewSchemaBrowser(module, false)
+		b := NewSchemaData(module, false)
 		in, err = b.Selector(NewPath(""))
 		json := NewJsonWriter(&actual).Selector(in)
 		if err = Insert(in, json); err != nil {
@@ -61,9 +61,9 @@ func TestYangWrite(t *testing.T) {
 		t.Error(err)
 	} else {
 		var in, out *Selection
-		from := NewSchemaBrowser(simple, false)
+		from := NewSchemaData(simple, false)
 		in, err = from.Selector(NewPath(""))
-		to := NewSchemaBrowser(nil, false)
+		to := NewSchemaData(nil, false)
 		out, err = from.Selector(NewPath(""))
 		err = Upsert(in, out)
 		if err != nil {
@@ -91,7 +91,7 @@ func TestYangWrite(t *testing.T) {
 	}
 }
 
-func DumpModule(b *SchemaDoc) (string, error) {
+func DumpModule(b *SchemaData) (string, error) {
 	var buff bytes.Buffer
 	in, _ := b.Selector(NewPath(""))
 	dumper := in.Copy(NewDumper(&buff).Node())

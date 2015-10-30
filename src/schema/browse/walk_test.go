@@ -46,7 +46,7 @@ func TestWalkYang(t *testing.T) {
 	module := LoadSampleModule(t)
 	var actualBuff bytes.Buffer
 	out := NewSelection(NewJsonWriter(&actualBuff).Container(), module)
-	browser := NewSchemaBrowser(module, true)
+	browser := NewSchemaData(module, true)
 	var in *Selection
 	in, err = browser.Selector(NewPath(""))
 	if err = Upsert(in, out); err != nil {

@@ -16,7 +16,7 @@ var readExpectations = map[string]string {
 }
 
 type testHarness struct {
-	browser browse.Document
+	browser browse.Data
 	failed []string
 	passed []string
 }
@@ -27,7 +27,7 @@ func conf2_testharness_new(browser_hnd_id unsafe.Pointer) unsafe.Pointer {
 	if ! found {
 		panic(fmt.Sprint("Browser not found", browser_hnd_id))
 	}
-	browser := browser_hnd.Data.(browse.Document)
+	browser := browser_hnd.Data.(browse.Data)
 	harness := &testHarness{browser:browser}
 	return NewGoHandle(harness).ID
 }

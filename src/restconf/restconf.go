@@ -31,7 +31,7 @@ func NewService() (*Service, error) {
 	service.mux = http.NewServeMux()
 	service.mux.HandleFunc("/.well-known/host-meta", service.resources)
 	// always add browser for restconf server itself
-	rcb, err := NewDoc(service)
+	rcb, err := NewData(service)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ type Service struct {
 }
 
 type registration struct {
-	browser browse.Document
+	browser browse.Data
 }
 
 
@@ -161,12 +161,12 @@ type docRootImpl struct {
 	docroot schema.StreamSource
 }
 
-func (service *Service) RegisterBrowser(browser browse.Document) error {
+func (service *Service) RegisterBrowser(browser browse.Data) error {
 	ident := browser.Schema().GetIdent()
 	return service.RegisterBrowserWithName(browser, ident)
 }
 
-func (service *Service) RegisterBrowserWithName(browser browse.Document, ident string) error {
+func (service *Service) RegisterBrowserWithName(browser browse.Data, ident string) error {
 	reg := &registration{browser}
 	service.registrations[ident] = reg
 	fullPath := fmt.Sprint(service.restconfPath, ident, "/")

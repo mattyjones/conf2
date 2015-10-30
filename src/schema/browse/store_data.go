@@ -7,23 +7,23 @@ import (
 	"strings"
 )
 
-type StoreDoc struct {
+type StoreData struct {
 	schema schema.MetaList
 	store Store
 }
 
-func NewStoreDoc(schema schema.MetaList, store Store) *StoreDoc {
-	return &StoreDoc{
+func NewStoreData(schema schema.MetaList, store Store) *StoreData {
+	return &StoreData{
 		schema : schema,
 		store : store,
 	}
 }
 
-func (kv *StoreDoc) Schema() schema.MetaList {
+func (kv *StoreData) Schema() schema.MetaList {
 	return kv.schema
 }
 
-func (kv *StoreDoc) Selector(path *Path) (selection *Selection, err error) {
+func (kv *StoreData) Selector(path *Path) (selection *Selection, err error) {
 	if err = kv.store.Load(); err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (kv *StoreDoc) Selector(path *Path) (selection *Selection, err error) {
 //	strategy Strategy
 //}
 
-func (kv *StoreDoc) List(parentPath string) (Node) {
+func (kv *StoreData) List(parentPath string) (Node) {
 	s := &MyNode{}
 	var keyList []string
 	var i int
@@ -120,24 +120,24 @@ func (kv *StoreDoc) List(parentPath string) (Node) {
 	return s
 }
 
-func (kv *StoreDoc) containerPath(parentPath string, meta schema.Meta) string {
+func (kv *StoreData) containerPath(parentPath string, meta schema.Meta) string {
 	if len(parentPath) == 0 {
 		return meta.GetIdent()
 	}
 	return fmt.Sprint(parentPath, "/", meta.GetIdent())
 }
 
-func (kv *StoreDoc) listPath(parentPath string, key []*Value) string {
+func (kv *StoreData) listPath(parentPath string, key []*Value) string {
 	// TODO: support compound keys
 	return fmt.Sprint(parentPath, "=", key[0].String())
 }
 
-func (kv *StoreDoc) listPathWithNewKey(parentPath string, key []*Value) string {
+func (kv *StoreData) listPathWithNewKey(parentPath string, key []*Value) string {
 	eq := strings.LastIndex(parentPath, "=")
 	return kv.listPath(parentPath[:eq], key)
 }
 
-func (kv *StoreDoc) Container(parentPath string) (Node) {
+func (kv *StoreData) Container(parentPath string) (Node) {
 	s := &MyNode{}
 	//path := storePath{parent:parentPath}
 	var created Node

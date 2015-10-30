@@ -19,11 +19,11 @@ import (
 //   "config" set to "true".
 
 type DocumentPair struct {
-	oper browse.Document
-	config browse.Document
+	oper browse.Data
+	config browse.Data
 }
 
-func NewDocumentPair(operational browse.Document, config browse.Document) *DocumentPair {
+func NewDocumentPair(operational browse.Data, config browse.Data) *DocumentPair {
 	return &DocumentPair{
 		oper:operational,
 		config:config,

@@ -6,12 +6,12 @@ import (
 	"schema/browse"
 )
 
-type Document struct {
+type Data struct {
 	Service *Service
 	Meta *schema.Module
 }
 
-func NewDoc(restconf *Service) (rcb *Document, err error) {
+func NewData(restconf *Service) (rcb *Data, err error) {
 	var module *schema.Module
 	module, err = yang.LoadModule(yang.YangPath(), "restconf.yang")
 	if err == nil {
@@ -22,16 +22,16 @@ func NewDoc(restconf *Service) (rcb *Document, err error) {
 		// shallow clone target otherwise we alter browser's schema
 		target := *targetMaster
 		parent.ReplaceMeta(placeholder, &target);
-		rcb = &Document{Meta:module, Service:restconf}
+		rcb = &Data{Meta:module, Service:restconf}
 	}
 	return
 }
 
-func (rcb *Document) Schema() (schema.MetaList) {
+func (rcb *Data) Schema() (schema.MetaList) {
 	return rcb.Meta
 }
 
-func (rcb *Document) Selector(path *browse.Path) (*browse.Selection, error) {
+func (rcb *Data) Selector(path *browse.Path) (*browse.Selection, error) {
 	s := &browse.MyNode{}
 	s.OnSelect = func (state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
 		switch meta.GetIdent() {
@@ -58,7 +58,7 @@ func enterRegistrations(registrations map[string]*registration) (browse.Node, er
 			if index.Selected != nil {
 				// TODO: support browsing schema at any point, not assume module
 				data := index.Selected.browser.Schema().(*schema.Module)
-				browser := browse.NewSchemaBrowser(data, true)
+				browser := browse.NewSchemaData(data, true)
 				return browser.SelectModule(data)
 			}
 		}

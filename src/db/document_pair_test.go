@@ -52,10 +52,10 @@ module m {
 		t.Log("Testing Init")
 		oper := browse.NewBufferStore()
 		oper.Values["a/aa/aab"] = &browse.Value{Str:"b"}
-		operBrowser := browse.NewStoreDoc(m, oper)
+		operBrowser := browse.NewStoreData(m, oper)
 
 		config := browse.NewBufferStore()
-		configBrowser := browse.NewStoreDoc(m, config)
+		configBrowser := browse.NewStoreData(m, config)
 		config.Values["a/aa/aaa"] = &browse.Value{Str:"a"}
 		pair := NewDocumentPair(operBrowser, configBrowser)
 		pair.Init()
@@ -68,12 +68,12 @@ module m {
 		edit := browse.NewBufferStore()
 		edit.Values["a/ab"] = &browse.Value{Str:"ab"}
 		edit.Values["a/aa/aab"] = &browse.Value{Str:"ab"}
-		editBrowser := browse.NewStoreDoc(m, edit)
+		editBrowser := browse.NewStoreData(m, edit)
 
 		oper := browse.NewBufferStore()
-		operBrowser := browse.NewStoreDoc(m, oper)
+		operBrowser := browse.NewStoreData(m, oper)
 		config := browse.NewBufferStore()
-		configBrowser := browse.NewStoreDoc(m, config)
+		configBrowser := browse.NewStoreData(m, config)
 		pair := NewDocumentPair(operBrowser, configBrowser)
 		var in, out *browse.Selection
 		p := browse.NewPath("")
