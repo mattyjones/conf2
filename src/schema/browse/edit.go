@@ -59,12 +59,24 @@ func Insert(src *Selection, dest *Selection) (err error) {
 }
 
 func InsertByNode(selection *Selection, src Node, dest Node) (err error) {
+	return EditByNode(selection, src, dest, INSERT)
+}
+
+func UpdateByNode(selection *Selection, src Node, dest Node) (err error) {
+	return EditByNode(selection, src, dest, UPDATE)
+}
+
+func UpsertByNode(selection *Selection, src Node, dest Node) (err error) {
+	return EditByNode(selection, src, dest, UPSERT)
+}
+
+func EditByNode(selection *Selection, src Node, dest Node, strategy Strategy) (err error) {
 	e := editor{}
 	var n Node
 	if schema.IsList(selection.SelectedMeta()) && !selection.InsideList() {
-		n, err = e.list(src, dest, INSERT)
+		n, err = e.list(src, dest, strategy)
 	} else {
-		n, err = e.container(src, dest, INSERT)
+		n, err = e.container(src, dest, strategy)
 	}
 	if err == nil {
 		s := selection.Copy(n)
@@ -201,26 +213,12 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 	return s, nil
 }
 
-//func (e *editor) createList(s *Selection) (list *Selection, err error) {
-//	if err = s.Node().Write(s, s.Position(), CREATE_LIST, nil); err != nil {
-//		return err
-//	}
-//	metaList := s.Position().(schema.MetaList)
-//	var listNode Node
-//	if listNode, err = s.Node().Select(s, metaList); err != nil {
-//		return nil, err
-//	}
-//	if listNode == nil {
-//		msg := fmt.Sprint("Failure selection newly created list ", s.String())
-//		return nil, &browseError{Code:http.StatusNotFound, Msg:msg}
-//
-//	}
-//	return s.Select(listNode)
-//}
-//
 func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) {
 	if to == nil {
 		return nil, &browseError{Msg:fmt.Sprint("Unable to get target container selection")}
+	}
+	if from == nil {
+		return nil, &browseError{Msg:fmt.Sprint("Unable to get source node")}
 	}
 	var createdContainer bool
 	var createdList bool

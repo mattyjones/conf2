@@ -34,11 +34,12 @@ func TestEditListItem(t *testing.T) {
 		t.Fatal(err)
 	}
 	json := NewJsonReader(strings.NewReader(`{"origin":{"country":"Canada"}}`))
-	var in, out *Selection
-	if out, err = b.Selector(NewPath("fruits=apple")); err != nil {
+	var selection *Selection
+	if selection, err = b.Selector(NewPath("fruits=apple")); err != nil {
 		t.Fatal(err)
 	}
-	if in, err = json.FragmentSelector(out); err != nil {
+	var in Node
+	if in, err = json.Node(selection); err != nil {
 		t.Fatal(err)
 	}
 
@@ -47,7 +48,7 @@ func TestEditListItem(t *testing.T) {
 	// needs to leave walkstate in a position for WalkTarget controller to make the edit
 	// on the right item.
 	log.Println("Testing edit\n")
-	err = Update(in, out)
+	err = UpdateByNode(selection, in, selection.Node())
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -62,7 +63,6 @@ func TestEditListItem(t *testing.T) {
 	// INSERT
 	log.Println("Testing insert\n")
 	json = NewJsonReader(strings.NewReader(`{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`))
-	var selection *Selection
 	if selection, err = b.Selector(NewPath("fruits")); err != nil {
 		t.Fatal(err)
 	}

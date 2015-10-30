@@ -23,19 +23,15 @@ func (self *JsonReader) Node(selection *Selection) (Node, error) {
 		return nil, err
 	} else {
 		if schema.IsList(selection.SelectedMeta()) {
+			if selection.InsideList() {
+				return self.Container(values), nil
+			}
 			ident := selection.SelectedMeta().GetIdent()
 			foundValues, found := values[ident]
 			list, ok  := foundValues.([]interface{})
 			if (len(values) != 1 || !found || !ok) {
 				msg := fmt.Sprintf("Expected { %s: [] }", ident)
 				return nil, errors.New(msg)
-			}
-			if selection.InsideList() {
-				if len(list) != 1 {
-					msg := fmt.Sprint("Expected only one item in list for ", ident)
-					return nil, errors.New(msg)
-				}
-				return self.Container(list[0].(map[string]interface{})), nil
 			}
 			return self.List(list), nil
 		}
@@ -59,26 +55,6 @@ func (self *JsonReader) decode() (map[string]interface{}, error) {
 		}
 	}
 	return self.values, nil
-}
-
-func (self *JsonReader) FragmentSelector(s *Selection) (state *Selection, err error) {
-	if values, err := self.decode(); err != nil {
-		return nil, err
-	} else {
-		if s.InsideList() {
-			if (len(values) == 1) {
-				// only 1 item - iterates only once
-				for _, value := range values {
-					if list, isList := value.([]interface{}); isList {
-						if len(state.Key()) > 0 {
-							return s.Copy(self.List(list)), nil
-						}
-					}
-				}
-			}
-		}
-		return s.Copy(self.Container(values)), nil
-	}
 }
 
 func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *Value, err error) {
@@ -157,6 +133,11 @@ func (self *JsonReader) List(list []interface{}) (Node) {
 		}
 		return nil, nil
 	}
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
+		panic("JSON - WHO YOU?!")
+		return nil, nil
+	}
+
 	return s
 }
 

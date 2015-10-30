@@ -66,7 +66,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var path *browse.Path
 	if path, err = browse.ParsePath(r.URL.Path); err == nil {
 		var selection *browse.Selection
-		if selection, err = reg.browser.Selector(path); err == nil {
+		if selection, err = reg.browser.Selector(path); err != nil {
 			handleError(err)
 			return
 		}
@@ -76,12 +76,12 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			output := selection.Copy(browse.NewJsonWriter(w).Container())
 			err = browse.ControlledInsert(selection, output, browse.LimitedWalk(r.URL.RawQuery))
 		case "PUT":{
-			var payload *browse.Selection
-			if payload, err = browse.NewJsonReader(r.Body).FragmentSelector(selection); err != nil {
+			var payload browse.Node
+			if payload, err = browse.NewJsonReader(r.Body).Node(selection); err != nil {
 				handleError(err)
 				return
 			}
-			err = browse.Upsert(payload, selection)
+			err = browse.UpsertByNode(selection, payload, selection.Node())
 		}
 		case "POST": {
 			if schema.IsAction(selection.SelectedMeta()) {
@@ -101,12 +101,12 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					browse.Insert(rpcOutput, output)
 				}
 			} else {
-				var payload *browse.Selection
-				if payload, err = browse.NewJsonReader(r.Body).FragmentSelector(selection); err != nil {
+				var payload browse.Node
+				if payload, err = browse.NewJsonReader(r.Body).Node(selection); err != nil {
 					handleError(err)
 					return
 				}
-				err = browse.Insert(payload, selection)
+				err = browse.InsertByNode(selection, payload, selection.Node())
 			}
 		}
 		default:

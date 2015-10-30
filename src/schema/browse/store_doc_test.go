@@ -145,13 +145,13 @@ func TestStoreBrowserKeyValueEdit(t *testing.T) {
 
 	// change key
 	inputJson2 := `{"ba":"y"}`
-	out, err := kv.Selector(NewPath("b=x"))
+	selection, err := kv.Selector(NewPath("b=x"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var in *Selection
-	in, err = NewJsonReader(strings.NewReader(inputJson2)).FragmentSelector(out)
-	if err = Update(in, out); err != nil {
+	var in Node
+	in, err = NewJsonReader(strings.NewReader(inputJson2)).Node(selection)
+	if err = UpdateByNode(selection, in, selection.Node()); err != nil {
 		t.Fatal(err)
 	}
 	if v, newKeyExists := store.Values["b=y/ba"]; !newKeyExists {
