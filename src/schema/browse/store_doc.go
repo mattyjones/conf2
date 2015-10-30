@@ -7,23 +7,23 @@ import (
 	"strings"
 )
 
-type StoreBrowser struct {
+type StoreDoc struct {
 	schema schema.MetaList
 	store Store
 }
 
-func NewStoreBrowser(schema schema.MetaList, store Store) *StoreBrowser {
-	return &StoreBrowser{
+func NewStoreDoc(schema schema.MetaList, store Store) *StoreDoc {
+	return &StoreDoc{
 		schema : schema,
 		store : store,
 	}
 }
 
-func (kv *StoreBrowser) Schema() schema.MetaList {
+func (kv *StoreDoc) Schema() schema.MetaList {
 	return kv.schema
 }
 
-func (kv *StoreBrowser) Selector(path *Path) (selection *Selection, err error) {
+func (kv *StoreDoc) Selector(path *Path) (selection *Selection, err error) {
 	if err = kv.store.Load(); err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (kv *StoreBrowser) Selector(path *Path) (selection *Selection, err error) {
 //	strategy Strategy
 //}
 
-func (kv *StoreBrowser) List(parentPath string) (Node) {
+func (kv *StoreDoc) List(parentPath string) (Node) {
 	s := &MyNode{}
 	var keyList []string
 	var i int
@@ -120,24 +120,24 @@ func (kv *StoreBrowser) List(parentPath string) (Node) {
 	return s
 }
 
-func (kv *StoreBrowser) containerPath(parentPath string, meta schema.Meta) string {
+func (kv *StoreDoc) containerPath(parentPath string, meta schema.Meta) string {
 	if len(parentPath) == 0 {
 		return meta.GetIdent()
 	}
 	return fmt.Sprint(parentPath, "/", meta.GetIdent())
 }
 
-func (kv *StoreBrowser) listPath(parentPath string, key []*Value) string {
+func (kv *StoreDoc) listPath(parentPath string, key []*Value) string {
 	// TODO: support compound keys
 	return fmt.Sprint(parentPath, "=", key[0].String())
 }
 
-func (kv *StoreBrowser) listPathWithNewKey(parentPath string, key []*Value) string {
+func (kv *StoreDoc) listPathWithNewKey(parentPath string, key []*Value) string {
 	eq := strings.LastIndex(parentPath, "=")
 	return kv.listPath(parentPath[:eq], key)
 }
 
-func (kv *StoreBrowser) Container(parentPath string) (Node) {
+func (kv *StoreDoc) Container(parentPath string) (Node) {
 	s := &MyNode{}
 	//path := storePath{parent:parentPath}
 	var created Node
@@ -194,10 +194,10 @@ func (kv *StoreBrowser) Container(parentPath string) (Node) {
 		case CREATE_LIST:
 			childPath := kv.containerPath(parentPath, meta)
 			created = kv.List(childPath)
-		case CREATE_CHILD:
+		case CREATE_CONTAINER:
 			childPath := kv.containerPath(parentPath, meta)
 			created = kv.Container(childPath)
-		case POST_CREATE_LIST, POST_CREATE_CHILD:
+		case POST_CREATE_LIST, POST_CREATE_CONTAINER:
 			created = nil
 		case UPDATE_VALUE:
 			propPath := kv.containerPath(parentPath, meta)

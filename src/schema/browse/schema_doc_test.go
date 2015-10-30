@@ -91,7 +91,7 @@ func TestYangWrite(t *testing.T) {
 	}
 }
 
-func DumpModule(b *SchemaBrowser) (string, error) {
+func DumpModule(b *SchemaDoc) (string, error) {
 	var buff bytes.Buffer
 	in, _ := b.Selector(NewPath(""))
 	dumper := in.Copy(NewDumper(&buff).Node())

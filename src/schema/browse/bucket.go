@@ -74,7 +74,7 @@ func (bb *BucketBrowser) selectContainer(container map[string]interface{}) (Node
 		switch op {
 		case UPDATE_VALUE:
 			bb.updateLeaf(meta.(schema.HasDataType), container, val)
-		case CREATE_CHILD:
+		case CREATE_CONTAINER:
 			container[meta.GetIdent()] = make(map[string]interface{}, 10)
 		case CREATE_LIST:
 			container[meta.GetIdent()] = make([]map[string]interface{}, 0, 10)
@@ -105,7 +105,6 @@ func (bb *BucketBrowser) selectList(parent map[string]interface{}, initialList [
 	var next Node
 	var selection map[string]interface{}
 	s.OnNext = func(state *Selection, meta *schema.List, key []*Value, isFirst bool) (Node, error) {
-fmt.Printf("bucket OnNext\n")
 		if next != nil {
 			s := next
 			next = nil
@@ -122,7 +121,6 @@ fmt.Printf("bucket OnNext\n")
 				// TODO: Support compound keys
 				if candidate[meta.Keys[0]] == key[0].Value() {
 					selection = candidate
-fmt.Printf("bucket OnNext setting key %v\n", key)
 					state.SetKey(key)
 					break
 				}
@@ -139,7 +137,6 @@ fmt.Printf("bucket OnNext setting key %v\n", key)
 			if key, err := bb.readKey(meta, selection); err != nil {
 				return nil, err
 			} else {
-fmt.Printf("bucket OnNext setting from list key %v\n", key)
 				state.SetKey(key)
 			}
 		}

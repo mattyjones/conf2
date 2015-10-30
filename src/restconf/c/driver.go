@@ -59,7 +59,7 @@ func restconfc2_register_browser(service_hnd_id unsafe.Pointer, browser_hnd_id u
 	if ! found {
 		panic(fmt.Sprint("Restconf service not found", browser_hnd_id))
 	}
-	browser := browser_hnd.Data.(browse.Browser)
+	browser := browser_hnd.Data.(browse.Document)
 
 	return service.RegisterBrowser(browser)
 }

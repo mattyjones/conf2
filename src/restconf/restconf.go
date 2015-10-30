@@ -31,7 +31,7 @@ func NewService() (*Service, error) {
 	service.mux = http.NewServeMux()
 	service.mux.HandleFunc("/.well-known/host-meta", service.resources)
 	// always add browser for restconf server itself
-	rcb, err := NewBrowser(service)
+	rcb, err := NewDoc(service)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ type Service struct {
 }
 
 type registration struct {
-	browser browse.Browser
+	browser browse.Document
 }
 
 
@@ -95,8 +95,11 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					handleError(err)
 					return
 				}
-				output := rpcOutput.Copy(browse.NewJsonWriter(w).Container())
-				browse.Insert(rpcOutput, output)
+				if rpcOutput != nil {
+					w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
+					output := rpcOutput.Copy(browse.NewJsonWriter(w).Container())
+					browse.Insert(rpcOutput, output)
+				}
 			} else {
 				var payload *browse.Selection
 				if payload, err = browse.NewJsonReader(r.Body).FragmentSelector(selection); err != nil {
@@ -158,12 +161,12 @@ type docRootImpl struct {
 	docroot schema.StreamSource
 }
 
-func (service *Service) RegisterBrowser(browser browse.Browser) error {
+func (service *Service) RegisterBrowser(browser browse.Document) error {
 	ident := browser.Schema().GetIdent()
 	return service.RegisterBrowserWithName(browser, ident)
 }
 
-func (service *Service) RegisterBrowserWithName(browser browse.Browser, ident string) error {
+func (service *Service) RegisterBrowserWithName(browser browse.Document, ident string) error {
 	reg := &registration{browser}
 	service.registrations[ident] = reg
 	fullPath := fmt.Sprint(service.restconfPath, ident, "/")

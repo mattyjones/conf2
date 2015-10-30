@@ -8,8 +8,8 @@ import (
 
 type Operation int
 const (
-	CREATE_CHILD Operation = 1 + iota // 1
-	POST_CREATE_CHILD                 // 2
+	CREATE_CONTAINER Operation = 1 + iota // 1
+	POST_CREATE_CONTAINER             // 2
 	CREATE_LIST                       // 3
 	POST_CREATE_LIST                  // 4
 	UPDATE_VALUE                      // 5
@@ -62,12 +62,11 @@ func InsertByNode(selection *Selection, src Node, dest Node) (err error) {
 	e := editor{}
 	var n Node
 	if schema.IsList(selection.SelectedMeta()) && !selection.InsideList() {
-		n, err = e.editList(src, dest, INSERT)
+		n, err = e.list(src, dest, INSERT)
 	} else {
-		n, err = e.editTarget(src, dest, INSERT)
+		n, err = e.container(src, dest, INSERT)
 	}
 	if err == nil {
-		// sync dest and from
 		s := selection.Copy(n)
 		if err = dest.Write(s, s.SelectedMeta(), BEGIN_EDIT, nil); err == nil {
 			if err = Walk(s, FullWalk()); err == nil {
@@ -111,9 +110,9 @@ func Edit(from *Selection, dest *Selection, strategy Strategy, controller WalkCo
 	e := editor{}
 	var n Node
 	if schema.IsList(from.SelectedMeta()) && !from.InsideList() {
-		n, err = e.editList(from.Node(), dest.Node(), strategy)
+		n, err = e.list(from.Node(), dest.Node(), strategy)
 	} else {
-		n, err = e.editTarget(from.Node(), dest.Node(), strategy)
+		n, err = e.container(from.Node(), dest.Node(), strategy)
 	}
 	if err == nil {
 		// sync dest and from
@@ -127,7 +126,7 @@ func Edit(from *Selection, dest *Selection, strategy Strategy, controller WalkCo
 	return
 }
 
-func (e *editor) editList(from Node, to Node, strategy Strategy) (Node, error) {
+func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 	if to == nil {
 		return nil, &browseError{Msg:fmt.Sprint("Unable to get target node")}
 	}
@@ -197,7 +196,7 @@ func (e *editor) editList(from Node, to Node, strategy Strategy) (Node, error) {
 		default:
 			return nil, &browseError{Msg:"Stratgey not implmented"}
 		}
-		return e.editTarget(fromNextNode, toNextNode, strategy)
+		return e.container(fromNextNode, toNextNode, strategy)
 	}
 	return s, nil
 }
@@ -219,7 +218,7 @@ func (e *editor) editList(from Node, to Node, strategy Strategy) (Node, error) {
 //	return s.Select(listNode)
 //}
 //
-func (e *editor) editTarget(from Node, to Node, strategy Strategy) (Node, error) {
+func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) {
 	if to == nil {
 		return nil, &browseError{Msg:fmt.Sprint("Unable to get target container selection")}
 	}
@@ -247,7 +246,7 @@ func (e *editor) editTarget(from Node, to Node, strategy Strategy) (Node, error)
 		return listNode, nil
 	}
 	createContainer := func(selection *Selection) (toChild Node, err error) {
-		if err = to.Write(selection, selection.Position(), CREATE_CHILD, nil); err != nil {
+		if err = to.Write(selection, selection.Position(), CREATE_CONTAINER, nil); err != nil {
 			return
 		}
 		metaList := selection.Position().(schema.MetaList)
@@ -313,14 +312,13 @@ func (e *editor) editTarget(from Node, to Node, strategy Strategy) (Node, error)
 		// we always switch to upsert strategy because if there were any conflicts, it would have been
 		// discovered in top-most level.
 		if isList {
-			return e.editList(fromChild, toChild, UPSERT)
+			return e.list(fromChild, toChild, UPSERT)
 		}
-		return e.editTarget(fromChild, toChild, UPSERT)
+		return e.container(fromChild, toChild, UPSERT)
 	}
-
 	s.OnUnselect = func(selection *Selection, meta schema.MetaList) (err error) {
 		if createdContainer {
-			if err = to.Write(selection, meta, POST_CREATE_CHILD, nil); err != nil {
+			if err = to.Write(selection, meta, POST_CREATE_CONTAINER, nil); err != nil {
 				return
 			}
 			createdContainer = false
@@ -359,9 +357,5 @@ func (e *editor) loadKey(selection *Selection, explictKey []*Value) ([]*Value, e
 	if len(explictKey) > 0 {
 		return explictKey, nil
 	}
-//if len(selection.Key()) == 0 {
-//panic("NO KEY SET BY RDR")
-//}
 	return selection.Key(), nil
-//	return ReadKeys(selection)
 }

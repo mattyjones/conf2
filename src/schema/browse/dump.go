@@ -8,8 +8,8 @@ import (
 )
 
 var editOps = map[Operation]string {
-	CREATE_CHILD : "CREATE_CHILD",
-	POST_CREATE_CHILD : "POST_CREATE_CHILD",
+	CREATE_CONTAINER : "CREATE_CHILD",
+	POST_CREATE_CONTAINER : "POST_CREATE_CHILD",
 	CREATE_LIST : "CREATE_LIST",
 	POST_CREATE_LIST : "POST_CREATE_LIST",
 	UPDATE_VALUE : "UPDATE_VALUE",
@@ -51,7 +51,7 @@ func (d *Dumper) enter(level int) (Node) {
 	}
 	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
 		switch op {
-			case CREATE_CHILD, CREATE_LIST, CREATE_LIST_ITEM:
+			case CREATE_CONTAINER, CREATE_LIST, CREATE_LIST_ITEM:
 				created = d.enter(level + 1)
 		}
 		d.dumpEditOp(state, op, level)

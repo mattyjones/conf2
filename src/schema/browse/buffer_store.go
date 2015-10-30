@@ -52,7 +52,6 @@ func (kvs BufferStore) KeyList(key string, meta *schema.List) ([]string, error) 
 }
 
 func (kvs BufferStore) Action(key string) (ActionFunc, error) {
-fmt.Printf("buffer_store key=%s, actions=%v\n", key, kvs.Actions)
 	return kvs.Actions[key], nil
 }
 

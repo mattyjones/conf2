@@ -4,11 +4,6 @@ import (
 	"schema"
 )
 
-type Browser interface {
-	Selector(path *Path) (*Selection, error)
-	Schema() (schema.MetaList)
-}
-
 func WalkPath(selection *Selection, path *Path) (*Selection, error) {
 	finder := NewFindTarget(path)
 	err := walk(selection, finder)

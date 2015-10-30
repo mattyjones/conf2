@@ -52,12 +52,12 @@ module m {
 		t.Log("Testing Init")
 		oper := browse.NewBufferStore()
 		oper.Values["a/aa/aab"] = &browse.Value{Str:"b"}
-		operBrowser := browse.NewStoreBrowser(m, oper)
+		operBrowser := browse.NewStoreDoc(m, oper)
 
 		config := browse.NewBufferStore()
-		configBrowser := browse.NewStoreBrowser(m, config)
+		configBrowser := browse.NewStoreDoc(m, config)
 		config.Values["a/aa/aaa"] = &browse.Value{Str:"a"}
-		pair := NewBrowserPair(operBrowser, configBrowser)
+		pair := NewDocumentPair(operBrowser, configBrowser)
 		pair.Init()
 		if len(oper.Values) != 2 {
 			t.Error("Expected 2 items got ", len(oper.Values))
@@ -68,13 +68,13 @@ module m {
 		edit := browse.NewBufferStore()
 		edit.Values["a/ab"] = &browse.Value{Str:"ab"}
 		edit.Values["a/aa/aab"] = &browse.Value{Str:"ab"}
-		editBrowser := browse.NewStoreBrowser(m, edit)
+		editBrowser := browse.NewStoreDoc(m, edit)
 
 		oper := browse.NewBufferStore()
-		operBrowser := browse.NewStoreBrowser(m, oper)
+		operBrowser := browse.NewStoreDoc(m, oper)
 		config := browse.NewBufferStore()
-		configBrowser := browse.NewStoreBrowser(m, config)
-		pair := NewBrowserPair(operBrowser, configBrowser)
+		configBrowser := browse.NewStoreDoc(m, config)
+		pair := NewDocumentPair(operBrowser, configBrowser)
 		var in, out *browse.Selection
 		p := browse.NewPath("")
 		if in, err = editBrowser.Selector(p); err != nil {

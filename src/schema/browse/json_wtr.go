@@ -55,10 +55,10 @@ func (json *JsonWriter) Container() Node {
 					err = json.out.Flush()
 				}
 			}
-		case CREATE_CHILD:
+		case CREATE_CONTAINER:
 			err = json.beginContainer(meta.GetIdent())
 			created = json.Container()
-		case POST_CREATE_CHILD:
+		case POST_CREATE_CONTAINER:
 			err = json.endContainer()
 		case CREATE_LIST_ITEM:
 			if err = json.conditionallyOpenArrayOnFirstWrite(meta.GetIdent()); err == nil {

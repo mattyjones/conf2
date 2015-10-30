@@ -5,31 +5,31 @@ import (
 	"schema/yang"
 )
 
-type BridgeBrowser struct {
+type BridgeDoc struct {
 	Meta schema.MetaList
 	Bridges map[string]*Bridge
 }
 
-func NewBridgeBrowser() *BridgeBrowser {
+func NewBridgeDoc() *BridgeDoc {
 	meta, err := yang.LoadModule(yang.YangPath(), "bridge.yang")
 	if err != nil {
 		panic(err.Error())
 	}
-	return &BridgeBrowser{
+	return &BridgeDoc{
 		Bridges : make(map[string]*Bridge, 5),
 		Meta : meta,
 	}
 }
 
-func (bb *BridgeBrowser) Schema() schema.MetaList {
+func (bb *BridgeDoc) Schema() schema.MetaList {
 	return bb.Meta
 }
 
-func (bb *BridgeBrowser) AddBridge(name string, bridge *Bridge) {
+func (bb *BridgeDoc) AddBridge(name string, bridge *Bridge) {
 	bb.Bridges[name] = bridge
 }
 
-func (bb *BridgeBrowser) Selector(path *browse.Path) (*browse.Selection, error) {
+func (bb *BridgeDoc) Selector(path *browse.Path) (*browse.Selection, error) {
 	s := &browse.MyNode{}
 	s.OnSelect = func (state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
 		switch meta.GetIdent() {
@@ -41,7 +41,7 @@ func (bb *BridgeBrowser) Selector(path *browse.Path) (*browse.Selection, error) 
 	return browse.WalkPath(browse.NewSelection(s, bb.Meta), path)
 }
 
-func (bb *BridgeBrowser) SelectBridges(bridges map[string]*Bridge) (browse.Node, error) {
+func (bb *BridgeDoc) SelectBridges(bridges map[string]*Bridge) (browse.Node, error) {
 	s := &browse.MyNode{}
 	index := newBridgeIndex(bridges)
 	s.OnNext = func(state *browse.Selection, meta *schema.List, key []*browse.Value, first bool) (next browse.Node, err error) {
@@ -76,7 +76,7 @@ func (bb *BridgeBrowser) SelectBridges(bridges map[string]*Bridge) (browse.Node,
 }
 
 
-func (bb *BridgeBrowser) selectMapping(mapping *BridgeMapping, external schema.MetaList, internal schema.MetaList) (browse.Node, error) {
+func (bb *BridgeDoc) selectMapping(mapping *BridgeMapping, external schema.MetaList, internal schema.MetaList) (browse.Node, error) {
 	s := &browse.MyNode{}
 	index := newMappingIndex(mapping.Children)
 	s.OnNext = func(state *browse.Selection, meta *schema.List, key []*browse.Value, first bool) (next browse.Node, err error) {
@@ -128,7 +128,7 @@ func (bb *BridgeBrowser) selectMapping(mapping *BridgeMapping, external schema.M
 	return s, nil
 }
 
-func (bb *BridgeBrowser) findMetaList(parent schema.MetaList, ident string) (child schema.MetaList) {
+func (bb *BridgeDoc) findMetaList(parent schema.MetaList, ident string) (child schema.MetaList) {
 	childMeta := schema.FindByIdent2(parent, ident)
 	if childMeta != nil {
 		var isList bool
@@ -140,7 +140,7 @@ func (bb *BridgeBrowser) findMetaList(parent schema.MetaList, ident string) (chi
 	return nil
 }
 
-func (bb *BridgeBrowser) selectFieldOptions(field schema.MetaList) (browse.Node, error) {
+func (bb *BridgeDoc) selectFieldOptions(field schema.MetaList) (browse.Node, error) {
 	s := &browse.MyNode{}
 	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
 		i := schema.NewMetaListIterator(field, true)

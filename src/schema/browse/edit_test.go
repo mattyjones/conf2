@@ -66,9 +66,6 @@ func TestEditListItem(t *testing.T) {
 	if selection, err = b.Selector(NewPath("fruits")); err != nil {
 		t.Fatal(err)
 	}
-//	if in, err = json.FragmentSelector(out); err != nil {
-//		t.Fatal(err)
-//	}
 	var jsonNode Node
 	if jsonNode, err = json.Node(selection); err != nil {
 		t.Fatal(err)

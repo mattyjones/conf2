@@ -38,7 +38,7 @@ module m {
 	var yourName *Value
 	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input *Selection) (output *Selection, err error) {
 		var read *Selection
-		b := NewStoreBrowser(meta.Input, store)
+		b := NewStoreDoc(meta.Input, store)
 		if read, err = b.Selector(NewPath("")); err != nil {
 			return nil, err
 		}
@@ -47,13 +47,13 @@ module m {
 		}
 		yourName = store.Values["name"]
 		store.Values["salutation"] = &Value{Str:fmt.Sprint("Hello ", yourName)}
-		b = NewStoreBrowser(meta.Output, store)
+		b = NewStoreDoc(meta.Output, store)
 		return b.Selector(NewPath(""))
 	}
 	in := NewJsonReader(strings.NewReader(`{"name":"joe"}`))
 	var actual bytes.Buffer
 	out := NewJsonWriter(&actual)
-	b := NewStoreBrowser(m, store)
+	b := NewStoreDoc(m, store)
 	var actionSel, rpcOut, rpcIn *Selection
 	if actionSel, err = b.Selector(NewPath("sayHello")); err != nil {
 		t.Error(err)

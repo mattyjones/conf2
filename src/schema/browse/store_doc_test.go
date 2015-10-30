@@ -82,7 +82,7 @@ module m {
 func TestStoreBrowserKeyValueRead(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
-	kv := NewStoreBrowser(m, store)
+	kv := NewStoreDoc(m, store)
 	store.Values["a/aa/aaa"] = &Value{Str:"hi"}
 	store.Values["b=x/ba"] = &Value{Str:"x"}
 	var actualBytes bytes.Buffer
@@ -104,7 +104,7 @@ func TestStoreBrowserKeyValueRead(t *testing.T) {
 func TestStoreBrowserValueEdit(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
-	kv := NewStoreBrowser(m, store)
+	kv := NewStoreDoc(m, store)
 	out, err := kv.Selector(NewPath(""))
 	inputJson := `{"a":{"aa":{"aaa":"hi"}},"b":[{"ba":"x"}]}`
 	json, err := NewJsonReader(strings.NewReader(inputJson)).Selector(m)
@@ -140,7 +140,7 @@ func TestStoreBrowserValueEdit(t *testing.T) {
 func TestStoreBrowserKeyValueEdit(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
-	kv := NewStoreBrowser(m, store)
+	kv := NewStoreDoc(m, store)
 	store.Values["b=x/ba"] = &Value{Str:"z"}
 
 	// change key
@@ -167,7 +167,7 @@ func TestStoreBrowserKeyValueEdit(t *testing.T) {
 func TestStoreBrowserReadListList(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
-	kv := NewStoreBrowser(m, store)
+	kv := NewStoreDoc(m, store)
 	store.Values["b=x/ba"] = &Value{Str:"x"}
 	store.Values["b=x/bc=y/bca"] = &Value{Str:"y"}
 	var actual bytes.Buffer

@@ -18,19 +18,19 @@ import (
 //   If a node has "config" set to "false", no node underneath it can have
 //   "config" set to "true".
 
-type BrowserPair struct {
-	oper browse.Browser
-	config browse.Browser
+type DocumentPair struct {
+	oper browse.Document
+	config browse.Document
 }
 
-func NewBrowserPair(operational browse.Browser, config browse.Browser) *BrowserPair {
-	return &BrowserPair{
+func NewDocumentPair(operational browse.Document, config browse.Document) *DocumentPair {
+	return &DocumentPair{
 		oper:operational,
 		config:config,
 	}
 }
 
-func (self *BrowserPair) Init() (err error) {
+func (self *DocumentPair) Init() (err error) {
 	// Here we initialize the operational browser with the current configuration
 	var sConfig, sOper *browse.Selection
 	if sConfig, err = self.config.Selector(browse.NewPath("")); err != nil {
@@ -42,7 +42,7 @@ func (self *BrowserPair) Init() (err error) {
 	return browse.Upsert(sConfig, sOper)
 }
 
-func (self *BrowserPair) Selector(path *browse.Path) (*browse.Selection, error) {
+func (self *DocumentPair) Selector(path *browse.Path) (*browse.Selection, error) {
 	var err error
 	var operSel, configSel *browse.Selection
 	if operSel, err = self.oper.Selector(path); err != nil {
@@ -69,7 +69,7 @@ func (self *BrowserPair) Selector(path *browse.Path) (*browse.Selection, error) 
 	return operSel.Copy(comboNode), nil
 }
 
-func (self *BrowserPair) Schema() schema.MetaList {
+func (self *DocumentPair) Schema() schema.MetaList {
 	m := self.oper.Schema()
 	if m == nil {
 		m = self.config.Schema()
@@ -77,7 +77,7 @@ func (self *BrowserPair) Schema() schema.MetaList {
 	return m
 }
 
-func (self *BrowserPair) selectPair(oper browse.Node, config browse.Node) (browse.Node, error) {
+func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) (browse.Node, error) {
 	s := &browse.MyNode{}
 	IsContainerConfig := config != nil
 	s.OnNext = func(state *browse.Selection, meta *schema.List, key []*browse.Value, first bool) (next browse.Node, err error) {

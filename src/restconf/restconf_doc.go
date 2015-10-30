@@ -6,12 +6,12 @@ import (
 	"schema/browse"
 )
 
-type RestconfBrowser struct {
+type Document struct {
 	Service *Service
 	Meta *schema.Module
 }
 
-func NewBrowser(restconf *Service) (rcb *RestconfBrowser, err error) {
+func NewDoc(restconf *Service) (rcb *Document, err error) {
 	var module *schema.Module
 	module, err = yang.LoadModule(yang.YangPath(), "restconf.yang")
 	if err == nil {
@@ -22,16 +22,16 @@ func NewBrowser(restconf *Service) (rcb *RestconfBrowser, err error) {
 		// shallow clone target otherwise we alter browser's schema
 		target := *targetMaster
 		parent.ReplaceMeta(placeholder, &target);
-		rcb = &RestconfBrowser{Meta:module, Service:restconf}
+		rcb = &Document{Meta:module, Service:restconf}
 	}
 	return
 }
 
-func (rcb *RestconfBrowser) Schema() (schema.MetaList) {
+func (rcb *Document) Schema() (schema.MetaList) {
 	return rcb.Meta
 }
 
-func (rcb *RestconfBrowser) Selector(path *browse.Path) (*browse.Selection, error) {
+func (rcb *Document) Selector(path *browse.Path) (*browse.Selection, error) {
 	s := &browse.MyNode{}
 	s.OnSelect = func (state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
 		switch meta.GetIdent() {
