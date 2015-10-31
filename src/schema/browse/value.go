@@ -40,6 +40,15 @@ func (v *Value) Value() interface{} {
 }
 
 func (a *Value) Equal(b *Value) bool {
+	if a == nil {
+		if b == nil {
+			return true
+		}
+		return false
+	}
+	if b == nil {
+		return false
+	}
 	return a.Value() == b.Value()
 }
 

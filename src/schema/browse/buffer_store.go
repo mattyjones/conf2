@@ -55,12 +55,12 @@ func (kvs BufferStore) Action(key string) (ActionFunc, error) {
 	return kvs.Actions[key], nil
 }
 
-func (kvs BufferStore) Value(key string, dataType *schema.DataType) (*Value, error) {
+func (kvs BufferStore) Value(key string, dataType *schema.DataType) (*Value) {
 	if v, found := kvs.Values[key]; found {
 		v.Type = dataType
-		return v, nil
+		return v
 	}
-	return nil, nil
+	return nil
 }
 
 func (kvs BufferStore) SetValue(key string, v *Value) error {

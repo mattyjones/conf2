@@ -30,35 +30,35 @@ func (kv *StoreData) Selector(path *Path) (selection *Selection, err error) {
 	root := kv.Container("")
 	selection = NewSelection(root, kv.schema)
 	if len(path.Segments) > 0 {
-		return WalkPath(selection, path)
+		selection, err = kv.fastForwardState(selection, path)
 	}
 	return
 }
 
-//func fastForwardState(initialState *Selection, path *Path) (state *Selection, err error) {
-//	state = initialState
-//	for _, seg := range path.Segments {
-//		position := schema.FindByIdentExpandChoices(state.SelectedMeta(), seg.Ident)
-//		if position == nil {
-//			return nil, errors.New(fmt.Sprintf("%s.%s not found in schema", state.SelectedMeta().GetIdent(), seg.Ident))
-//		}
-//		state.SetPosition(position)
-//		state = state.Select()
-//		if len(seg.Keys) > 0 {
-//			var key []*Value
-//			if key, err = CoerseKeys(position.(*schema.List), seg.Keys); err != nil {
-//				return nil, err
-//			}
-//			state = state.SelectListItem(key)
-//		}
-//	}
-//	return state, nil
-//}
-//
-//type storeSelector struct {
-//	store Store
-//	strategy Strategy
-//}
+func (kv *StoreData) fastForwardState(initialState *Selection, path *Path) (state *Selection, err error) {
+	state = initialState
+	var storePath string
+	for _, seg := range path.Segments {
+		position := schema.FindByIdentExpandChoices(state.SelectedMeta(), seg.Ident)
+		if position == nil {
+			return nil, errors.New(fmt.Sprintf("%s.%s not found in schema", state.SelectedMeta().GetIdent(), seg.Ident))
+		}
+		state.SetPosition(position)
+		storePath = kv.containerPath(storePath, position)
+		state = state.Select(kv.Container(storePath))
+		if len(seg.Keys) > 0 {
+			var key []*Value
+			if key, err = CoerseKeys(position.(*schema.List), seg.Keys); err != nil {
+				return nil, err
+			}
+fmt.Printf("store_data pathkey=%v, corese key=%v\n", seg.Keys, key)
+			storePath = kv.listPath(storePath, key)
+			state = state.SelectListItem(kv.List(storePath), key)
+		}
+	}
+fmt.Printf("store_data state=%v\n", state)
+	return state, nil
+}
 
 func (kv *StoreData) List(parentPath string) (Node) {
 	s := &MyNode{}
@@ -170,7 +170,7 @@ func (kv *StoreData) Container(parentPath string) (Node) {
 		return nil, errors.New(msg)
 	}
 	s.OnRead = func (state *Selection, meta schema.HasDataType) (*Value, error) {
-		return kv.store.Value(kv.containerPath(parentPath, meta), meta.GetDataType())
+		return kv.store.Value(kv.containerPath(parentPath, meta), meta.GetDataType()), nil
 	}
 	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, err error) {
 		if (created != nil) {

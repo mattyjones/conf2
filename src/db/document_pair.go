@@ -3,6 +3,7 @@ import (
 	"schema/browse"
 	"schema"
 	"errors"
+	"fmt"
 )
 
 // Details on config nodes v.s. state data
@@ -52,6 +53,7 @@ func (self *DocumentPair) Selector(path *browse.Path) (*browse.Selection, error)
 	if configSel, err = self.config.Selector(path); err != nil {
 		return nil, err
 	}
+fmt.Printf("document_pair configSel=%p\n", configSel)
 
 	if configSel == nil && operSel == nil {
 		return nil, browse.NotFound(path.URL)
@@ -63,6 +65,7 @@ func (self *DocumentPair) Selector(path *browse.Path) (*browse.Selection, error)
 	if configSel != nil {
 		configNode = configSel.Node()
 	}
+fmt.Printf("document_pair configNode=%p\n", configNode)
 	if comboNode, err = self.selectPair(operNode, configNode); err != nil {
 		return nil, err
 	}
@@ -79,6 +82,9 @@ func (self *DocumentPair) Schema() schema.MetaList {
 
 func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) (browse.Node, error) {
 	s := &browse.MyNode{}
+if config == nil {
+	panic("STOP")
+}
 	IsContainerConfig := config != nil
 	s.OnNext = func(state *browse.Selection, meta *schema.List, key []*browse.Value, first bool) (next browse.Node, err error) {
 		var operNext, configNext browse.Node
@@ -98,6 +104,7 @@ func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) (brow
 	s.OnWrite = func(state *browse.Selection, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
 		err = oper.Write(state, meta, op, val)
 		if err == nil && state.IsConfig() {
+
 			err = config.Write(state, meta, op, val)
 			// TODO: if there's now an error, config and operation are out of sync. To fix
 			// this we must "rollback the Write
@@ -118,6 +125,7 @@ func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) (brow
 		var configChild, operChild browse.Node
 		operChild, err = oper.Select(state, meta)
 		if operChild != nil {
+fmt.Printf("document_pair IsContainerConfig %v && state.IsConfig() %v\n", IsContainerConfig, state.IsConfig())
 			if IsContainerConfig && state.IsConfig() {
 				configChild, err = config.Select(state, meta)
 			}

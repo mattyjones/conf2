@@ -51,12 +51,13 @@ func (s *Store) KeyList(path string, meta *schema.List) ([]string, error) {
 	return builder.List(), nil
 }
 
-func (s *Store) Value(key string, dataType *schema.DataType) (*browse.Value, error) {
+func (s *Store) Value(key string, dataType *schema.DataType) (*browse.Value) {
 	v, found := s.entry.Values[key]
 	if found {
-		return browse.SetValue(dataType, v)
+		val, _ := browse.SetValue(dataType, v)
+		return val
 	}
-	return nil, nil
+	return nil
 }
 
 func (s *Store) SetValue(key string, v *browse.Value) error {

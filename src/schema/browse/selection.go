@@ -12,29 +12,9 @@ type Selection struct {
 	insideList bool
 }
 
-//func (s *Selection) Write(op Operation) error {
-//	return s.node.Write(s, s.SelectedMeta(), op, nil)
-//}
-//
-//func (s *Selection) WriteValue(op Operation, v *Value) error {
-//	return s.node.Write(s, s.Position(), UPDATE_VALUE, v)
-//}
-
 func (s *Selection) Node() Node {
 	return s.node
 }
-
-//func (s *Selection) Next(op Operation, meta schema.MetaList, v *Value) (*Selection, error) {
-//	n, err := s.node.Next(s, meta, op, v)
-//	if err == nil && n != nil{
-//		return s.SelectListItem(n, s.Key())
-//	}
-//	return nil, err
-//}
-
-//func (s *Selection) Choose(choice *schema.Choice) (schema.Meta, error) {
-//	return s.node.Choose(s, choice)
-//}
 
 func NewSelection(node Node, meta schema.MetaList) *Selection {
 	state := &Selection{node:node}
