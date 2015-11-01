@@ -1,17 +1,34 @@
 package mongo
-import "gopkg.in/mgo.v2/bson"
+import (
+	"gopkg.in/mgo.v2/bson"
+)
 
-func DeepCopy(original bson.M) (copy bson.M) {
-	if len(original) > 0 {
-		copy = make(bson.M, len(original))
-		for k, v := range original {
-			switch val := v.(type) {
-			case bson.M:
-				copy[k] = DeepCopy(val)
+func DeepCopy(o interface{}) (copy interface{}) {
+	switch val := o.(type) {
+	case bson.M: {
+		copy := make(bson.M, len(val))
+		for key, mapObj := range val {
+			switch mapObj.(type) {
+			case bson.M, []interface{}:
+				copy[key] = DeepCopy(mapObj)
 			default:
-				copy[k] = val
+				copy[key] = mapObj
 			}
 		}
+		return copy
 	}
-	return copy
+	case []interface{}:
+		copy := make([]interface{}, len(val))
+		for i, arrayObj := range val {
+			switch arrayObj.(type) {
+			case bson.M, []interface{}:
+				copy[i] = DeepCopy(arrayObj)
+			default:
+				copy[i] = arrayObj
+			}
+		}
+		return copy
+	default:
+		return o
+	}
 }

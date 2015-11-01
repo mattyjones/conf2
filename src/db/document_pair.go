@@ -24,11 +24,21 @@ type DocumentPair struct {
 	config browse.Data
 }
 
-func NewDocumentPair(operational browse.Data, config browse.Data) *DocumentPair {
-	return &DocumentPair{
+func NewDocumentPair(operational browse.Data, config browse.Data) (pair *DocumentPair, err error) {
+	pair = &DocumentPair{
 		oper:operational,
 		config:config,
 	}
+	p := browse.NewPath("")
+	var src, dest *browse.Selection
+	if src, err = config.Selector(p); err != nil {
+		return nil, err
+	}
+	if dest, err = operational.Selector(p); err != nil {
+		return nil, err
+	}
+	err = browse.Upsert(src, dest)
+	return
 }
 
 func (self *DocumentPair) Init() (err error) {
@@ -56,20 +66,28 @@ func (self *DocumentPair) Selector(path *browse.Path) (*browse.Selection, error)
 fmt.Printf("document_pair configSel=%p\n", configSel)
 
 	if configSel == nil && operSel == nil {
-		return nil, browse.NotFound(path.URL)
-	} else if operSel == nil {
-		return nil, errors.New("Illegal state")
+		return nil, nil
 	}
-	var configNode, operNode, comboNode browse.Node
-	operNode = operSel.Node()
-	if configSel != nil {
-		configNode = configSel.Node()
+	if configSel != nil && operSel != nil {
+		return operSel.Copy(self.selectPair(operSel.Node(), configSel.Node())), nil
 	}
-fmt.Printf("document_pair configNode=%p\n", configNode)
-	if comboNode, err = self.selectPair(operNode, configNode); err != nil {
-		return nil, err
+	if operSel == nil {
+		return nil, errors.New("Operational should exist, illegal state")
 	}
-	return operSel.Copy(comboNode), nil
+	if configSel == nil {
+		var configRoot *browse.Selection
+		if configRoot, err = self.config.Selector(browse.NewPath("")); err != nil {
+			return nil, err
+		}
+		var operRoot *browse.Selection
+		if operRoot, err = self.oper.Selector(browse.NewPath("")); err != nil {
+			return nil, err
+		}
+		combo := self.selectPair(operRoot.Node(), configRoot.Node())
+		return browse.WalkPath(browse.NewSelection(combo, operRoot.SelectedMeta()), path)
+	}
+	combo := self.selectPair(operSel.Node(), configSel.Node())
+	return operSel.Copy(combo), nil
 }
 
 func (self *DocumentPair) Schema() schema.MetaList {
@@ -80,26 +98,47 @@ func (self *DocumentPair) Schema() schema.MetaList {
 	return m
 }
 
-func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) (browse.Node, error) {
+func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) (browse.Node) {
 	s := &browse.MyNode{}
-if config == nil {
-	panic("STOP")
-}
 	IsContainerConfig := config != nil
-	s.OnNext = func(state *browse.Selection, meta *schema.List, key []*browse.Value, first bool) (next browse.Node, err error) {
+	var createdListItem bool
+	var postCreateItem browse.Operation
+	s.OnNext = func(state *browse.Selection, meta *schema.List, key []*browse.Value, first bool) (browse.Node, error) {
+		var err error
+		if createdListItem {
+			if err = config.Write(state, meta, browse.POST_CREATE_LIST_ITEM, nil); err != nil {
+				return nil, err
+			}
+			createdListItem = false
+		}
 		var operNext, configNext browse.Node
-		operNext, err = oper.Next(state, meta, key, first)
-		if err == nil && operNext != nil {
-			if IsContainerConfig {
+		if operNext, err = oper.Next(state, meta, key, first); err != nil {
+			return nil, err
+		}
+		if operNext == nil {
+			return nil, nil
+		}
+
+		if IsContainerConfig {
+			configNext, err = config.Next(state, meta, state.Key(), true)
+			if err != nil {
+				return nil, err
+			}
+			if configNext == nil {
+				if err = config.Write(state, meta, browse.CREATE_LIST_ITEM, nil); err != nil {
+					return nil, err
+				}
+				createdListItem = true
 				configNext, err = config.Next(state, meta, state.Key(), true)
 				if err != nil {
 					return nil, err
 				}
+				if configNext == nil {
+					return nil, errors.New("Could not create config item")
+				}
 			}
-			return self.selectPair(operNext, configNext)
 		}
-
-		return
+		return self.selectPair(operNext, configNext), nil
 	}
 	s.OnWrite = func(state *browse.Selection, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
 		err = oper.Write(state, meta, op, val)
@@ -121,21 +160,66 @@ if config == nil {
 		}
 		return
 	}
-	s.OnSelect = func(state *browse.Selection, meta schema.MetaList) (child browse.Node, err error) {
+	s.OnSelect = func(state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
+		var err error
 		var configChild, operChild browse.Node
-		operChild, err = oper.Select(state, meta)
-		if operChild != nil {
-fmt.Printf("document_pair IsContainerConfig %v && state.IsConfig() %v\n", IsContainerConfig, state.IsConfig())
-			if IsContainerConfig && state.IsConfig() {
-				configChild, err = config.Select(state, meta)
-			}
-			return self.selectPair(operChild, configChild)
+		if operChild, err = oper.Select(state, meta); err != nil {
+			return nil, err
 		}
-		return nil, nil
+		if operChild == nil {
+			return nil, nil
+		}
+
+fmt.Printf("document_pair IsContainerConfig %v && state.IsConfig() %v\n", IsContainerConfig, state.IsConfig())
+		if IsContainerConfig && state.IsConfig() {
+			if configChild, err = config.Select(state, meta); err != nil {
+				return nil, err
+			}
+			if configChild == nil {
+				if schema.IsList(meta) {
+					if err = config.Write(state, meta, browse.CREATE_LIST, nil); err != nil {
+						return nil, err
+					}
+					postCreateItem = browse.POST_CREATE_LIST
+
+				} else {
+					if err = config.Write(state, meta, browse.CREATE_CONTAINER, nil); err != nil {
+						return nil, err
+					}
+					postCreateItem = browse.POST_CREATE_CONTAINER
+				}
+
+				configChild, err = config.Select(state, meta)
+				if err != nil {
+					return nil, err
+				}
+				if configChild == nil {
+					return nil, errors.New("Could not create config item")
+				}
+			}
+		}
+		return self.selectPair(operChild, configChild), nil
+	}
+	s.OnUnselect = func(state *browse.Selection, meta schema.MetaList) (err error) {
+		if postCreateItem > 0 {
+			if err = config.Write(state, meta, postCreateItem, nil); err != nil {
+				return err
+			}
+			postCreateItem = browse.Operation(0)
+		}
+		if err = oper.Unselect(state, meta); err != nil {
+			return err
+		}
+		if IsContainerConfig {
+			if err = config.Unselect(state, meta); err != nil {
+				return err
+			}
+		}
+		return
 	}
 	s.OnChoose = func(state *browse.Selection, choice *schema.Choice) (choosen schema.Meta, err error) {
 		choosen, err = oper.Choose(state, choice)
 		return
 	}
-	return s, nil
+	return s
 }

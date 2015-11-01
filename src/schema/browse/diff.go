@@ -1,5 +1,7 @@
 package browse
-import "schema"
+import (
+	"schema"
+)
 
 
 func Diff(a Node, b Node) Node {

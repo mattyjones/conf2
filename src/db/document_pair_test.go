@@ -20,6 +20,11 @@ module m {
 				config "false";
 				type string;
 			}
+			container aac {
+				leaf aaca {
+					type string;
+				}
+			}
 		}
 		leaf ab {
 			type string;
@@ -57,10 +62,19 @@ module m {
 		config := browse.NewBufferStore()
 		configBrowser := browse.NewStoreData(m, config)
 		config.Values["a/aa/aaa"] = &browse.Value{Str:"a"}
-		pair := NewDocumentPair(operBrowser, configBrowser)
-		pair.Init()
+		var pair *DocumentPair
+		if pair, err = NewDocumentPair(operBrowser, configBrowser); err != nil {
+			t.Error(err)
+		}
 		if len(oper.Values) != 2 {
 			t.Error("Expected 2 items got ", len(oper.Values))
+		}
+
+		oper.Values["a/aa/aac/aaca"] = &browse.Value{Str:"c"}
+		var selection *browse.Selection
+		selection, err = pair.Selector(browse.NewPath("a/aa/aac"))
+		if selection == nil {
+			t.Error("nil selection")
 		}
 	}
 	{
@@ -74,7 +88,10 @@ module m {
 		operBrowser := browse.NewStoreData(m, oper)
 		config := browse.NewBufferStore()
 		configBrowser := browse.NewStoreData(m, config)
-		pair := NewDocumentPair(operBrowser, configBrowser)
+		var pair *DocumentPair
+		if pair, err = NewDocumentPair(operBrowser, configBrowser); err != nil {
+			t.Error(err)
+		}
 		var in, out *browse.Selection
 		p := browse.NewPath("")
 		if in, err = editBrowser.Selector(p); err != nil {

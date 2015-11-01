@@ -7,7 +7,7 @@ import (
 func WalkPath(selection *Selection, path *Path) (*Selection, error) {
 	finder := NewFindTarget(path)
 	err := walk(selection, finder)
-	return finder.target, err
+	return finder.Target, err
 }
 
 func Walk(selection *Selection, controller WalkController) (err error) {

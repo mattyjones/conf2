@@ -38,6 +38,7 @@ func (s *MyNode) Close() (err error) {
 
 func (s *MyNode) Select(state *Selection, meta schema.MetaList) (Node, error) {
 	if s.OnSelect == nil {
+		panic("STOP")
 		return nil, &browseError{
 			Code: http.StatusNotImplemented,
 			Msg: fmt.Sprint("Select not implemented on node ", state.String()),

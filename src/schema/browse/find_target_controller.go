@@ -7,7 +7,7 @@ import (
 
 type FindTarget struct {
 	path *Path
-	target *Selection
+	Target *Selection
 	resource schema.Resource
 }
 
@@ -53,14 +53,14 @@ func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selec
 }
 
 func (p *FindTarget) CloseSelection(s *Selection) error {
-	if s != p.target {
+	if s != p.Target {
 		return schema.CloseResource(s)
 	}
 	return nil
 }
 
 func (n *FindTarget) setTarget(selection *Selection) {
-	n.target = selection
+	n.Target = selection
 
 	// we take ownership of resource so it's not released until target is used
 	//	n.resource = s.Resource
