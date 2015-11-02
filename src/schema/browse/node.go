@@ -14,10 +14,11 @@ type Node interface {
 	Write(state *Selection, meta schema.Meta, op Operation, val *Value) (error)
 	Choose(state *Selection, choice *schema.Choice) (m schema.Meta, err error)
 	Unselect(state *Selection, meta schema.MetaList) error
-	Action(state *Selection, meta *schema.Rpc, input *Selection) (output *Selection, err error)
+	Action(state *Selection, meta *schema.Rpc, input Node) (output *Selection, err error)
 }
 
 type MyNode struct {
+	Label string
 	OnNext NextFunc
 	OnSelect SelectFunc
 	OnRead ReadFunc
@@ -26,6 +27,10 @@ type MyNode struct {
 	OnChoose ChooseFunc
 	OnAction ActionFunc
 	Resource schema.Resource
+}
+
+func (s *MyNode) String() string {
+	return s.Label
 }
 
 func (s *MyNode) Close() (err error) {
@@ -38,7 +43,6 @@ func (s *MyNode) Close() (err error) {
 
 func (s *MyNode) Select(state *Selection, meta schema.MetaList) (Node, error) {
 	if s.OnSelect == nil {
-		panic("STOP")
 		return nil, &browseError{
 			Code: http.StatusNotImplemented,
 			Msg: fmt.Sprint("Select not implemented on node ", state.String()),
@@ -96,7 +100,7 @@ func (s *MyNode) Choose(state *Selection, choice *schema.Choice) (m schema.Meta,
 	return s.OnChoose(state, choice)
 }
 
-func (s *MyNode) Action(state *Selection, meta *schema.Rpc, input *Selection) (output *Selection, err error) {
+func (s *MyNode) Action(state *Selection, meta *schema.Rpc, input Node) (output *Selection, err error) {
 	if s.OnAction == nil {
 		return nil, &browseError{
 			Code: http.StatusNotImplemented,
@@ -122,4 +126,4 @@ type ReadFunc func(state *Selection, meta schema.HasDataType) (*Value, error)
 type WriteFunc func(state *Selection, meta schema.Meta, op Operation, val *Value) (error)
 type UnselectFunc func(state *Selection, meta schema.MetaList) (error)
 type ChooseFunc func(state *Selection, choice *schema.Choice) (m schema.Meta, err error)
-type ActionFunc func(state *Selection, rpc *schema.Rpc, input *Selection) (output *Selection, err error)
+type ActionFunc func(state *Selection, rpc *schema.Rpc, input Node) (output *Selection, err error)

@@ -64,6 +64,9 @@ func (state *Selection) Path() *schema.MetaPath {
 }
 
 func (state *Selection) String() string {
+	if state.Node() != nil {
+		return fmt.Sprint(state.Node(), " ", state.path.String())
+	}
 	return state.path.String()
 }
 

@@ -150,7 +150,7 @@ func TestStoreBrowserKeyValueEdit(t *testing.T) {
 		t.Fatal(err)
 	}
 	var in Node
-	in, err = NewJsonReader(strings.NewReader(inputJson2)).Node(selection)
+	in, err = NewJsonReader(strings.NewReader(inputJson2)).NodeFromSelection(selection)
 	if err = UpdateByNode(selection, in, selection.Node()); err != nil {
 		t.Fatal(err)
 	}

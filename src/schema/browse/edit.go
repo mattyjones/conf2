@@ -113,7 +113,7 @@ func Delete(sel *Selection) error {
 	return sel.Node().Write(sel, sel.SelectedMeta(), DELETE_CHILD, nil)
 }
 
-func Action(impl *Selection, input *Selection) (output *Selection, err error) {
+func Action(impl *Selection, input Node) (output *Selection, err error) {
 	rpc := impl.Position().(*schema.Rpc)
 	return impl.Node().Action(impl, rpc, input)
 }

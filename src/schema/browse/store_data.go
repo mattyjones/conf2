@@ -84,7 +84,7 @@ func (kv *StoreData) List(parentPath string) (Node) {
 		}
 		return
 	}
-	s.OnAction = func(state *Selection, rpc *schema.Rpc, input *Selection) (output *Selection, err error) {
+	s.OnAction = func(state *Selection, rpc *schema.Rpc, input Node) (output *Selection, err error) {
 		path :=	kv.listPath(parentPath, state.Key())
 		var action ActionFunc
 		if action, err = kv.store.Action(path); err != nil {
@@ -188,7 +188,7 @@ func (kv *StoreData) Container(parentPath string) (Node) {
 		}
 		return
 	}
-	s.OnAction = func(state *Selection, rpc *schema.Rpc, input *Selection) (output *Selection, err error) {
+	s.OnAction = func(state *Selection, rpc *schema.Rpc, input Node) (output *Selection, err error) {
 		path := kv.containerPath(parentPath, rpc)
 		var action ActionFunc
 		if action, err = kv.store.Action(path); err != nil {

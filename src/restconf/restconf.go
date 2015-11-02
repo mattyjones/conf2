@@ -77,7 +77,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			err = browse.ControlledInsert(selection, output, browse.LimitedWalk(r.URL.RawQuery))
 		case "PUT":{
 			var payload browse.Node
-			if payload, err = browse.NewJsonReader(r.Body).Node(selection); err != nil {
+			if payload, err = browse.NewJsonReader(r.Body).NodeFromSelection(selection); err != nil {
 				handleError(err)
 				return
 			}
@@ -85,9 +85,9 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		case "POST": {
 			if schema.IsAction(selection.SelectedMeta()) {
-				rpc := selection.SelectedMeta().(*schema.Rpc)
-				var rpcInput, rpcOutput *browse.Selection
-				if rpcInput, err = browse.NewJsonReader(r.Body).Selector(rpc.Input); err != nil {
+				var rpcInput browse.Node
+				var rpcOutput *browse.Selection
+				if rpcInput, err = browse.NewJsonReader(r.Body).Node(); err != nil {
 					handleError(err)
 					return
 				}
@@ -102,7 +102,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				var payload browse.Node
-				if payload, err = browse.NewJsonReader(r.Body).Node(selection); err != nil {
+				if payload, err = browse.NewJsonReader(r.Body).NodeFromSelection(selection); err != nil {
 					handleError(err)
 					return
 				}
@@ -118,44 +118,6 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		handleError(err)
 	}
 }
-
-//func (reg *registration) operation(path *browse.Path, src browse.Browser, dest browse.Browser, output browse.Browser) (err error) {
-//	var destSel, srcSel browse.Node
-//	var destState, srcState *browse.Selection
-//	if destSel, destState, err = dest.Selector(path, browse.INSERT); err != nil {
-//		return err
-//	}
-//	if destSel == nil {
-//		return browse.NotFound(path.URL)
-//	}
-//	state := destState
-//	if state == nil {
-//		state = srcState
-//		if state == nil {
-//			return browse.NotFound(path.URL)
-//		}
-//	}
-//	if srcSel, srcState, err = src.Selector(path, browse.READ); err != nil {
-//		return err
-//	}
-//	if destState.Position() != nil && schema.IsAction(destState.Position()) {
-//		var outputSel, rpcOutput browse.Node
-//		var outputState *browse.Selection
-//		actionMeta := state.Position().(*schema.Rpc)
-//		if rpcOutput, outputState, err = destSel.Action(state, actionMeta, srcSel); err != nil {
-//			return err
-//		}
-//		if rpcOutput != nil {
-//			outputSel, _, err = output.Selector(browse.NewPath(""), browse.INSERT)
-//			if err = browse.Edit(outputState, rpcOutput, outputSel, browse.INSERT, browse.LimitedWalk(path.Query)); err != nil {
-//				return err
-//			}
-//		}
-//	} else {
-//		err = browse.Edit(state, srcSel, destSel, browse.INSERT, browse.LimitedWalk(path.Query))
-//	}
-//	return
-//}
 
 type docRootImpl struct {
 	docroot schema.StreamSource

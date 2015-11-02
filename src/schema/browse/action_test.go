@@ -35,34 +35,28 @@ module m {
 	}
 	// lazy trick, we stick all data, input, output into one bucket
 	store := NewBufferStore()
+	b := NewStoreData(m, store)
 	var yourName *Value
-	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input *Selection) (output *Selection, err error) {
-		var read *Selection
-		b := NewStoreData(meta.Input, store)
-		if read, err = b.Selector(NewPath("")); err != nil {
-			return nil, err
-		}
-		if err = Insert(input, read); err != nil {
+	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input Node) (output *Selection, err error) {
+		readInput := NewSelection(b.Container(""), meta.Input)
+		if err = InsertByNode(readInput, input, readInput.Node()); err != nil {
 			return nil, err
 		}
 		yourName = store.Values["name"]
 		store.Values["salutation"] = &Value{Str:fmt.Sprint("Hello ", yourName)}
-		b = NewStoreData(meta.Output, store)
-		return b.Selector(NewPath(""))
+		return NewSelection(b.Container(""), meta.Output), nil
 	}
-	in := NewJsonReader(strings.NewReader(`{"name":"joe"}`))
+	var in Node
+	if in, err = NewJsonReader(strings.NewReader(`{"name":"joe"}`)).Node(); err != nil {
+		t.Fatal(err)
+	}
 	var actual bytes.Buffer
 	out := NewJsonWriter(&actual)
-	b := NewStoreData(m, store)
-	var actionSel, rpcOut, rpcIn *Selection
+	var actionSel, rpcOut *Selection
 	if actionSel, err = b.Selector(NewPath("sayHello")); err != nil {
 		t.Error(err)
 	}
-	rpc := actionSel.Position().(*schema.Rpc)
-	if rpcIn, err = in.Selector(rpc.Input); err != nil {
-		t.Error(err)
-	}
-	if rpcOut, err = Action(actionSel, rpcIn); err != nil {
+	if rpcOut, err = Action(actionSel, in); err != nil {
 		t.Error(err)
 	}
 	if err = Insert(rpcOut, out.Selector(rpcOut)); err != nil {

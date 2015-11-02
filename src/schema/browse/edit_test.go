@@ -39,7 +39,7 @@ func TestEditListItem(t *testing.T) {
 		t.Fatal(err)
 	}
 	var in Node
-	if in, err = json.Node(selection); err != nil {
+	if in, err = json.NodeFromSelection(selection); err != nil {
 		t.Fatal(err)
 	}
 
@@ -67,7 +67,7 @@ func TestEditListItem(t *testing.T) {
 		t.Fatal(err)
 	}
 	var jsonNode Node
-	if jsonNode, err = json.Node(selection); err != nil {
+	if jsonNode, err = json.NodeFromSelection(selection); err != nil {
 		t.Fatal(err)
 	}
 	if err = InsertByNode(selection, jsonNode, selection.Node()); err != nil {

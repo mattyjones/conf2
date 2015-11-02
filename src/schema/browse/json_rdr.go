@@ -18,7 +18,16 @@ func NewJsonReader(in io.Reader) *JsonReader {
 	return r
 }
 
-func (self *JsonReader) Node(selection *Selection) (Node, error) {
+func (self *JsonReader) Node() (Node, error) {
+	values, err := self.decode()
+	if err != nil {
+		return nil, err
+	}
+
+	return self.Container(values), nil
+}
+
+func (self *JsonReader) NodeFromSelection(selection *Selection) (Node, error) {
 	if values, err := self.decode(); err != nil {
 		return nil, err
 	} else {
@@ -102,7 +111,7 @@ func asStringArray(data []interface{}) []string {
 }
 
 func (self *JsonReader) List(list []interface{}) (Node) {
-	s := &MyNode{}
+	s := &MyNode{Label:"JSON Read List"}
 	var i int
 	s.OnNext = func(state *Selection, meta *schema.List, key []*Value, first bool) (next Node, err error) {
 		if len(key) > 0 {
@@ -133,16 +142,12 @@ func (self *JsonReader) List(list []interface{}) (Node) {
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
-		panic("JSON - WHO YOU?!")
-		return nil, nil
-	}
 
 	return s
 }
 
 func (self *JsonReader) Container(container map[string]interface{}) (Node) {
-	s := &MyNode{}
+	s := &MyNode{Label:"JSON Read Container"}
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		// go thru each case and if there are any properties in the data that are not
 		// part of the schema, that disqualifies that case and we move onto next case

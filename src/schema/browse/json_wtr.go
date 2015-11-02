@@ -35,7 +35,7 @@ func (json *JsonWriter) Selector(in *Selection) *Selection {
 }
 
 func (json *JsonWriter) Container() Node {
-	s := &MyNode{}
+	s := &MyNode{Label:"JSON Write"}
 	var created Node
 	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, err error) {
 		nest := created
