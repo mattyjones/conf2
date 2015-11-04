@@ -63,6 +63,9 @@ test :
 go-install :
 	  go install $(PKGS)
 
+deps :
+	go get gopkg.in/mgo.v2
+
 install: go-install libconf2 libconf2j;
 
 JAVA_SRC = $(shell find drivers/java/src \( \
