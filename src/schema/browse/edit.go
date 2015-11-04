@@ -145,7 +145,7 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 	if from == nil {
 		return nil, &browseError{Msg:fmt.Sprint("Unable to get source node")}
 	}
-	s := &MyNode{}
+	s := &MyNode{Label:fmt.Sprint("Edit list ", from.String(), "=>", to.String())}
 	var createdListItem bool
 	createListItem := func(selection *Selection, meta *schema.List, key []*Value) (next Node, err error) {
 		err = to.Write(selection, meta, CREATE_LIST_ITEM, nil)
@@ -160,7 +160,6 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 
 		return
 	}
-
 	// List Edit - See "List Edit State Machine" diagram for additional documentation
 	s.OnNext = func(selection *Selection, meta *schema.List, key []*Value, first bool) (next Node, err error) {
 		if createdListItem {
@@ -182,8 +181,10 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 		if nextKey, err = e.loadKey(selection, key); err != nil {
 			return nil, err
 		}
-		if toNextNode, err = to.Next(selection, meta, nextKey, true); err != nil {
-			return nil, err
+		if len(nextKey) > 0 {
+			if toNextNode, err = to.Next(selection, meta, nextKey, true); err != nil {
+				return nil, err
+			}
 		}
 		switch strategy {
 		case UPDATE:
@@ -208,7 +209,7 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 		default:
 			return nil, &browseError{Msg:"Stratgey not implmented"}
 		}
-		return e.container(fromNextNode, toNextNode, strategy)
+		return e.container(fromNextNode, toNextNode, UPSERT)
 	}
 	return s, nil
 }
@@ -222,7 +223,7 @@ func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) 
 	}
 	var createdContainer bool
 	var createdList bool
-	s := &MyNode{}
+	s := &MyNode{Label:fmt.Sprint("Edit container ", from.String(), "=>", to.String())}
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (schema.Meta, error) {
 		return from.Choose(state, choice)
 	}

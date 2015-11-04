@@ -68,8 +68,8 @@ func (self *JsonReader) decode() (map[string]interface{}, error) {
 
 func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *Value, err error) {
 	// TODO: Consider using CoerseValue
-	v = &Value{}
-	switch meta.GetDataType().Format {
+	v = &Value{Type:meta.GetDataType()}
+	switch v.Type.Format {
 	case schema.FMT_INT32:
 		v.Int = int(data.(float64))
 	case schema.FMT_INT32_LIST:
@@ -96,8 +96,13 @@ func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interfa
 		for i, s := range a {
 			v.Boollist[i] = ("true" == s.(string))
 		}
+	case schema.FMT_ENUMERATION:
+		v.SetEnumByLabel(data.(string))
+	case schema.FMT_ENUMERATION_LIST:
+		v.SetEnumListByLabels(asStringArray(data.([]interface{})))
 	default:
-		return nil, errors.New("Not implemented")
+		msg := fmt.Sprint("JSON reading value type not implemented ", meta.GetDataType().Format)
+		return nil, errors.New(msg)
 	}
 	return
 }
@@ -134,9 +139,14 @@ func (self *JsonReader) List(list []interface{}) (Node) {
 			if i < len(list) {
 				container := list[i].(map[string]interface{})
 				// TODO: compound keys
-				keyStrs := []string{container[meta.Keys[0]].(string)}
-				key, err = CoerseKeys(meta, keyStrs)
-				state.SetKey(key)
+
+				// Key may legitimately not exist when inserting new data
+				keyData, hasKey := container[meta.Keys[0]]
+				if hasKey {
+					keyStrs := []string{keyData.(string)}
+					key, err = CoerseKeys(meta, keyStrs)
+					state.SetKey(key)
+				}
 				return self.Container(container), nil
 			}
 		}

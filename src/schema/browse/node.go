@@ -6,8 +6,8 @@ import (
 	"net/http"
 )
 
-
 type Node interface {
+	fmt.Stringer
 	Select(state *Selection, meta schema.MetaList) (Node, error)
 	Next(state *Selection, meta *schema.List, keys []*Value, isFirst bool) (next Node, err error)
 	Read(state *Selection, meta schema.HasDataType) (*Value, error)
@@ -60,7 +60,6 @@ func (s *MyNode) Unselect(state *Selection, meta schema.MetaList) error {
 
 func (s *MyNode) Next(state *Selection, meta *schema.List, keys []*Value, isFirst bool) (Node, error) {
 	if s.OnNext == nil {
-		panic("stop")
 		return nil, &browseError{
 			Code: http.StatusNotImplemented,
 			Msg: fmt.Sprint("Next not implemented on node ", state.String()),
