@@ -39,8 +39,7 @@ PKGS = \
 	schema/comm \
 	restconf \
 	db \
-	db/mongo \
-	conf2-proxy
+	db/mongo
 
 all : generate driver-java build test install
 
