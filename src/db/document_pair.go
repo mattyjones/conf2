@@ -3,7 +3,6 @@ import (
 	"schema/browse"
 	"schema"
 	"errors"
-	"fmt"
 )
 
 // Details on config nodes v.s. state data
@@ -63,7 +62,6 @@ func (self *DocumentPair) Selector(path *browse.Path) (*browse.Selection, error)
 	if configSel, err = self.config.Selector(path); err != nil {
 		return nil, err
 	}
-fmt.Printf("document_pair configSel=%p\n", configSel)
 
 	if configSel == nil && operSel == nil {
 		return nil, nil
@@ -170,7 +168,6 @@ func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) (brow
 			return nil, nil
 		}
 
-fmt.Printf("document_pair IsContainerConfig %v && state.IsConfig() %v\n", IsContainerConfig, state.IsConfig())
 		if IsContainerConfig && state.IsConfig() {
 			if configChild, err = config.Select(state, meta); err != nil {
 				return nil, err

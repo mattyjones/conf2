@@ -38,8 +38,7 @@ PKGS = \
 	schema/adapt \
 	schema/comm \
 	restconf \
-	db \
-	db/mongo
+	db
 
 all : generate driver-java build test install
 
@@ -62,8 +61,7 @@ test :
 go-install :
 	  go install $(PKGS)
 
-deps :
-	go get gopkg.in/mgo.v2
+deps :;
 
 install: go-install libconf2 libconf2j;
 
