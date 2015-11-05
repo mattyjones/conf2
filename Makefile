@@ -76,6 +76,7 @@ JNI_SRCS = \
 	org.conf2.restconf.Service
 
 clean :
+	! test -d pkg || rm -rf pkg
 	! test -d drivers/java/classes || rm -rf drivers/java/classes
 
 driver-java :
