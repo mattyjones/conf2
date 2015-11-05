@@ -138,14 +138,15 @@ func (self *JsonReader) List(list []interface{}) (Node) {
 			}
 			if i < len(list) {
 				container := list[i].(map[string]interface{})
-				// TODO: compound keys
-
-				// Key may legitimately not exist when inserting new data
-				keyData, hasKey := container[meta.Keys[0]]
-				if hasKey {
-					keyStrs := []string{keyData.(string)}
-					key, err = CoerseKeys(meta, keyStrs)
-					state.SetKey(key)
+				if len(meta.Keys) > 0 {
+					// TODO: compound keys
+					keyData, hasKey := container[meta.Keys[0]]
+					// Key may legitimately not exist when inserting new data
+					if hasKey {
+						keyStrs := []string{keyData.(string)}
+						key, err = CoerseKeys(meta, keyStrs)
+						state.SetKey(key)
+					}
 				}
 				return self.Container(container), nil
 			}
