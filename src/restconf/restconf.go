@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 	"fmt"
-	"log"
 	"io"
 	"mime"
 	"path/filepath"
+	"conf2"
 )
 
 type restconfError struct {
@@ -132,7 +132,7 @@ func (service *Service) RegisterBrowserWithName(browser browse.Data, ident strin
 	reg := &registration{browser}
 	service.registrations[ident] = reg
 	fullPath := fmt.Sprint(service.restconfPath, ident, "/")
-	log.Println("registering browser at path ", fullPath)
+	conf2.Info.Println("registering browser at path ", fullPath)
 	service.mux.Handle(fullPath,  http.StripPrefix(fullPath, reg))
 	return nil
 }
@@ -154,8 +154,8 @@ func (service *Service) Listen() {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
-	log.Println("Starting RESTCONF interface")
-	log.Fatal(s.ListenAndServe())
+	conf2.Info.Println("Starting RESTCONF interface")
+	conf2.Err.Fatal(s.ListenAndServe())
 }
 
 func (service *Service) Stop() {
