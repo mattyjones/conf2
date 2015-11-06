@@ -3,7 +3,6 @@ import (
 	"schema"
 	"strconv"
 	"reflect"
-	"errors"
 	"fmt"
 )
 
@@ -28,7 +27,7 @@ func (v *Value) Value() interface{} {
 		return v.Boollist
 	case schema.FMT_INT32, schema.FMT_ENUMERATION:
 		return v.Int
-	case schema.FMT_INT32_LIST:
+	case schema.FMT_INT32_LIST, schema.FMT_ENUMERATION_LIST:
 		return v.Intlist
 	case schema.FMT_STRING:
 		return v.Str
@@ -129,19 +128,78 @@ func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
 	case schema.FMT_BOOLEAN:
 		v.Bool = reflectVal.Bool()
 	case schema.FMT_BOOLEAN_LIST:
-		v.Boollist = reflectVal.Interface().([]bool)
+		v.Boollist = InterfaceToBoollist(reflectVal.Interface())
 	case schema.FMT_INT32_LIST:
-		v.Intlist = reflectVal.Interface().([]int)
+		v.Intlist = InterfaceToIntlist(val)
 	case schema.FMT_INT32:
 		v.Int = int(reflectVal.Int())
-	case schema.FMT_STRING, schema.FMT_ENUMERATION:
+	case schema.FMT_STRING:
 		v.Str = reflectVal.String()
+	case schema.FMT_ENUMERATION:
+		switch reflectVal.Kind() {
+		case reflect.String:
+			v.SetEnumByLabel(reflectVal.String())
+		default:
+			v.SetEnum(int(reflectVal.Int()))
+		}
+	case schema.FMT_ENUMERATION_LIST:
+		val := reflectVal.Interface()
+		strlist := InterfaceToStrlist(val)
+		if len(strlist) > 0 {
+			v.SetEnumListByLabels(strlist)
+		} else {
+			intlist := InterfaceToIntlist(val)
+			v.SetEnumList(intlist)
+		}
 	case schema.FMT_STRING_LIST:
-		v.Strlist = reflectVal.Interface().([]string)
+		v.Strlist = InterfaceToStrlist(reflectVal.Interface())
 	default:
-		return nil, errors.New(fmt.Sprintf("Format code %d not implemented", typ.Format))
+		panic(fmt.Sprintf("Format code %d not implemented", typ.Format))
 	}
 	return v, nil
+}
+
+func InterfaceToStrlist(o interface{}) (strlist []string) {
+	switch arrayValues := o.(type) {
+	case []string:
+		return arrayValues
+	case []interface{}:
+		found := make([]string, len(arrayValues))
+		for i, arrayValue := range arrayValues {
+			if reflect.TypeOf(arrayValue).Kind() != reflect.String {
+				return
+			}
+			found[i] = arrayValue.(string)
+		}
+		strlist = found
+	}
+	return
+}
+
+func InterfaceToBoollist(o interface{}) (boollist []bool) {
+	switch arrayValues := o.(type) {
+	case []bool:
+		return arrayValues
+	case []interface{}:
+		boollist = make([]bool, len(arrayValues))
+		for i, arrayValue := range arrayValues {
+			boollist[i] = arrayValue.(bool)
+		}
+	}
+	return
+}
+
+func InterfaceToIntlist(o interface{}) (intlist []int) {
+	switch arrayValues := o.(type) {
+	case []int:
+		return arrayValues
+	case []interface{}:
+		intlist = make([]int, len(arrayValues))
+		for i, arrayValue := range arrayValues {
+			intlist[i] = arrayValue.(int)
+		}
+	}
+	return
 }
 
 func (v *Value) CoerseStrValue(s string) error {
@@ -157,7 +215,7 @@ func (v *Value) CoerseStrValue(s string) error {
 	case schema.FMT_STRING:
 		v.Str = s
 	default:
-		return &browseError{Msg:"Coersion not supported from this data format"}
+		panic("Coersion not supported from this data format")
 	}
 	return nil
 }

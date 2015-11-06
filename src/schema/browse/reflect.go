@@ -3,7 +3,6 @@ import (
 	"schema"
 	"reflect"
 	"fmt"
-	"errors"
 )
 
 func ReadField(meta schema.HasDataType, obj interface{}) (*Value, error) {
@@ -13,8 +12,8 @@ func ReadField(meta schema.HasDataType, obj interface{}) (*Value, error) {
 func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}) (v *Value, err error) {
 	objType := reflect.ValueOf(obj).Elem()
 	value := objType.FieldByName(fieldName)
-	v = &Value{}
-	switch meta.GetDataType().Format {
+	v = &Value{Type:meta.GetDataType()}
+	switch v.Type.Format {
 	case schema.FMT_BOOLEAN:
 		v.Bool = value.Bool()
 	case schema.FMT_BOOLEAN_LIST:
@@ -27,8 +26,15 @@ func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj inter
 		v.Str = value.String()
 	case schema.FMT_STRING_LIST:
 		v.Strlist = value.Interface().([]string)
+	case schema.FMT_ENUMERATION:
+		switch value.Type().Kind() {
+		case reflect.String:
+			v.SetEnumByLabel(value.String())
+		default:
+			v.SetEnum(int(value.Int()))
+		}
 	default:
-		err = errors.New(fmt.Sprintf("Format code %d not implemented", meta.GetDataType().Format))
+		panic(fmt.Sprintf("Format code %d not implemented", meta.GetDataType().Format))
 	}
 	return
 }
@@ -56,8 +62,16 @@ func WriteFieldWithFieldName(fieldName string, meta schema.HasDataType, obj inte
 		value.Set(reflect.ValueOf(v.Strlist))
 	case schema.FMT_STRING:
 		value.SetString(v.Str)
+	case schema.FMT_ENUMERATION:
+		switch value.Type().Kind() {
+		case reflect.String:
+			value.SetString(v.Str)
+		default:
+			value.SetInt(int64(v.Int))
+		}
+	// TODO: Enum list
 	default:
-		return NotImplemented(meta)
+		panic(meta.GetIdent() + " not implemented")
 	}
 	return nil
 }

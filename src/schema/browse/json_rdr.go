@@ -99,7 +99,13 @@ func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interfa
 	case schema.FMT_ENUMERATION:
 		v.SetEnumByLabel(data.(string))
 	case schema.FMT_ENUMERATION_LIST:
-		v.SetEnumListByLabels(asStringArray(data.([]interface{})))
+		strlist := InterfaceToStrlist(data)
+		if len(strlist) > 0 {
+			v.SetEnumListByLabels(strlist)
+		} else {
+			intlist := InterfaceToIntlist(data)
+			v.SetEnumList(intlist)
+		}
 	default:
 		msg := fmt.Sprint("JSON reading value type not implemented ", meta.GetDataType().Format)
 		return nil, errors.New(msg)
