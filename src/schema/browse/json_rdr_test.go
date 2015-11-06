@@ -52,7 +52,7 @@ module json-test {
 				t.Error("failed to transmit json", err)
 			} else if selection == nil {
 				t.Error(test.path, "- Target not found, state nil")
-			} else if (selection.String() != test.expectedMeta) {
+			} else if (selection.Path().String() != test.expectedMeta) {
 				t.Error(test.path, "-", test.expectedMeta, "!=", selection.String())
 			}
 		}
