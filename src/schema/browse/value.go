@@ -48,6 +48,12 @@ func (a *Value) Equal(b *Value) bool {
 	if b == nil {
 		return false
 	}
+	if a.Type.Format != b.Type.Format {
+		return false
+	}
+	if schema.IsListFormat(a.Type.Format) {
+		return reflect.DeepEqual(a.Value(), b.Value())
+	}
 	return a.Value() == b.Value()
 }
 
