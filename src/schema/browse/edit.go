@@ -8,17 +8,16 @@ import (
 
 type Operation int
 const (
-	CREATE_CONTAINER Operation = 1 + iota // 1
-	POST_CREATE_CONTAINER             // 2
-	CREATE_LIST                       // 3
-	POST_CREATE_LIST                  // 4
-	UPDATE_VALUE                      // 5
-	DELETE_CHILD                      // 6
-	DELETE_LIST                       // 7
-	BEGIN_EDIT                        // 8
-	END_EDIT                          // 9
-	CREATE_LIST_ITEM                  // 10
-	POST_CREATE_LIST_ITEM             // 11
+	CREATE_CONTAINER Operation = 1 + iota
+	POST_CREATE_CONTAINER
+	CREATE_LIST
+	POST_CREATE_LIST
+	UPDATE_VALUE
+	DELETE
+	BEGIN_EDIT
+	END_EDIT
+	CREATE_LIST_ITEM
+	POST_CREATE_LIST_ITEM
 )
 
 var operationNames = []string {
@@ -28,8 +27,7 @@ var operationNames = []string {
 	"CREATE_LIST",
 	"POST_CREATE_LIST",
 	"UPDATE_VALUE",
-	"DELETE_CHILD",
-	"DELETE_LIST",
+	"DELETE",
 	"BEGIN_EDIT",
 	"END_EDIT",
 	"CREATE_LIST_ITEM",
@@ -45,8 +43,6 @@ const (
 	UPSERT Strategy = iota + 1
 	INSERT
 	UPDATE
-	DELETE
-	CLEAR
 	READ
 	ACTION
 )
@@ -109,8 +105,16 @@ func ControlledUpdate(src *Selection, dest *Selection, cntrl WalkController) (er
 	return Edit(src, dest, UPDATE, cntrl)
 }
 
-func Delete(sel *Selection) error {
-	return sel.Node().Write(sel, sel.SelectedMeta(), DELETE_CHILD, nil)
+func Delete(sel *Selection) (err error) {
+	node := sel.Node()
+	if err = node.Write(sel, sel.SelectedMeta(), BEGIN_EDIT, nil); err != nil {
+		return err
+	}
+	if err = node.Write(sel, sel.SelectedMeta(), DELETE, nil); err != nil {
+		return err
+	}
+	err = node.Write(sel, sel.SelectedMeta(), END_EDIT, nil)
+	return
 }
 
 func Action(impl *Selection, input Node) (output *Selection, err error) {

@@ -19,18 +19,18 @@ func NewBufferStore() *BufferStore {
 	}
 }
 
-func (kvs BufferStore) Load() error {
+func (kvs *BufferStore) Load() error {
 	return nil
 }
 
-func (kvs BufferStore) Clear() error {
+func (kvs *BufferStore) Clear() error {
 	for k, _ := range kvs.Values {
 		delete(kvs.Values, k)
 	}
 	return nil
 }
 
-func (kvs BufferStore) HasValues(path string) bool {
+func (kvs *BufferStore) HasValues(path string) bool {
 	for k, _ := range kvs.Values {
 		if strings.HasPrefix(k, path) {
 			return true
@@ -39,11 +39,11 @@ func (kvs BufferStore) HasValues(path string) bool {
 	return false
 }
 
-func (kvs BufferStore) Save() error {
+func (kvs *BufferStore) Save() error {
 	return nil
 }
 
-func (kvs BufferStore) KeyList(key string, meta *schema.List) ([]string, error) {
+func (kvs *BufferStore) KeyList(key string, meta *schema.List) ([]string, error) {
 	builder := NewKeyListBuilder(key)
 	for k, _ := range kvs.Values {
 		builder.ParseKey(k)
@@ -51,11 +51,11 @@ func (kvs BufferStore) KeyList(key string, meta *schema.List) ([]string, error) 
 	return builder.List(), nil
 }
 
-func (kvs BufferStore) Action(key string) (ActionFunc, error) {
+func (kvs *BufferStore) Action(key string) (ActionFunc, error) {
 	return kvs.Actions[key], nil
 }
 
-func (kvs BufferStore) Value(key string, dataType *schema.DataType) (*Value) {
+func (kvs *BufferStore) Value(key string, dataType *schema.DataType) (*Value) {
 	if v, found := kvs.Values[key]; found {
 		v.Type = dataType
 		return v
@@ -63,12 +63,26 @@ func (kvs BufferStore) Value(key string, dataType *schema.DataType) (*Value) {
 	return nil
 }
 
-func (kvs BufferStore) SetValue(key string, v *Value) error {
+func (kvs *BufferStore) SetValue(key string, v *Value) error {
 	kvs.Values[key] = v
 	return nil
 }
 
-func (kvs BufferStore) RenameKey(oldPath string, newPath string) {
+func (kvs *BufferStore) RemoveAll(path string) error {
+	for k, _ := range kvs.Values {
+		if strings.HasPrefix(k, path) {
+			delete(kvs.Values, k)
+		}
+	}
+	for k, _ := range kvs.Actions {
+		if strings.HasPrefix(k, path) {
+			delete(kvs.Actions, k)
+		}
+	}
+	return nil
+}
+
+func (kvs *BufferStore) RenameKey(oldPath string, newPath string) {
 	for k, v := range kvs.Values {
 		if strings.HasPrefix(k, oldPath) {
 			newKey := fmt.Sprint(newPath, k[len(oldPath):])

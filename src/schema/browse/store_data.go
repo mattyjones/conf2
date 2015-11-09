@@ -81,6 +81,8 @@ func (kv *StoreData) List(parentPath string) (Node) {
 			created = kv.Container(childPath)
 		case POST_CREATE_LIST_ITEM:
 			created = nil
+		case DELETE:
+			err = kv.store.RemoveAll(parentPath)
 		}
 		return
 	}
@@ -185,6 +187,8 @@ func (kv *StoreData) Container(parentPath string) (Node) {
 					kv.store.RenameKey(oldPath, newPath)
 				}
 			}
+		case DELETE:
+			err = kv.store.RemoveAll(parentPath)
 		}
 		return
 	}

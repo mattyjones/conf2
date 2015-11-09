@@ -13,4 +13,5 @@ type Store interface {
 	KeyList(path string, meta *schema.List) ([]string, error)
 	RenameKey(oldPath string, newPath string)
 	Action(path string) (ActionFunc, error)
+	RemoveAll(path string) error
 }

@@ -179,3 +179,24 @@ func TestStoreBrowserReadListList(t *testing.T) {
 	Upsert(in, out)
 	t.Log(actual.String())
 }
+
+func TestStoreRemoveAll(t *testing.T) {
+	store := NewBufferStore()
+	m := keyValuesTestModule()
+	store.Values["b=x/ba"] = &Value{Str:"x"}
+	store.Values["b=x/bc=y/bca"] = &Value{Str:"y"}
+	kv := NewStoreData(m, store)
+	in, err := kv.Selector(NewPath("b=x/bc"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = Delete(in); err != nil {
+		t.Error(err)
+	}
+	if len(store.Values) != 1 {
+		t.Error("Expected only 1 value after delete")
+	}
+	if _, found := store.Values["b=x/ba"]; !found {
+		t.Error("Remaining value after delete is wrong")
+	}
+}
