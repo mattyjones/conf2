@@ -71,6 +71,8 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		switch r.Method {
+		case "DELETE":
+			err = browse.Delete(selection)
 		case "GET":
 			w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
 			output := selection.Copy(browse.NewJsonWriter(w).Container())
@@ -84,7 +86,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			err = browse.UpsertByNode(selection, payload, selection.Node())
 		}
 		case "POST": {
-			if schema.IsAction(selection.SelectedMeta()) {
+			if schema.IsAction(selection.Position()) {
 				var rpcInput browse.Node
 				var rpcOutput *browse.Selection
 				if rpcInput, err = browse.NewJsonReader(r.Body).Node(); err != nil {
