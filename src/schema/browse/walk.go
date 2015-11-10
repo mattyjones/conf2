@@ -70,4 +70,3 @@ func walk(selection *Selection, controller WalkController) (err error) {
 	}
 	return
 }
-

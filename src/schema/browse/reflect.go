@@ -1,8 +1,9 @@
 package browse
+
 import (
-	"schema"
-	"reflect"
 	"fmt"
+	"reflect"
+	"schema"
 )
 
 func ReadField(meta schema.HasDataType, obj interface{}) (*Value, error) {
@@ -12,7 +13,7 @@ func ReadField(meta schema.HasDataType, obj interface{}) (*Value, error) {
 func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}) (v *Value, err error) {
 	objType := reflect.ValueOf(obj).Elem()
 	value := objType.FieldByName(fieldName)
-	v = &Value{Type:meta.GetDataType()}
+	v = &Value{Type: meta.GetDataType()}
 	switch v.Type.Format {
 	case schema.FMT_BOOLEAN:
 		v.Bool = value.Bool()
@@ -45,8 +46,8 @@ func WriteField(meta schema.HasDataType, obj interface{}, v *Value) error {
 
 func WriteFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}, v *Value) error {
 	objType := reflect.ValueOf(obj).Elem()
-	if ! objType.IsValid() {
-		return &browseError{Msg:fmt.Sprintf("Cannot find property \"%s\" on invalid or nil %s", fieldName, reflect.TypeOf(obj))}
+	if !objType.IsValid() {
+		return &browseError{Msg: fmt.Sprintf("Cannot find property \"%s\" on invalid or nil %s", fieldName, reflect.TypeOf(obj))}
 	}
 	value := objType.FieldByName(fieldName)
 	switch v.Type.Format {

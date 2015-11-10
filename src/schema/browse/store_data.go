@@ -1,21 +1,21 @@
 package browse
 
 import (
-	"schema"
-	"fmt"
 	"errors"
+	"fmt"
+	"schema"
 	"strings"
 )
 
 type StoreData struct {
 	schema schema.MetaList
-	store Store
+	store  Store
 }
 
 func NewStoreData(schema schema.MetaList, store Store) *StoreData {
 	return &StoreData{
-		schema : schema,
-		store : store,
+		schema: schema,
+		store:  store,
 	}
 }
 
@@ -35,7 +35,7 @@ func (kv *StoreData) Selector(path *Path) (selection *Selection, err error) {
 	return
 }
 
-func (kv *StoreData) List(parentPath string) (Node) {
+func (kv *StoreData) List(parentPath string) Node {
 	s := &MyNode{}
 	var keyList []string
 	var i int
@@ -46,7 +46,7 @@ func (kv *StoreData) List(parentPath string) (Node) {
 		}
 		if len(key) > 0 {
 			if first {
-				path :=	kv.listPath(parentPath, key)
+				path := kv.listPath(parentPath, key)
 				if hasMore := kv.store.HasValues(path); hasMore {
 					return kv.Container(path), nil
 				}
@@ -66,7 +66,7 @@ func (kv *StoreData) List(parentPath string) (Node) {
 					return nil, err
 				}
 				state.SetKey(key)
-				path :=	kv.listPath(parentPath, key)
+				path := kv.listPath(parentPath, key)
 				return kv.Container(path), nil
 			}
 		}
@@ -87,7 +87,7 @@ func (kv *StoreData) List(parentPath string) (Node) {
 		return
 	}
 	s.OnAction = func(state *Selection, rpc *schema.Rpc, input Node) (output *Selection, err error) {
-		path :=	kv.listPath(parentPath, state.Key())
+		path := kv.listPath(parentPath, state.Key())
 		var action ActionFunc
 		if action, err = kv.store.Action(path); err != nil {
 			return
@@ -114,7 +114,7 @@ func (kv *StoreData) listPathWithNewKey(parentPath string, key []*Value) string 
 	return kv.listPath(parentPath[:eq], key)
 }
 
-func (kv *StoreData) Container(parentPath string) (Node) {
+func (kv *StoreData) Container(parentPath string) Node {
 	s := &MyNode{}
 	//path := storePath{parent:parentPath}
 	var created Node
@@ -134,7 +134,7 @@ func (kv *StoreData) Container(parentPath string) (Node) {
 				found := kv.store.HasValues(candidatePath)
 				if !found {
 					aligned = false
-					break;
+					break
 				} else {
 					m = prop
 				}
@@ -146,11 +146,11 @@ func (kv *StoreData) Container(parentPath string) (Node) {
 		msg := fmt.Sprintf("No discriminating data for choice schema %s ", state.String())
 		return nil, errors.New(msg)
 	}
-	s.OnRead = func (state *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		return kv.store.Value(kv.containerPath(parentPath, meta), meta.GetDataType()), nil
 	}
 	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, err error) {
-		if (created != nil) {
+		if created != nil {
 			child = created
 		} else {
 			childPath := kv.containerPath(parentPath, meta)

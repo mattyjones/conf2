@@ -1,13 +1,13 @@
 package yang
 
 import (
-	"io/ioutil"
 	"fmt"
-	"schema"
+	"io/ioutil"
 	"os"
+	"schema"
 )
 
-type ImportModule func (into *schema.Module, name string) (e error)
+type ImportModule func(into *schema.Module, name string) (e error)
 
 func LoadModuleFromByteArray(data []byte, importer ImportModule) (*schema.Module, error) {
 	l := lex(string(data), importer)
@@ -27,7 +27,7 @@ func LoadModuleFromByteArray(data []byte, importer ImportModule) (*schema.Module
 }
 
 func moduleCopy(dest *schema.Module, src *schema.Module) {
-	iters := []schema.MetaIterator {
+	iters := []schema.MetaIterator{
 		schema.NewMetaListIterator(src.GetGroupings(), false),
 		schema.NewMetaListIterator(src.GetTypedefs(), false),
 		schema.NewMetaListIterator(src.DataDefs(), false),
@@ -41,6 +41,7 @@ func moduleCopy(dest *schema.Module, src *schema.Module) {
 }
 
 var gYangPath schema.StreamSource
+
 func YangPath() schema.StreamSource {
 	if gYangPath == nil {
 		path := os.Getenv("YANGPATH")

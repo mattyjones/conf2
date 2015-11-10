@@ -1,17 +1,18 @@
 package browse
+
 import (
 	"schema"
 )
 
 type Parameters struct {
-	Given map[string]*Value
+	Given  map[string]*Value
 	Schema schema.MetaList
 }
 
 func NewParameters(schema schema.MetaList) *Parameters {
 	return &Parameters{
-		Given : make(map[string]*Value, 5),
-		Schema : schema,
+		Given:  make(map[string]*Value, 5),
+		Schema: schema,
 	}
 }
 
@@ -22,7 +23,7 @@ func (p *Parameters) Value(ident string) *Value {
 		meta := schema.FindByIdent2(p.Schema, ident)
 		if prop, isProp := meta.(schema.HasDataType); isProp {
 			t := prop.GetDataType()
-			v := &Value{Type:t}
+			v := &Value{Type: t}
 			if len(t.Default) > 0 {
 				v.CoerseStrValue(t.Default)
 				return v

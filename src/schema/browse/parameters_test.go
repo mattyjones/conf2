@@ -1,7 +1,8 @@
 package browse
+
 import (
-	"testing"
 	"schema/yang"
+	"testing"
 )
 
 func TestParameters(t *testing.T) {

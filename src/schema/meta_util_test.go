@@ -1,12 +1,13 @@
 package schema
+
 import "testing"
 
 func TestMetaNameToFieldName(t *testing.T) {
 	var actual string
-	tests := [] struct {
-		in string
+	tests := []struct {
+		in  string
 		out string
-	} {
+	}{
 		{"X", "X"},
 		{"x", "X"},
 		{"abc", "Abc"},

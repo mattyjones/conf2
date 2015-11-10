@@ -1,10 +1,10 @@
 package browse
-import (
-	"testing"
-	"schema/yang"
-	"bytes"
-)
 
+import (
+	"bytes"
+	"schema/yang"
+	"testing"
+)
 
 func TestJsonWriterListInList(t *testing.T) {
 	moduleStr := `

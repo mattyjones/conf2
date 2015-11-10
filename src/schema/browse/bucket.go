@@ -1,22 +1,23 @@
 package browse
+
 import (
-	"schema"
-	"strings"
-	"strconv"
 	"fmt"
 	"reflect"
+	"schema"
+	"strconv"
+	"strings"
 )
 
 // Stores stuff in memory according to a given schema.  Useful in testing or store of
 // generic settings.
 type BucketBrowser struct {
-	Meta *schema.Module
-	Bucket map[string]interface{}
+	Meta      *schema.Module
+	Bucket    map[string]interface{}
 	PathDelim string
 }
 
 func NewBucketBrowser(module *schema.Module) (bb *BucketBrowser) {
-	bb = &BucketBrowser{Meta:module, PathDelim:"."}
+	bb = &BucketBrowser{Meta: module, PathDelim: "."}
 	bb.Bucket = make(map[string]interface{}, 10)
 	return bb
 }
@@ -50,10 +51,10 @@ func (bb *BucketBrowser) Read(path string) (interface{}, error) {
 		case map[string]interface{}:
 			v = x[seg]
 		default:
-			return nil, &browseError{Msg:fmt.Sprintf("Bad type %s on %s", reflect.TypeOf(v), seg)}
+			return nil, &browseError{Msg: fmt.Sprintf("Bad type %s on %s", reflect.TypeOf(v), seg)}
 		}
 		if v == nil {
-			return nil, &browseError{Msg:fmt.Sprintf("%s not found", seg)}
+			return nil, &browseError{Msg: fmt.Sprintf("%s not found", seg)}
 		}
 	}
 	return v, nil
@@ -167,7 +168,7 @@ func (bb *BucketBrowser) readLeaf(m schema.HasDataType, container map[string]int
 	return SetValue(m.GetDataType(), container[m.GetIdent()])
 }
 
-func (bb *BucketBrowser) updateLeaf(m schema.HasDataType, container map[string]interface{}, v *Value) (error) {
+func (bb *BucketBrowser) updateLeaf(m schema.HasDataType, container map[string]interface{}, v *Value) error {
 	container[m.GetIdent()] = v.Value()
 	return nil
 }

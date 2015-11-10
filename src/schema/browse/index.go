@@ -1,7 +1,8 @@
 package browse
+
 import (
-	"sort"
 	"schema"
+	"sort"
 )
 
 // Example:
@@ -44,8 +45,8 @@ type StringIndexBuilder interface {
 
 type StringIndex struct {
 	Position int
-	Keys []string
-	Builder StringIndexBuilder
+	Keys     []string
+	Builder  StringIndexBuilder
 }
 
 func (i *StringIndex) CurrentKey() string {
@@ -53,10 +54,10 @@ func (i *StringIndex) CurrentKey() string {
 }
 
 func (i *StringIndex) OnNext(state *Selection, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
-	if (len(key) > 0) {
+	if len(key) > 0 {
 		if first {
 			i.Position = 0
-			i.Keys = []string { key[0].Str }
+			i.Keys = []string{key[0].Str}
 			hasMore, err = i.Builder.Select(i.Keys[0]), nil
 			state.SetKey(key)
 		} else {

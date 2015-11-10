@@ -1,14 +1,15 @@
 package yang
+
 import (
-	"testing"
 	"container/list"
 	"fmt"
+	"testing"
 )
 
 func TestSimpleLexExample(t *testing.T) {
 	l := lex(TestDataSimpleYang, nil)
 	tokens := list.New()
-	for  {
+	for {
 		token, err := l.nextToken()
 		if err != nil {
 			t.Errorf(err.Error())
@@ -19,14 +20,13 @@ func TestSimpleLexExample(t *testing.T) {
 		tokens.PushBack(token)
 	}
 	if tokens.Len() != 308 {
-		for e := tokens.Front() ; e != nil; e  = e.Next() {
+		for e := tokens.Front(); e != nil; e = e.Next() {
 			fmt.Println(e.Value)
 		}
 		LogTokens(l)
 		t.Fatalf("wrong num tokens %d", tokens.Len())
 	}
 }
-
 
 func TestStoneLex(t *testing.T) {
 	lex(TestDataRomancingTheStone, nil)

@@ -1,13 +1,14 @@
 package yang
+
 import (
-	"testing"
 	"log"
 	"schema"
+	"testing"
 )
 
-func LoadSampleModule(t *testing.T) (*schema.Module) {
-//	f := &schema.FileStreamSource{Root:"../testdata"}
-	m, err:= LoadModuleFromByteArray([]byte(TestDataRomancingTheStone), nil)
+func LoadSampleModule(t *testing.T) *schema.Module {
+	//	f := &schema.FileStreamSource{Root:"../testdata"}
+	m, err := LoadModuleFromByteArray([]byte(TestDataRomancingTheStone), nil)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

@@ -1,8 +1,9 @@
 package browse
+
 import (
-	"schema"
-	"fmt"
 	"errors"
+	"fmt"
+	"schema"
 )
 
 var NO_KEYS = make([]*Value, 0)
@@ -14,7 +15,7 @@ func CoerseKeys(list *schema.List, keyStrs []string) ([]*Value, error) {
 	}
 	if len(list.Keys) != len(keyStrs) {
 		msg := fmt.Sprintf("Missing keys on %s", list.GetIdent())
-		return NO_KEYS, &browseError{Msg:msg}
+		return NO_KEYS, &browseError{Msg: msg}
 	}
 	values := make([]*Value, len(keyStrs))
 	for i, keyStr := range keyStrs {
@@ -22,8 +23,8 @@ func CoerseKeys(list *schema.List, keyStrs []string) ([]*Value, error) {
 		if keyProp == nil {
 			return nil, errors.New(fmt.Sprintf("no key prop %s on %s", list.Keys[i], list.GetIdent()))
 		}
-		values[i] = &Value {
-			Type : keyProp.(schema.HasDataType).GetDataType(),
+		values[i] = &Value{
+			Type: keyProp.(schema.HasDataType).GetDataType(),
 		}
 		err = values[i].CoerseStrValue(keyStr)
 		if err != nil {

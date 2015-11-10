@@ -1,7 +1,8 @@
 package schema
+
 import (
-	"strings"
 	"strconv"
+	"strings"
 )
 
 ///////////////////
@@ -70,13 +71,13 @@ type MetaProxy interface {
 // Base structs
 ///////////////////////
 
-
 // MetaList implementation helper(s)
 type ListBase struct {
 	// Parent? - it's normally in MetaBase
 	FirstMeta Meta
-	LastMeta Meta
+	LastMeta  Meta
 }
+
 func (y *ListBase) Clear() {
 	y.FirstMeta = nil
 	y.LastMeta = nil
@@ -114,7 +115,7 @@ func (y *ListBase) swapMeta(oldChild Meta, newChild Meta) error {
 
 // Meta implementation helpers
 type MetaBase struct {
-	Parent MetaList
+	Parent  MetaList
 	Sibling Meta
 }
 
@@ -126,9 +127,10 @@ type MetaContainer struct {
 }
 
 // Meta
-func (y *MetaContainer) GetIdent() (string) {
+func (y *MetaContainer) GetIdent() string {
 	return y.Ident
 }
+
 // Meta
 func (y *MetaContainer) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -142,6 +144,7 @@ func (y *MetaContainer) GetSibling() Meta {
 func (y *MetaContainer) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *MetaContainer) AddMeta(meta Meta) error {
 	return y.linkMeta(y, meta)
@@ -166,29 +169,32 @@ func (e *metaError) Error() string {
 /////////////////////////
 
 type Module struct {
-	Ident string
+	Ident       string
 	Description string
-	Namespace string
-	Revision *Revision
-	Prefix string
+	Namespace   string
+	Revision    *Revision
+	Prefix      string
 	MetaBase
-	Defs MetaContainer
-	Rpcs MetaContainer
+	Defs          MetaContainer
+	Rpcs          MetaContainer
 	Notifications MetaContainer
-	Groupings MetaContainer
-	Typedefs MetaContainer
+	Groupings     MetaContainer
+	Typedefs      MetaContainer
 }
+
 // Identifiable
-func (y *Module) GetIdent() (string) {
+func (y *Module) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *Module) GetDescription() (string) {
+func (y *Module) GetDescription() string {
 	return y.Description
 }
 func (y *Module) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *Module) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -202,6 +208,7 @@ func (y *Module) GetSibling() Meta {
 func (y *Module) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *Module) AddMeta(meta Meta) error {
 	switch x := meta.(type) {
@@ -219,6 +226,7 @@ func (y *Module) AddMeta(meta Meta) error {
 		return y.Defs.linkMeta(y, x)
 	}
 }
+
 // technically not true, it's the MetaContainers, but we'll see how this pans out
 func (y *Module) GetFirstMeta() Meta {
 	return y.Defs.GetFirstMeta()
@@ -232,6 +240,7 @@ func (y *Module) GetNotifications() MetaList {
 func (y *Module) ReplaceMeta(oldChild Meta, newChild Meta) error {
 	return y.Defs.ReplaceMeta(oldChild, newChild)
 }
+
 // HasGroupings
 func (y *Module) GetGroupings() MetaList {
 	return &y.Groupings
@@ -244,25 +253,27 @@ func (y *Module) GetTypedefs() MetaList {
 
 type ChoiceDecider func(Choice, ChoiceCase, interface{})
 
-
 type Choice struct {
-	Ident string
+	Ident       string
 	Description string
 	MetaBase
 	ListBase
 	details Details
 }
+
 // Identifiable
-func (y *Choice) GetIdent() (string) {
+func (y *Choice) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *Choice) GetDescription() (string) {
+func (y *Choice) GetDescription() string {
 	return y.Description
 }
 func (y *Choice) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *Choice) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -276,6 +287,7 @@ func (y *Choice) GetSibling() Meta {
 func (y *Choice) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *Choice) AddMeta(meta Meta) error {
 	return y.linkMeta(y, meta)
@@ -286,10 +298,12 @@ func (y *Choice) GetFirstMeta() Meta {
 func (y *Choice) ReplaceMeta(oldChild Meta, newChild Meta) error {
 	return y.swapMeta(oldChild, newChild)
 }
+
 // Other
 func (c *Choice) GetCase(ident string) *ChoiceCase {
 	return FindByPathWithoutResolvingProxies(c, ident).(*ChoiceCase)
 }
+
 // HasDetails
 func (c *Choice) Details() *Details {
 	return &c.details
@@ -302,10 +316,12 @@ type ChoiceCase struct {
 	MetaBase
 	ListBase
 }
+
 // Identifiable
-func (y *ChoiceCase) GetIdent() (string) {
+func (y *ChoiceCase) GetIdent() string {
 	return y.Ident
 }
+
 // Meta
 func (y *ChoiceCase) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -319,6 +335,7 @@ func (y *ChoiceCase) GetSibling() Meta {
 func (y *ChoiceCase) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *ChoiceCase) AddMeta(meta Meta) error {
 	return y.linkMeta(y, meta)
@@ -329,23 +346,26 @@ func (y *ChoiceCase) GetFirstMeta() Meta {
 func (y *ChoiceCase) ReplaceMeta(oldChild Meta, newChild Meta) error {
 	return y.swapMeta(oldChild, newChild)
 }
+
 // MetaProxy
 func (y *ChoiceCase) ResolveProxy() MetaIterator {
-	return &MetaListIterator{position:y.GetFirstMeta(), resolveProxies:true}
+	return &MetaListIterator{position: y.GetFirstMeta(), resolveProxies: true}
 }
 
 ////////////////////////////////////////////////////
 
 type Revision struct {
-	Ident string
+	Ident       string
 	Description string
 }
+
 // Identifiable
-func (y *Revision) GetIdent() (string) {
+func (y *Revision) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *Revision) GetDescription() (string) {
+func (y *Revision) GetDescription() string {
 	return y.Description
 }
 func (y *Revision) SetDescription(d string) {
@@ -355,25 +375,28 @@ func (y *Revision) SetDescription(d string) {
 ////////////////////////////////////////////////////
 
 type Container struct {
-	Ident string
+	Ident       string
 	Description string
 	MetaBase
 	ListBase
 	Groupings MetaContainer
-	Typedefs MetaContainer
-	details Details
+	Typedefs  MetaContainer
+	details   Details
 }
+
 // Identifiable
-func (y *Container) GetIdent() (string) {
+func (y *Container) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *Container) GetDescription() (string) {
+func (y *Container) GetDescription() string {
 	return y.Description
 }
 func (y *Container) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *Container) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -387,6 +410,7 @@ func (y *Container) GetSibling() Meta {
 func (y *Container) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *Container) AddMeta(meta Meta) error {
 	switch meta.(type) {
@@ -404,14 +428,17 @@ func (y *Container) GetFirstMeta() Meta {
 func (y *Container) ReplaceMeta(oldChild Meta, newChild Meta) error {
 	return y.swapMeta(oldChild, newChild)
 }
+
 // HasGroupings
 func (y *Container) GetGroupings() MetaList {
 	return &y.Groupings
 }
+
 // HasTypedefs
 func (y *Container) GetTypedefs() MetaList {
 	return &y.Typedefs
 }
+
 // HasDetails
 func (y *Container) Details() *Details {
 	return &y.details
@@ -420,26 +447,29 @@ func (y *Container) Details() *Details {
 ////////////////////////////////////////////////////
 
 type List struct {
-	Ident string
+	Ident       string
 	Description string
 	MetaBase
 	ListBase
 	Groupings MetaContainer
-	Typedefs MetaContainer
-	details Details
-	Keys []string
+	Typedefs  MetaContainer
+	details   Details
+	Keys      []string
 }
+
 // Identifiable
-func (y *List) GetIdent() (string) {
+func (y *List) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *List) GetDescription() (string) {
+func (y *List) GetDescription() string {
 	return y.Description
 }
 func (y *List) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *List) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -453,6 +483,7 @@ func (y *List) GetSibling() Meta {
 func (y *List) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *List) AddMeta(meta Meta) error {
 	switch meta.(type) {
@@ -469,18 +500,22 @@ func (y *List) GetFirstMeta() Meta {
 func (y *List) ReplaceMeta(oldChild Meta, newChild Meta) error {
 	return y.swapMeta(oldChild, newChild)
 }
+
 // HasGroupings
 func (y *List) GetGroupings() MetaList {
 	return &y.Groupings
 }
+
 // HasTypedefs
 func (y *List) GetTypedefs() MetaList {
 	return &y.Typedefs
 }
+
 // HasDetails
 func (y *List) Details() *Details {
 	return &y.details
 }
+
 // List
 func (y *List) KeyMeta() (keyMeta []HasDataType) {
 	keyMeta = make([]HasDataType, len(y.Keys))
@@ -490,14 +525,13 @@ func (y *List) KeyMeta() (keyMeta []HasDataType) {
 	return
 }
 
-
 ////////////////////////////////////////////////////
 
 type Leaf struct {
-	Ident string
+	Ident       string
 	Description string
 	MetaBase
-	details Details
+	details  Details
 	DataType *DataType
 }
 
@@ -507,16 +541,18 @@ func (y *Leaf) Leaf() Meta {
 }
 
 // Identifiable
-func (y *Leaf) GetIdent() (string) {
+func (y *Leaf) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *Leaf) GetDescription() (string) {
+func (y *Leaf) GetDescription() string {
 	return y.Description
 }
 func (y *Leaf) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *Leaf) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -530,6 +566,7 @@ func (y *Leaf) GetSibling() Meta {
 func (y *Leaf) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // HasDataType
 func (y *Leaf) GetDataType() *DataType {
 	return y.DataType
@@ -544,23 +581,26 @@ func (y *Leaf) Details() *Details {
 ////////////////////////////////////////////////////
 
 type LeafList struct {
-	Ident string
+	Ident       string
 	Description string
 	MetaBase
-	details Details
+	details  Details
 	DataType *DataType
 }
+
 // Identifiable
-func (y *LeafList) GetIdent() (string) {
+func (y *LeafList) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *LeafList) GetDescription() (string) {
+func (y *LeafList) GetDescription() string {
 	return y.Description
 }
 func (y *LeafList) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *LeafList) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -574,6 +614,7 @@ func (y *LeafList) GetSibling() Meta {
 func (y *LeafList) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // HasType
 func (y *LeafList) GetDataType() *DataType {
 	return y.DataType
@@ -591,25 +632,28 @@ func (y *LeafList) Details() *Details {
 ////////////////////////////////////////////////////
 
 type Grouping struct {
-	Ident string
+	Ident       string
 	Description string
 	MetaBase
 	ListBase
-	details Details
+	details   Details
 	Groupings MetaContainer
-	Typedefs MetaContainer
+	Typedefs  MetaContainer
 }
+
 // Identifiable
-func (y *Grouping) GetIdent() (string) {
+func (y *Grouping) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *Grouping) GetDescription() (string) {
+func (y *Grouping) GetDescription() string {
 	return y.Description
 }
 func (y *Grouping) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *Grouping) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -623,6 +667,7 @@ func (y *Grouping) GetSibling() Meta {
 func (y *Grouping) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *Grouping) AddMeta(meta Meta) error {
 	return y.linkMeta(y, meta)
@@ -633,14 +678,17 @@ func (y *Grouping) GetFirstMeta() Meta {
 func (y *Grouping) ReplaceMeta(oldChild Meta, newChild Meta) error {
 	return y.swapMeta(oldChild, newChild)
 }
+
 // HasGroupings
 func (y *Grouping) GetGroupings() MetaList {
 	return &y.Groupings
 }
+
 // HasTypedefs
 func (y *Grouping) GetTypedefs() MetaList {
 	return &y.Typedefs
 }
+
 // HasDetails
 func (y *Grouping) Details() *Details {
 	return &y.details
@@ -651,14 +699,16 @@ func (y *Grouping) Details() *Details {
 type RpcInput struct {
 	MetaBase
 	ListBase
-	Typedefs MetaContainer
+	Typedefs  MetaContainer
 	Groupings MetaContainer
 }
+
 // Identifiable
-func (y *RpcInput) GetIdent() (string) {
+func (y *RpcInput) GetIdent() string {
 	// Not technically true, but works
 	return "input"
 }
+
 // Meta
 func (y *RpcInput) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -672,6 +722,7 @@ func (y *RpcInput) GetSibling() Meta {
 func (y *RpcInput) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *RpcInput) AddMeta(meta Meta) error {
 	switch meta.(type) {
@@ -688,15 +739,16 @@ func (y *RpcInput) GetFirstMeta() Meta {
 func (y *RpcInput) ReplaceMeta(oldChild Meta, newChild Meta) error {
 	return y.swapMeta(oldChild, newChild)
 }
+
 // HasGroupings
 func (y *RpcInput) GetGroupings() MetaList {
 	return &y.Groupings
 }
+
 // HasTypedefs
 func (y *RpcInput) GetTypedefs() MetaList {
 	return &y.Typedefs
 }
-
 
 ////////////////////////////////////////////////////
 
@@ -704,12 +756,14 @@ type RpcOutput struct {
 	MetaBase
 	ListBase
 	Groupings MetaContainer
-	Typedefs MetaContainer
+	Typedefs  MetaContainer
 }
+
 // Identifiable
-func (y *RpcOutput) GetIdent() (string) {
+func (y *RpcOutput) GetIdent() string {
 	return "output"
 }
+
 // Meta
 func (y *RpcOutput) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -723,6 +777,7 @@ func (y *RpcOutput) GetSibling() Meta {
 func (y *RpcOutput) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *RpcOutput) AddMeta(meta Meta) error {
 	switch meta.(type) {
@@ -739,10 +794,12 @@ func (y *RpcOutput) GetFirstMeta() Meta {
 func (y *RpcOutput) ReplaceMeta(oldChild Meta, newChild Meta) error {
 	return y.swapMeta(oldChild, newChild)
 }
+
 // HasGroupings
 func (y *RpcOutput) GetGroupings() MetaList {
 	return &y.Groupings
 }
+
 // HasTypedefs
 func (y *RpcOutput) GetTypedefsGroupings() MetaList {
 	return &y.Typedefs
@@ -751,23 +808,26 @@ func (y *RpcOutput) GetTypedefsGroupings() MetaList {
 ////////////////////////////////////////////////////
 
 type Rpc struct {
-	Ident string
+	Ident       string
 	Description string
 	MetaBase
-	Input *RpcInput
+	Input  *RpcInput
 	Output *RpcOutput
 }
+
 // Identifiable
-func (y *Rpc) GetIdent() (string) {
+func (y *Rpc) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *Rpc) GetDescription() (string) {
+func (y *Rpc) GetDescription() string {
 	return y.Description
 }
 func (y *Rpc) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *Rpc) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -781,9 +841,10 @@ func (y *Rpc) GetSibling() Meta {
 func (y *Rpc) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *Rpc) AddMeta(meta Meta) error {
-	switch t:= meta.(type) {
+	switch t := meta.(type) {
 	case *RpcInput:
 		t.SetParent(y)
 		y.Input = t
@@ -810,25 +871,27 @@ func (y *Rpc) ReplaceMeta(oldChild Meta, newChild Meta) error {
 ////////////////////////////////////////////////////
 
 type Notification struct {
-	Ident     string
+	Ident       string
 	Description string
 	MetaBase
 	ListBase
 	Groupings MetaContainer
-	Typedefs MetaContainer
+	Typedefs  MetaContainer
 }
 
 // Identifiable
-func (y *Notification) GetIdent() (string) {
+func (y *Notification) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *Notification) GetDescription() (string) {
+func (y *Notification) GetDescription() string {
 	return y.Description
 }
 func (y *Notification) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *Notification) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -842,6 +905,7 @@ func (y *Notification) GetSibling() Meta {
 func (y *Notification) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // MetaList
 func (y *Notification) AddMeta(meta Meta) error {
 	switch meta.(type) {
@@ -858,10 +922,12 @@ func (y *Notification) GetFirstMeta() Meta {
 func (y *Notification) ReplaceMeta(oldChild Meta, newChild Meta) error {
 	return y.swapMeta(oldChild, newChild)
 }
+
 // HasGroupings
 func (y *Notification) GetGroupings() MetaList {
 	return &y.Groupings
 }
+
 // HasGroupings
 func (y *Notification) GetTypedefs() MetaList {
 	return &y.Typedefs
@@ -870,22 +936,25 @@ func (y *Notification) GetTypedefs() MetaList {
 ////////////////////////////////////////////////////
 
 type Typedef struct {
-	Ident string
+	Ident       string
 	Description string
 	MetaBase
 	DataType *DataType
 }
+
 // Identifiable
-func (y *Typedef) GetIdent() (string) {
+func (y *Typedef) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *Typedef) GetDescription() (string) {
+func (y *Typedef) GetDescription() string {
 	return y.Description
 }
 func (y *Typedef) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *Typedef) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -899,6 +968,7 @@ func (y *Typedef) GetSibling() Meta {
 func (y *Typedef) SetSibling(sibling Meta) {
 	y.Sibling = sibling
 }
+
 // HasDataType
 func (y *Typedef) GetDataType() *DataType {
 	return y.DataType
@@ -909,26 +979,26 @@ func (y *Typedef) SetDataType(dataType *DataType) {
 }
 
 type DataType struct {
-	Ident string
-	Format DataFormat
-	Range string
+	Ident       string
+	Format      DataFormat
+	Range       string
 	Enumeration []string
-	MinLength int
-	MaxLength int
-	Path string
-	Pattern string
-	Default string
+	MinLength   int
+	MaxLength   int
+	Path        string
+	Pattern     string
+	Default     string
 	/*
-	FractionDigits
-	Bit
-	Base
-	RequireInstance
-	Type?!  subtype?
-	 */
+		FractionDigits
+		Bit
+		Base
+		RequireInstance
+		Type?!  subtype?
+	*/
 }
 
 func NewDataType(ident string) (t *DataType) {
-	t = &DataType{Ident:ident}
+	t = &DataType{Ident: ident}
 	// if not found, then not internal type and Resolve should
 	// determine type
 	t.Format = internalTypes[ident]
@@ -937,7 +1007,7 @@ func NewDataType(ident string) (t *DataType) {
 
 func (y *DataType) Resolve() *DataType {
 	// TODO: Will look into hierarchy and overlay constraints
-	return y;
+	return y
 }
 
 func (y *DataType) DecodeLength(encoded string) (err error) {
@@ -953,12 +1023,10 @@ func (y *DataType) DecodeLength(encoded string) (err error) {
 	return
 }
 
-
-
 ////////////////////////////////////////////////////
 
 type Uses struct {
-	Ident string
+	Ident       string
 	Description string
 	MetaBase
 	grouping *Grouping
@@ -969,17 +1037,20 @@ type Uses struct {
 	// status
 	// when
 }
+
 // Identifiable
-func (y *Uses) GetIdent() (string) {
+func (y *Uses) GetIdent() string {
 	return y.Ident
 }
+
 // Describable
-func (y *Uses) GetDescription() (string) {
+func (y *Uses) GetDescription() string {
 	return y.Description
 }
 func (y *Uses) SetDescription(d string) {
 	y.Description = d
 }
+
 // Meta
 func (y *Uses) SetParent(parent MetaList) {
 	y.Parent = parent
@@ -1004,11 +1075,12 @@ func (y *Uses) FindGrouping(ident string) *Grouping {
 					y.grouping = found.(*Grouping)
 				}
 			}
-			p  = p.GetParent()
+			p = p.GetParent()
 		}
 	}
 	return y.grouping
 }
+
 // MetaProxy
 func (y *Uses) ResolveProxy() MetaIterator {
 	if g := y.FindGrouping(y.Ident); g != nil {

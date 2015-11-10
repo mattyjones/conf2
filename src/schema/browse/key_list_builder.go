@@ -1,23 +1,23 @@
 package browse
 
 import (
-	"strings"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 type KeyListBuilder struct {
-	set map[string]struct{}
-	prefix string
+	set      map[string]struct{}
+	prefix   string
 	keyStart int
 }
 
 func NewKeyListBuilder(listPath string) *KeyListBuilder {
 	prefix := fmt.Sprint(listPath, "=")
 	return &KeyListBuilder{
-		set : make(map[string]struct{}, 10),
-		prefix : prefix,
-		keyStart : len(prefix),
+		set:      make(map[string]struct{}, 10),
+		prefix:   prefix,
+		keyStart: len(prefix),
 	}
 }
 
@@ -29,7 +29,7 @@ func (klb *KeyListBuilder) ParseKey(path string) bool {
 		if keyEnd < 0 {
 			key = path[klb.keyStart:]
 		} else {
-			key = path[klb.keyStart:klb.keyStart + keyEnd]
+			key = path[klb.keyStart : klb.keyStart+keyEnd]
 		}
 		klb.set[key] = struct{}{}
 		return true

@@ -1,8 +1,8 @@
 package yang
 
 import (
-	"testing"
 	"schema"
+	"testing"
 )
 
 func TestParseModuleStatement(t *testing.T) {

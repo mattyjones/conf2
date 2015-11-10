@@ -1,4 +1,5 @@
 package browse
+
 import (
 	"schema"
 	"strconv"
@@ -6,7 +7,7 @@ import (
 )
 
 type ControlledWalk struct {
-	MaxDepth int
+	MaxDepth   int
 	finalDepth int
 	InitialKey []*Value
 }
@@ -22,7 +23,7 @@ func LimitedWalk(query string) *ControlledWalk {
 }
 
 func FullWalk() *ControlledWalk {
-	return &ControlledWalk{MaxDepth:32}
+	return &ControlledWalk{MaxDepth: 32}
 }
 
 func (p *ControlledWalk) parseQuery(q string) (err error) {

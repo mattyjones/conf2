@@ -10,11 +10,11 @@ import "schema"
 //go:generate go tool yacc -o parser.go parser.y
 
 import (
+	"errors"
 	"fmt"
 	"strings"
-	"unicode/utf8"
 	"unicode"
-	"errors"
+	"unicode/utf8"
 )
 
 type Token struct {
@@ -31,10 +31,10 @@ const (
 )
 
 const (
-	char_doublequote = '"'
-	char_backslash = '\\'
+	char_doublequote  = '"'
+	char_backslash    = '\\'
 	str_comment_start = "/*"
-	str_comment_end = "*/"
+	str_comment_end   = "*/"
 )
 
 // needs to be in-sync w/ %token list in parser.y
@@ -87,11 +87,11 @@ func (l *lexer) keyword(ttype int) string {
 	if ttype < token_ident {
 		panic("Not a keyword")
 	}
-	return keywords[ttype - token_ident]
+	return keywords[ttype-token_ident]
 }
 
 func (t Token) String() string {
-	if (t.typ == ParseErr) {
+	if t.typ == ParseErr {
 		return fmt.Sprintf("ERROR: %q", t.val)
 	}
 	if len(t.val) > 10 {
@@ -100,7 +100,7 @@ func (t Token) String() string {
 	return fmt.Sprintf("%q", t.val)
 }
 
-func (l *lexer) error(msg string)  stateFunc {
+func (l *lexer) error(msg string) stateFunc {
 	l.tokens = append(l.tokens, Token{
 		ParseErr,
 		msg,
@@ -117,7 +117,7 @@ func (l *lexer) importModule(into *schema.Module, moduleName string) error {
 }
 
 type yangMetaStack struct {
-	defs []schema.Identifiable
+	defs  []schema.Identifiable
 	count int
 }
 
@@ -132,27 +132,27 @@ func (s *yangMetaStack) Pop() schema.Identifiable {
 }
 
 func (s *yangMetaStack) Peek() schema.Identifiable {
-	return s.defs[s.count - 1]
+	return s.defs[s.count-1]
 }
 
 func newDefStack(size int) *yangMetaStack {
 	return &yangMetaStack{
-		defs : make([]schema.Identifiable, size),
-		count : 0,
+		defs:  make([]schema.Identifiable, size),
+		count: 0,
 	}
 }
 
 type lexer struct {
-	pos int
-	start int
-	width int
-	state stateFunc
-	input string
-	tokens []Token
-	head int
-	tail int
-	stack *yangMetaStack
-	importer ImportModule
+	pos       int
+	start     int
+	width     int
+	state     stateFunc
+	input     string
+	tokens    []Token
+	head      int
+	tail      int
+	stack     *yangMetaStack
+	importer  ImportModule
 	lastError error
 }
 
@@ -219,28 +219,28 @@ func (l *lexer) peek() rune {
 
 func (l *lexer) acceptToken(ttype int) bool {
 	var keyword string
-	switch (ttype) {
+	switch ttype {
 	case token_ident:
 		return l.acceptAlphaNumeric(token_ident)
 	case token_string:
 		return l.acceptString(token_ident)
 	case token_int:
-		return l.acceptInteger(token_int);
+		return l.acceptInteger(token_int)
 	case token_curly_open:
 		keyword = "{"
-		break;
+		break
 	case token_curly_close:
 		keyword = "}"
-		break;
+		break
 	case token_semi:
 		keyword = ";"
-		break;
+		break
 	case token_rev_ident:
 		return l.acceptAlphaNumeric(token_rev_ident)
 	default:
 		keyword = l.keyword(ttype)
 	}
-	if ! strings.HasPrefix(l.input[l.pos:], keyword) {
+	if !strings.HasPrefix(l.input[l.pos:], keyword) {
 		return false
 	}
 	l.pos += len(keyword)
@@ -270,10 +270,10 @@ func (l *lexer) acceptString(ttype int) bool {
 		r = l.next()
 		if r == char_backslash {
 			l.next()
-		} else if (r == char_doublequote) {
+		} else if r == char_doublequote {
 			l.emit(ttype)
 			return true
-		} else if (r == eof) {
+		} else if r == eof {
 			// bad format?
 			return false
 		}
@@ -284,9 +284,9 @@ func (l *lexer) acceptInteger(ttype int) bool {
 	accepted := false
 	for {
 		r := l.next()
-		if ! unicode.IsDigit(r) {
+		if !unicode.IsDigit(r) {
 			l.backup()
-			if (accepted) {
+			if accepted {
 				l.emit(ttype)
 			}
 			return accepted
@@ -300,9 +300,9 @@ func (l *lexer) acceptAlphaNumeric(ttype int) bool {
 	for {
 		r := l.next()
 		// TODO: review spec on legal chars
-		if ! unicode.IsDigit(r) && ! unicode.IsLetter(r) && ! (r == '-') && ! (r == '_') {
+		if !unicode.IsDigit(r) && !unicode.IsLetter(r) && !(r == '-') && !(r == '_') {
 			l.backup()
-			if (accepted) {
+			if accepted {
 				l.emit(ttype)
 			}
 			return accepted
@@ -335,10 +335,10 @@ func lexBegin(l *lexer) stateFunc {
 	}
 	for _, ttype := range defTypes {
 		if l.acceptToken(ttype) {
-			if ! l.acceptToken(token_ident) {
+			if !l.acceptToken(token_ident) {
 				return l.error("expected ident")
 			}
-			if ! l.acceptToken(token_curly_open) {
+			if !l.acceptToken(token_curly_open) {
 				return l.error("expected {")
 			}
 			return lexBegin
@@ -352,7 +352,7 @@ func lexBegin(l *lexer) stateFunc {
 	}
 	for _, ttype := range defSpecialReference {
 		if l.acceptToken(ttype) {
-			if ! l.acceptToken(token_curly_open) {
+			if !l.acceptToken(token_curly_open) {
 				return l.error("expected {")
 			}
 			return lexBegin
@@ -360,13 +360,13 @@ func lexBegin(l *lexer) stateFunc {
 	}
 
 	if l.acceptToken(kywd_revision) {
-		if ! l.acceptRun(token_rev_ident, "0123456789-") {
+		if !l.acceptRun(token_rev_ident, "0123456789-") {
 			return l.error("expected identifier")
 		}
 		if l.acceptToken(token_curly_open) {
 			return lexBegin
 		}
-		if ! l.acceptToken(token_semi) {
+		if !l.acceptToken(token_semi) {
 			return l.error("expected { or ;")
 		}
 		return lexBegin
@@ -383,13 +383,13 @@ func lexBegin(l *lexer) stateFunc {
 	}
 	for _, ttype := range defOrReference {
 		if l.acceptToken(ttype) {
-			if ! l.acceptToken(token_ident) {
+			if !l.acceptToken(token_ident) {
 				return l.error("expecting string")
 			}
 			if l.acceptToken(token_curly_open) {
 				return lexBegin
 			}
-			if ! l.acceptToken(token_semi) {
+			if !l.acceptToken(token_semi) {
 				return l.error("expecting { or ;")
 			}
 			return lexBegin
@@ -404,10 +404,10 @@ func lexBegin(l *lexer) stateFunc {
 	}
 	for _, ttype := range tokenIdentPair {
 		if l.acceptToken(ttype) {
-			if ! l.acceptToken(token_ident) {
+			if !l.acceptToken(token_ident) {
 				return l.error("expecting string")
 			}
-			if ! l.acceptToken(token_semi) {
+			if !l.acceptToken(token_semi) {
 				return l.error("expecting ;")
 			}
 			return lexBegin
@@ -429,10 +429,10 @@ func lexBegin(l *lexer) stateFunc {
 	}
 	for _, ttype := range tokenStringPair {
 		if l.acceptToken(ttype) {
-			if ! l.acceptString(token_string) {
+			if !l.acceptString(token_string) {
 				return l.error("expecting string")
 			}
-			if ! l.acceptToken(token_semi) {
+			if !l.acceptToken(token_semi) {
 				return l.error("expecting semicolon")
 			}
 			return lexBegin
@@ -444,10 +444,10 @@ func lexBegin(l *lexer) stateFunc {
 	}
 	for _, ttype := range tokenIntPair {
 		if l.acceptToken(ttype) {
-			if ! l.acceptInteger(token_int) {
+			if !l.acceptInteger(token_int) {
 				return l.error("expecting integer")
 			}
-			if ! l.acceptToken(token_semi) {
+			if !l.acceptToken(token_semi) {
 				return l.error("expecting semicolon")
 			}
 			return lexBegin
@@ -496,18 +496,18 @@ func (l *lexer) nextToken() (Token, error) {
 
 const (
 	lexRingBufferSize = 64
-	nestedYangDefMax = 256
+	nestedYangDefMax  = 256
 )
 
-func lex(input string, importer ImportModule) (*lexer) {
+func lex(input string, importer ImportModule) *lexer {
 	l := &lexer{
-		input : input,
-		tokens : make([]Token, lexRingBufferSize),
-		head : 0,
-		tail : 0,
-		state : lexBegin,
-		stack : newDefStack(256),
-		importer : importer,
+		input:    input,
+		tokens:   make([]Token, lexRingBufferSize),
+		head:     0,
+		tail:     0,
+		state:    lexBegin,
+		stack:    newDefStack(256),
+		importer: importer,
 	}
 	l.acceptWS()
 	return l

@@ -1,10 +1,11 @@
 package schema
+
 import "fmt"
 
 type MetaPath struct {
 	ParentPath *MetaPath
-	Meta Meta
-	Key string
+	Meta       Meta
+	Key        string
 }
 
 func (p *MetaPath) Parent() MetaList {

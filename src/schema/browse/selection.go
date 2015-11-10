@@ -1,14 +1,15 @@
 package browse
+
 import (
-	"schema"
-	"fmt"
 	"errors"
+	"fmt"
+	"schema"
 )
 
 type Selection struct {
-	path schema.MetaPath
-	node Node
-	key []*Value
+	path       schema.MetaPath
+	node       Node
+	key        []*Value
 	insideList bool
 }
 
@@ -17,8 +18,8 @@ func (s *Selection) Node() Node {
 }
 
 func NewSelection(node Node, meta schema.MetaList) *Selection {
-	state := &Selection{node:node}
-	state.path.ParentPath = &schema.MetaPath{Meta:meta}
+	state := &Selection{node: node}
+	state.path.ParentPath = &schema.MetaPath{Meta: meta}
 	return state
 }
 
@@ -33,7 +34,7 @@ func (state *Selection) SelectedMeta() schema.MetaList {
 }
 
 func (state *Selection) Select(node Node) *Selection {
-	child := &Selection{node : node}
+	child := &Selection{node: node}
 	child.path.ParentPath = &state.path
 	return child
 }
@@ -55,7 +56,7 @@ func (state *Selection) Position() schema.Meta {
 	return state.path.Meta
 }
 
-func (state *Selection) SetPosition(position schema.Meta)  {
+func (state *Selection) SetPosition(position schema.Meta) {
 	state.path.Meta = position
 }
 

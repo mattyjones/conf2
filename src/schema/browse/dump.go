@@ -1,24 +1,26 @@
 package browse
+
 import (
-	"io"
 	"bufio"
 	"fmt"
-	"strconv"
+	"io"
 	"schema"
+	"strconv"
 )
 
-var editOps = map[Operation]string {
-	CREATE_CONTAINER : "CREATE_CHILD",
-	POST_CREATE_CONTAINER : "POST_CREATE_CHILD",
-	CREATE_LIST : "CREATE_LIST",
-	POST_CREATE_LIST : "POST_CREATE_LIST",
-	UPDATE_VALUE : "UPDATE_VALUE",
-	DELETE : "DELETE",
-	BEGIN_EDIT : "BEGIN_EDIT",
-	END_EDIT : "END_EDIT",
-	CREATE_LIST_ITEM : "CREATE_LIST_ITEM",
-	POST_CREATE_LIST_ITEM : "POST_CREATE_LIST_ITEM",
+var editOps = map[Operation]string{
+	CREATE_CONTAINER:      "CREATE_CHILD",
+	POST_CREATE_CONTAINER: "POST_CREATE_CHILD",
+	CREATE_LIST:           "CREATE_LIST",
+	POST_CREATE_LIST:      "POST_CREATE_LIST",
+	UPDATE_VALUE:          "UPDATE_VALUE",
+	DELETE:                "DELETE",
+	BEGIN_EDIT:            "BEGIN_EDIT",
+	END_EDIT:              "END_EDIT",
+	CREATE_LIST_ITEM:      "CREATE_LIST_ITEM",
+	POST_CREATE_LIST_ITEM: "POST_CREATE_LIST_ITEM",
 }
+
 const Padding = "                                                                                       "
 
 type Dumper struct {
@@ -27,7 +29,7 @@ type Dumper struct {
 
 func NewDumper(out io.Writer) *Dumper {
 	return &Dumper{
-		out:bufio.NewWriter(out),
+		out: bufio.NewWriter(out),
 	}
 }
 
@@ -39,7 +41,7 @@ func (d *Dumper) Node() Node {
 	return d.enter(0)
 }
 
-func (d *Dumper) enter(level int) (Node) {
+func (d *Dumper) enter(level int) Node {
 	row := 0
 	s := &MyNode{}
 	var created Node
@@ -50,8 +52,8 @@ func (d *Dumper) enter(level int) (Node) {
 	}
 	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
 		switch op {
-			case CREATE_CONTAINER, CREATE_LIST, CREATE_LIST_ITEM:
-				created = d.enter(level + 1)
+		case CREATE_CONTAINER, CREATE_LIST, CREATE_LIST_ITEM:
+			created = d.enter(level + 1)
 		}
 		d.dumpEditOp(state, op, level)
 		d.dumpValue(v, level)

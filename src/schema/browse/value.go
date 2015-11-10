@@ -1,22 +1,22 @@
 package browse
+
 import (
+	"fmt"
+	"reflect"
 	"schema"
 	"strconv"
-	"reflect"
-	"fmt"
 )
 
-
 type Value struct {
-	Type *schema.DataType
-	Bool bool
-	Int int
-	Str string
-	Float float32
-	Intlist []int
-	Strlist []string
+	Type     *schema.DataType
+	Bool     bool
+	Int      int
+	Str      string
+	Float    float32
+	Intlist  []int
+	Strlist  []string
 	Boollist []bool
-	Keys []string
+	Keys     []string
 }
 
 func (v *Value) Value() interface{} {
@@ -99,7 +99,7 @@ func (v *Value) SetEnum(n int) bool {
 	return false
 }
 
-func (v *Value) SetEnumByLabel(label string)  bool {
+func (v *Value) SetEnumByLabel(label string) bool {
 	for i, n := range v.Type.Enumeration {
 		if n == label {
 			v.Int = i
@@ -129,7 +129,7 @@ func (v *Value) String() string {
 // Incoming value should be of appropriate type according to given data type format
 func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
 	reflectVal := reflect.ValueOf(val)
-	v := &Value{Type:typ}
+	v := &Value{Type: typ}
 	switch typ.Format {
 	case schema.FMT_BOOLEAN:
 		v.Bool = reflectVal.Bool()

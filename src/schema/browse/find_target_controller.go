@@ -1,18 +1,19 @@
 package browse
+
 import (
-	"schema"
 	"errors"
 	"fmt"
+	"schema"
 )
 
 type FindTarget struct {
-	path *Path
-	Target *Selection
+	path     *Path
+	Target   *Selection
 	resource schema.Resource
 }
 
 func NewFindTarget(p *Path) *FindTarget {
-	return &FindTarget{path:p}
+	return &FindTarget{path: p}
 }
 
 func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selection, err error) {
@@ -22,18 +23,18 @@ func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selec
 	}
 	level := selection.Level()
 	if level == len(n.path.Segments) {
-		if len(n.path.Segments[level - 1].Keys) == 0 {
+		if len(n.path.Segments[level-1].Keys) == 0 {
 			n.setTarget(selection)
 			return nil, nil
 		}
 	}
 
-	if len(n.path.Segments[level - 1].Keys) == 0 {
+	if len(n.path.Segments[level-1].Keys) == 0 {
 		return nil, errors.New("Key required when navigating lists")
 	}
 	list := selection.SelectedMeta().(*schema.List)
 	var key []*Value
-	key, err = CoerseKeys(list, n.path.Segments[level - 1].Keys)
+	key, err = CoerseKeys(list, n.path.Segments[level-1].Keys)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +70,7 @@ func (n *FindTarget) setTarget(selection *Selection) {
 
 func (n *FindTarget) VisitAction(selection *Selection) error {
 	level := selection.Level()
-	if level + 1 != len(n.path.Segments) {
+	if level+1 != len(n.path.Segments) {
 		return errors.New(fmt.Sprint("Target is an action or rpc ", selection.String()))
 	}
 	n.setTarget(selection)
@@ -83,5 +84,5 @@ func (n *FindTarget) ContainerIterator(selection *Selection) schema.MetaIterator
 		return schema.EmptyInterator(0)
 	}
 	position := schema.FindByIdentExpandChoices(selection.SelectedMeta(), n.path.Segments[level].Ident)
-	return &schema.SingletonIterator{Meta:position}
+	return &schema.SingletonIterator{Meta: position}
 }

@@ -1,8 +1,9 @@
 package db
+
 import (
-	"schema/browse"
-	"schema"
 	"errors"
+	"schema"
+	"schema/browse"
 )
 
 // Details on config nodes v.s. state data
@@ -19,14 +20,14 @@ import (
 //   "config" set to "true".
 
 type DocumentPair struct {
-	oper browse.Data
+	oper   browse.Data
 	config browse.Data
 }
 
 func NewDocumentPair(operational browse.Data, config browse.Data) (pair *DocumentPair, err error) {
 	pair = &DocumentPair{
-		oper:operational,
-		config:config,
+		oper:   operational,
+		config: config,
 	}
 	p := browse.NewPath("")
 	var src, dest *browse.Selection
@@ -96,7 +97,7 @@ func (self *DocumentPair) Schema() schema.MetaList {
 	return m
 }
 
-func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) (browse.Node) {
+func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) browse.Node {
 	s := &browse.MyNode{}
 	IsContainerConfig := config != nil
 	var createdListItem bool

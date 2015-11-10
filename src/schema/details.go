@@ -26,7 +26,7 @@ func (f Flag) Set(b bool) {
 }
 
 type Details struct {
-	ConfigFlag Flag
+	ConfigFlag    Flag
 	MandatoryFlag Flag
 }
 

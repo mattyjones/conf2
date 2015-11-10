@@ -1,9 +1,9 @@
 package schema
+
 import (
 	"strings"
 	"unicode"
 )
-
 
 func FindByIdent(i MetaIterator, ident string) Meta {
 	child := i.NextMeta()
@@ -87,7 +87,7 @@ func IsList(m Meta) bool {
 }
 
 func IsContainer(m Meta) bool {
-	return ! IsList(m) && ! IsLeaf(m)
+	return !IsList(m) && !IsLeaf(m)
 }
 
 func MetaNameToFieldName(in string) string {
@@ -152,4 +152,3 @@ func find(root MetaList, path string, resolveProxies bool) (def Meta) {
 	}
 	return
 }
-

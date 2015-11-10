@@ -1,19 +1,20 @@
 package browse
+
 import (
-	"schema"
 	"reflect"
+	"schema"
 )
 
 // Uses reflection to marshal data into go structs
 
 func Marshal(obj interface{}, sel *Selection) (err error) {
-	n := &MarshalContainer{Obj:obj}
+	n := &MarshalContainer{Obj: obj}
 	err = UpsertByNode(sel, sel.Node(), n)
 	return
 }
 
 type MarshalContainer struct {
-	Obj interface{}
+	Obj         interface{}
 	OnSelectNil SelectFunc
 }
 
@@ -25,9 +26,9 @@ func (s *MarshalContainer) Select(selection *Selection, meta schema.MetaList) (N
 		return MarshalList(value.Interface().([]interface{})), nil
 	} else {
 		if value.Kind() == reflect.Struct {
-			return &MarshalContainer{Obj:value.Addr().Interface()}, nil
+			return &MarshalContainer{Obj: value.Addr().Interface()}, nil
 		} else if value.CanAddr() {
-			return &MarshalContainer{Obj:value.Interface()}, nil
+			return &MarshalContainer{Obj: value.Interface()}, nil
 		}
 	}
 	return nil, nil

@@ -1,8 +1,9 @@
 package browse
+
 import (
-	"testing"
 	"schema"
 	"schema/yang"
+	"testing"
 )
 
 func TestDiff(t *testing.T) {
@@ -46,17 +47,17 @@ module m {
 
 	// new
 	a := NewBufferStore()
-	a.Values["movie/name"] = &Value{Str:"StarWars"}
-	a.Values["movie/character/name"] = &Value{Str:"Hans Solo"}
-	a.Values["car/name"] = &Value{Str:"Malibu"}
+	a.Values["movie/name"] = &Value{Str: "StarWars"}
+	a.Values["movie/character/name"] = &Value{Str: "Hans Solo"}
+	a.Values["car/name"] = &Value{Str: "Malibu"}
 	aData, _ := NewStoreData(m, a).Selector(NewPath(""))
 
 	// old
 	b := NewBufferStore()
-	b.Values["movie/name"] = &Value{Str:"StarWars"}
-	laya := &Value{Type:str, Str:"Princess Laya"}
+	b.Values["movie/name"] = &Value{Str: "StarWars"}
+	laya := &Value{Type: str, Str: "Princess Laya"}
 	b.Values["movie/character/name"] = laya
-	gtav := &Value{Type:str, Str:"GTA V"}
+	gtav := &Value{Type: str, Str: "GTA V"}
 	b.Values["videoGame/name"] = gtav
 	bData, _ := NewStoreData(m, b).Selector(NewPath(""))
 
@@ -68,10 +69,10 @@ module m {
 	if len(c.Values) != 2 {
 		t.Error("Expected 1 value")
 	}
-	if ! laya.Equal(c.Value("movie/character/name", str))  {
+	if !laya.Equal(c.Value("movie/character/name", str)) {
 		t.Errorf("Unexpected values %v", c.Values)
 	}
-	if ! gtav.Equal(c.Value("videoGame/name", str)) {
+	if !gtav.Equal(c.Value("videoGame/name", str)) {
 		t.Errorf("Unexpected values %v", c.Values)
 	}
 }

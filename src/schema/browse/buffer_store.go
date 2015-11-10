@@ -1,21 +1,22 @@
 package browse
+
 import (
+	"fmt"
 	"schema"
 	"strings"
-	"fmt"
 )
 
 // Store key values in memory.  Useful for testing or moving temporary data
 
 type BufferStore struct {
-	Values map[string]*Value
+	Values  map[string]*Value
 	Actions map[string]ActionFunc
 }
 
 func NewBufferStore() *BufferStore {
 	return &BufferStore{
-		Values : make(map[string]*Value, 10),
-		Actions : make(map[string]ActionFunc, 10),
+		Values:  make(map[string]*Value, 10),
+		Actions: make(map[string]ActionFunc, 10),
 	}
 }
 
@@ -55,7 +56,7 @@ func (kvs *BufferStore) Action(key string) (ActionFunc, error) {
 	return kvs.Actions[key], nil
 }
 
-func (kvs *BufferStore) Value(key string, dataType *schema.DataType) (*Value) {
+func (kvs *BufferStore) Value(key string, dataType *schema.DataType) *Value {
 	if v, found := kvs.Values[key]; found {
 		v.Type = dataType
 		return v
@@ -98,4 +99,3 @@ func (kvs *BufferStore) RenameKey(oldPath string, newPath string) {
 		}
 	}
 }
-

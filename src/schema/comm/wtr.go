@@ -4,16 +4,16 @@ import (
 	"C"
 	"bufio"
 	"bytes"
-	"schema/browse"
-	"schema"
 	"errors"
+	"schema"
+	"schema/browse"
 )
 
 type Writer struct {
 	buffer bytes.Buffer
-	out *bufio.Writer
-	temp [4]byte
-	pos int
+	out    *bufio.Writer
+	temp   [4]byte
+	pos    int
 }
 
 func NewWriter() *Writer {
@@ -115,7 +115,6 @@ func (c *Writer) WriteBool(b bool) {
 		c.out.WriteByte(FALSE_BYTE)
 	}
 }
-
 
 // string format in UTF-8**
 // ======================

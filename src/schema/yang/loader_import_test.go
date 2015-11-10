@@ -1,8 +1,9 @@
 package yang
+
 import (
-	"testing"
 	"fmt"
 	"schema"
+	"testing"
 )
 
 func TestLoaderImport(t *testing.T) {
@@ -49,7 +50,7 @@ module main {
 			return "", &yangError{fmt.Sprint("Unexpected resource ", resource)}
 		}
 	}
-	source := &schema.StringSource{Streamer:resources}
+	source := &schema.StringSource{Streamer: resources}
 	m, err := LoadModule(source, "main")
 	if err != nil {
 		t.Error(err)
@@ -62,4 +63,3 @@ module main {
 		}
 	}
 }
-

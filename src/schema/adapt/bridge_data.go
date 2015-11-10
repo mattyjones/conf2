@@ -1,12 +1,13 @@
 package adapt
+
 import (
-	"schema/browse"
 	"schema"
+	"schema/browse"
 	"schema/yang"
 )
 
 type BridgeData struct {
-	Meta schema.MetaList
+	Meta    schema.MetaList
 	Bridges map[string]*Bridge
 }
 
@@ -16,8 +17,8 @@ func NewBridgeData() *BridgeData {
 		panic(err.Error())
 	}
 	return &BridgeData{
-		Bridges : make(map[string]*Bridge, 5),
-		Meta : meta,
+		Bridges: make(map[string]*Bridge, 5),
+		Meta:    meta,
 	}
 }
 
@@ -31,10 +32,10 @@ func (bb *BridgeData) AddBridge(name string, bridge *Bridge) {
 
 func (bb *BridgeData) Selector(path *browse.Path) (*browse.Selection, error) {
 	s := &browse.MyNode{}
-	s.OnSelect = func (state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
+	s.OnSelect = func(state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
 		switch meta.GetIdent() {
-			case "bridges":
-				return bb.SelectBridges(bb.Bridges)
+		case "bridges":
+			return bb.SelectBridges(bb.Bridges)
 		}
 		return nil, nil
 	}
@@ -66,15 +67,14 @@ func (bb *BridgeData) SelectBridges(bridges map[string]*Bridge) (browse.Node, er
 	}
 	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
 		switch meta.GetIdent() {
-			case "name":
-				return &browse.Value{Str : index.Index.CurrentKey()}, nil
+		case "name":
+			return &browse.Value{Str: index.Index.CurrentKey()}, nil
 		}
 		return browse.ReadField(meta, index.Selected)
 	}
 
 	return s, nil
 }
-
 
 func (bb *BridgeData) selectMapping(mapping *BridgeMapping, external schema.MetaList, internal schema.MetaList) (browse.Node, error) {
 	s := &browse.MyNode{}
@@ -105,7 +105,7 @@ func (bb *BridgeData) selectMapping(mapping *BridgeMapping, external schema.Meta
 	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
 		switch meta.GetIdent() {
 		case "externalIdent":
-			return &browse.Value{Str:index.Index.CurrentKey()}, nil
+			return &browse.Value{Str: index.Index.CurrentKey()}, nil
 		}
 		return browse.ReadField(meta, index.Selected)
 	}
@@ -159,7 +159,7 @@ func (bb *BridgeData) selectFieldOptions(field schema.MetaList) (browse.Node, er
 					v.Strlist = append(v.Strlist, m.GetIdent())
 				}
 			default:
-				if ! schema.IsLeaf(m) && ! schema.IsList(m) {
+				if !schema.IsLeaf(m) && !schema.IsList(m) {
 					v.Strlist = append(v.Strlist, m.GetIdent())
 				}
 			}
@@ -171,13 +171,13 @@ func (bb *BridgeData) selectFieldOptions(field schema.MetaList) (browse.Node, er
 }
 
 type bridgeIndex struct {
-	Index browse.StringIndex
-	Data map[string]*Bridge
+	Index    browse.StringIndex
+	Data     map[string]*Bridge
 	Selected *Bridge
 }
 
 func newBridgeIndex(data map[string]*Bridge) *bridgeIndex {
-	ndx := &bridgeIndex{Data:data}
+	ndx := &bridgeIndex{Data: data}
 	ndx.Index.Builder = ndx
 	return ndx
 }
@@ -198,13 +198,13 @@ func (impl *bridgeIndex) Build() []string {
 }
 
 type mappingIndex struct {
-	Index browse.StringIndex
-	Data map[string]*BridgeMapping
+	Index    browse.StringIndex
+	Data     map[string]*BridgeMapping
 	Selected *BridgeMapping
 }
 
 func newMappingIndex(data map[string]*BridgeMapping) *mappingIndex {
-	ndx := &mappingIndex{Data:data}
+	ndx := &mappingIndex{Data: data}
 	ndx.Index.Builder = ndx
 	return ndx
 }

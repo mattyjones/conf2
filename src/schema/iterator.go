@@ -6,19 +6,19 @@ type MetaIterator interface {
 }
 
 type MetaListIterator struct {
-	position Meta
-	next Meta
-	currentProxy MetaIterator
+	position       Meta
+	next           Meta
+	currentProxy   MetaIterator
 	resolveProxies bool
 }
 
 type EmptyInterator int
 
 func (e EmptyInterator) HasNextMeta() bool {
-	return false;
+	return false
 }
 func (e EmptyInterator) NextMeta() Meta {
-	return nil;
+	return nil
 }
 
 type SingletonIterator struct {
@@ -26,17 +26,16 @@ type SingletonIterator struct {
 }
 
 func (s *SingletonIterator) HasNextMeta() bool {
-	return s.Meta != nil;
+	return s.Meta != nil
 }
 func (s *SingletonIterator) NextMeta() Meta {
 	m := s.Meta
 	s.Meta = nil
-	return m;
+	return m
 }
 
-
 func NewMetaListIterator(list MetaList, resolveProxies bool) MetaIterator {
-	i := &MetaListIterator{position:list.GetFirstMeta(), resolveProxies:resolveProxies}
+	i := &MetaListIterator{position: list.GetFirstMeta(), resolveProxies: resolveProxies}
 	i.next = i.lookAhead()
 	return i
 }
@@ -66,7 +65,7 @@ func (self *MetaListIterator) lookAhead() Meta {
 					return next
 				} else {
 					self.position = self.position.GetSibling()
-					self.currentProxy = proxy.ResolveProxy();
+					self.currentProxy = proxy.ResolveProxy()
 				}
 			} else {
 				next := self.position

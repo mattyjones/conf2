@@ -6,6 +6,6 @@ package comm
 const CSTR_TERM = byte(0)
 
 const (
-	TRUE_BYTE = byte(1)
+	TRUE_BYTE  = byte(1)
 	FALSE_BYTE = byte(0)
 )

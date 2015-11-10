@@ -1,8 +1,8 @@
 package schema
 
 import (
-	"os"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -18,7 +18,7 @@ func PathStreamSource(path string) StreamSource {
 	dirs := strings.Split(path, ":")
 	sources := make([]StreamSource, len(dirs))
 	for i, dir := range dirs {
-		sources[i] = &FileStreamSource{Root:dir}
+		sources[i] = &FileStreamSource{Root: dir}
 		i++
 	}
 	return &MulticastStreamSource{sources}
@@ -43,8 +43,8 @@ type FileStreamSource struct {
 }
 
 func NewCwdSource() StreamSource {
-	cwd,_ := os.Getwd()
-	return &FileStreamSource{Root:cwd}
+	cwd, _ := os.Getwd()
+	return &FileStreamSource{Root: cwd}
 }
 
 type StringSource struct {
@@ -79,4 +79,3 @@ type FsError struct {
 func (e *FsError) Error() string {
 	return e.Msg
 }
-

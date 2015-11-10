@@ -1,8 +1,9 @@
 package browse
+
 import (
-	"testing"
 	"schema/yang"
 	"strings"
+	"testing"
 )
 
 type TestMessage struct {
@@ -29,7 +30,7 @@ module m {
 		t.Fatal(err)
 	}
 	var obj TestMessage
-	c := &MarshalContainer{Obj:&obj}
+	c := &MarshalContainer{Obj: &obj}
 	var r Node
 	r, err = NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
 	if err != nil {

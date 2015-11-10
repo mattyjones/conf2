@@ -1,9 +1,9 @@
 package yang
 
 import (
-	"testing"
-	"schema"
 	"fmt"
+	"schema"
+	"testing"
 )
 
 func TestTokenStr(t *testing.T) {
@@ -16,7 +16,7 @@ func TestTokenStr(t *testing.T) {
 func TestPosition(t *testing.T) {
 	l := lex("x", nil)
 	c1 := l.next()
-	if (c1 != 'x') {
+	if c1 != 'x' {
 		t.Errorf("next: unexpected rune %d", c1)
 	}
 	if l.pos != 1 {
@@ -44,14 +44,14 @@ func TestNextWithWhitespace(t *testing.T) {
 	l := lex("  zzz \t  ggg", nil)
 	l.acceptWS()
 	c1 := l.next()
-	if (c1 != 'z') {
+	if c1 != 'z' {
 		t.Errorf("next: unexpected rune %d", c1)
 	}
 
 	l = lex("  /* this is a comment */ aaa", nil)
 	l.acceptWS()
 	c1 = l.next()
-	if (c1 != 'a') {
+	if c1 != 'a' {
 		t.Errorf("did not ignore comment")
 	}
 
@@ -65,8 +65,8 @@ func TestAccept(t *testing.T) {
 		t.Error("Shouldn't find abc")
 	}
 	l.acceptRun(0, "yx")
-	if p0 != l.pos - 2 {
-		t.Errorf("Should only advance 2 not %d", l.pos - p0)
+	if p0 != l.pos-2 {
+		t.Errorf("Should only advance 2 not %d", l.pos-p0)
 	}
 	l = lex("   \t\t  x  \n\n  ", nil)
 	l.acceptWS()
@@ -98,10 +98,10 @@ func TestNextToken(t *testing.T) {
 
 func TestMaxElements(t *testing.T) {
 	l := lex("max-elements 100;", nil)
-	if ! l.acceptToken(kywd_max_elements) {
+	if !l.acceptToken(kywd_max_elements) {
 		t.Errorf("unexpected max-elements")
 	}
-	if ! l.acceptInteger(token_int) {
+	if !l.acceptInteger(token_int) {
 		t.Errorf("expected int")
 	}
 	l.popToken()
@@ -113,7 +113,7 @@ func TestMaxElements(t *testing.T) {
 
 func TestAlphaNumeric(t *testing.T) {
 	l := lex("aaa zzz", nil)
-	if ! l.acceptAlphaNumeric(0) {
+	if !l.acceptAlphaNumeric(0) {
 		t.Errorf("unexpected alphanumeric")
 	}
 	token := l.popToken()
@@ -125,7 +125,7 @@ func TestAlphaNumeric(t *testing.T) {
 func TestString(t *testing.T) {
 	expected := "\"string here\""
 	l := lex(expected, nil)
-	if ! l.acceptString(0) {
+	if !l.acceptString(0) {
 		t.Errorf("unexpected alphanumeric")
 	}
 	token := l.popToken()
@@ -136,7 +136,7 @@ func TestString(t *testing.T) {
 
 func TestAcceptRun(t *testing.T) {
 	l := lex("aaabbbzzz", nil)
-	if ! l.acceptRun(0, "abc") {
+	if !l.acceptRun(0, "abc") {
 		t.Errorf("unexpected alphanumeric")
 	}
 	token := l.popToken()
@@ -145,7 +145,7 @@ func TestAcceptRun(t *testing.T) {
 	}
 
 	l = lex("2015-06-03 {", nil)
-	if ! l.acceptRun(0, "0123456789-") {
+	if !l.acceptRun(0, "0123456789-") {
 		t.Errorf("unexpected alphanumeric")
 	}
 	token = l.popToken()
@@ -153,7 +153,6 @@ func TestAcceptRun(t *testing.T) {
 		t.Errorf("expected ")
 	}
 }
-
 
 func TestModule(t *testing.T) {
 	l := lex("module foo { } ", nil)
@@ -204,21 +203,21 @@ module foo {
 }`
 	expecteds := [...]int{
 		kywd_module, token_ident, token_curly_open,
-			kywd_namespace, token_string, token_semi,
-			kywd_prefix, token_string, token_semi,
-			kywd_revision, token_rev_ident, token_curly_open,
-			kywd_description, token_string, token_semi,
-			token_curly_close,
-			kywd_container, token_ident, token_curly_open,
-				kywd_description, token_string, token_semi,
-				kywd_leaf, token_ident, token_curly_open,
-					kywd_config, token_string, token_semi,
-					kywd_description, token_string, token_semi,
-				token_curly_close,
-				kywd_leaf_list, token_ident, token_curly_open,
-					kywd_type, token_ident, token_semi,
-				token_curly_close,
-			token_curly_close,
+		kywd_namespace, token_string, token_semi,
+		kywd_prefix, token_string, token_semi,
+		kywd_revision, token_rev_ident, token_curly_open,
+		kywd_description, token_string, token_semi,
+		token_curly_close,
+		kywd_container, token_ident, token_curly_open,
+		kywd_description, token_string, token_semi,
+		kywd_leaf, token_ident, token_curly_open,
+		kywd_config, token_string, token_semi,
+		kywd_description, token_string, token_semi,
+		token_curly_close,
+		kywd_leaf_list, token_ident, token_curly_open,
+		kywd_type, token_ident, token_semi,
+		token_curly_close,
+		token_curly_close,
 		token_curly_close,
 	}
 
@@ -236,13 +235,13 @@ module foo {
 
 func TestStack(t *testing.T) {
 	stack := newDefStack(10)
-	expected := &schema.Module{Ident:"x"}
+	expected := &schema.Module{Ident: "x"}
 	stack.Push(expected)
 	actual, ok := stack.Pop().(*schema.Module)
-	if ! ok {
+	if !ok {
 		t.Fail()
 	}
-	if (actual.Ident != expected.Ident) {
+	if actual.Ident != expected.Ident {
 		t.Fail()
 	}
 }

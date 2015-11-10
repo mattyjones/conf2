@@ -1,9 +1,10 @@
 package browse
+
 import (
-	"testing"
+	"log"
 	"schema/yang"
 	"strings"
-	"log"
+	"testing"
 )
 
 const EDIT_TEST_MODULE = `
@@ -94,17 +95,17 @@ func LoadEditTestData() (*BucketBrowser, error) {
 		// avoid using json to load because that needs edit/INSERT and
 		// we don't want to use code to load seed data that we're trying to test
 		fruits := make([]map[string]interface{}, 2)
-		fruits[0] = map[string]interface{} {
-			"name" : "banana",
+		fruits[0] = map[string]interface{}{
+			"name": "banana",
 		}
-		fruits[0]["origin"] = map[string]interface{} {
-			"country" : "Brazil",
+		fruits[0]["origin"] = map[string]interface{}{
+			"country": "Brazil",
 		}
-		fruits[1] = map[string]interface{} {
-			"name" : "apple",
+		fruits[1] = map[string]interface{}{
+			"name": "apple",
 		}
-		fruits[1]["origin"] = map[string]interface{} {
-			"country" : "US",
+		fruits[1]["origin"] = map[string]interface{}{
+			"country": "US",
 		}
 		bb.Bucket["fruits"] = fruits
 		return bb, nil

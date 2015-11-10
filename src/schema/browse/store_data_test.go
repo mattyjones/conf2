@@ -1,20 +1,21 @@
 package browse
 
 import (
-	"testing"
-	"schema/yang"
 	"bytes"
 	"schema"
+	"schema/yang"
 	"strings"
+	"testing"
 )
+
 func TestKeyListBuilderInBufferStore(t *testing.T) {
 	tests := []struct {
-		path string
+		path     string
 		expected string
-	} {
-		{ "a/a", "" },
-		{ "a/b", "x" },
-		{ "a/c", "y|z" },
+	}{
+		{"a/a", ""},
+		{"a/b", "x"},
+		{"a/c", "y|z"},
 	}
 	store := NewBufferStore()
 	v := &Value{}
@@ -23,8 +24,8 @@ func TestKeyListBuilderInBufferStore(t *testing.T) {
 	store.Values["a/c=y/c"] = v
 	store.Values["a/c=y/c"] = v
 	store.Values["a/c=z/q/f=yy/fg=gf/gf"] = v
-	meta := &schema.List{Ident:"c", Keys:[]string{"k"}}
-	meta.AddMeta(&schema.Leaf{Ident:"k", DataType:&schema.DataType{Format:schema.FMT_STRING}})
+	meta := &schema.List{Ident: "c", Keys: []string{"k"}}
+	meta.AddMeta(&schema.Leaf{Ident: "k", DataType: &schema.DataType{Format: schema.FMT_STRING}})
 	for _, test := range tests {
 		keys, err := store.KeyList(test.path, meta)
 		if err != nil {
@@ -83,8 +84,8 @@ func TestStoreBrowserKeyValueRead(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreData(m, store)
-	store.Values["a/aa/aaa"] = &Value{Str:"hi"}
-	store.Values["b=x/ba"] = &Value{Str:"x"}
+	store.Values["a/aa/aaa"] = &Value{Str: "hi"}
+	store.Values["b=x/ba"] = &Value{Str: "x"}
 	var actualBytes bytes.Buffer
 	json := NewSelection(NewJsonWriter(&actualBytes).Container(), m)
 	in, err := kv.Selector(NewPath(""))
@@ -118,7 +119,7 @@ func TestStoreBrowserValueEdit(t *testing.T) {
 		t.Error("Expected 2 items")
 	}
 	expectations := []struct {
-		path string
+		path  string
 		value string
 	}{
 		{"a/aa/aaa", "hi"},
@@ -141,7 +142,7 @@ func TestStoreBrowserKeyValueEdit(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreData(m, store)
-	store.Values["b=x/ba"] = &Value{Str:"z"}
+	store.Values["b=x/ba"] = &Value{Str: "z"}
 
 	// change key
 	inputJson2 := `{"ba":"y"}`
@@ -168,8 +169,8 @@ func TestStoreBrowserReadListList(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreData(m, store)
-	store.Values["b=x/ba"] = &Value{Str:"x"}
-	store.Values["b=x/bc=y/bca"] = &Value{Str:"y"}
+	store.Values["b=x/ba"] = &Value{Str: "x"}
+	store.Values["b=x/bc=y/bca"] = &Value{Str: "y"}
 	var actual bytes.Buffer
 	in, err := kv.Selector(NewPath(""))
 	if err != nil {
@@ -183,8 +184,8 @@ func TestStoreBrowserReadListList(t *testing.T) {
 func TestStoreRemoveAll(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
-	store.Values["b=x/ba"] = &Value{Str:"x"}
-	store.Values["b=x/bc=y/bca"] = &Value{Str:"y"}
+	store.Values["b=x/ba"] = &Value{Str: "x"}
+	store.Values["b=x/bc=y/bca"] = &Value{Str: "y"}
 	kv := NewStoreData(m, store)
 	in, err := kv.Selector(NewPath("b=x/bc"))
 	if err != nil {

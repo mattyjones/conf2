@@ -79,6 +79,9 @@ clean :
 	! test -d pkg || rm -rf pkg
 	! test -d drivers/java/classes || rm -rf drivers/java/classes
 
+fmt : 
+	go fmt $(PKGS)
+
 driver-java :
 	test -d drivers/java/classes || mkdir drivers/java/classes
 	@javac -d drivers/java/classes $(JAVA_SRC)

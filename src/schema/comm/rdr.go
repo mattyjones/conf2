@@ -1,9 +1,9 @@
 package comm
 
 import (
-	"schema/browse"
-	"schema"
 	"errors"
+	"schema"
+	"schema/browse"
 )
 
 type Reader struct {
@@ -16,7 +16,7 @@ type Reader struct {
 }
 
 func NewReader(data []byte) *Reader {
-	return &Reader{data:data}
+	return &Reader{data: data}
 }
 
 func (c *Reader) ReadValue(typ *schema.DataType) (v *browse.Value, err error) {
@@ -25,7 +25,7 @@ func (c *Reader) ReadValue(typ *schema.DataType) (v *browse.Value, err error) {
 		return
 	}
 	format := schema.DataFormat(formatCode)
-	v = &browse.Value{Type:typ}
+	v = &browse.Value{Type: typ}
 	switch format {
 	case schema.FMT_INT32:
 		v.Int, err = c.ReadInt()
@@ -75,26 +75,26 @@ func (c *Reader) ReadValue(typ *schema.DataType) (v *browse.Value, err error) {
 var EOF = errors.New("Reached end of data buffer before reading expected contents")
 
 func (c *Reader) ReadInt() (v int, err error) {
-	if c.pos + 4 > len(c.data) {
+	if c.pos+4 > len(c.data) {
 		return 0, EOF
 	}
 	v = int(c.data[c.pos])
-	v += int(c.data[c.pos + 1]) << 8
-	v += int(c.data[c.pos + 2]) << 16
-	v += int(c.data[c.pos + 3]) << 24
+	v += int(c.data[c.pos+1]) << 8
+	v += int(c.data[c.pos+2]) << 16
+	v += int(c.data[c.pos+3]) << 24
 	c.pos += 4
 	return
 }
 
 func (c *Reader) ReadString() (v string, err error) {
 	start := c.pos
-	for ;; c.pos++ {
+	for ; ; c.pos++ {
 		if c.pos >= len(c.data) {
 			break
 		}
 		if c.data[c.pos] == 0 {
 			c.pos++
-			return string(c.data[start:c.pos - 1]), nil
+			return string(c.data[start : c.pos-1]), nil
 		}
 	}
 	return "", EOF
@@ -105,5 +105,5 @@ func (c *Reader) ReadBool() (v bool, err error) {
 		return false, EOF
 	}
 	c.pos++
-	return (c.data[c.pos - 1] > 0), nil
+	return (c.data[c.pos-1] > 0), nil
 }

@@ -1,21 +1,20 @@
 package browse
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
-func TestNullPath(t  *testing.T) {
+func TestNullPath(t *testing.T) {
 	p, _ := ParsePath("")
 	if len(p.Segments) > 0 {
 		t.Error("expected zero segments")
 	}
 }
 
-
 func TestPathSegment(t *testing.T) {
 	tests := []struct {
-		in string
+		in       string
 		expected []string
 	}{
 		{"a/b", []string{"a", "b"}},
@@ -40,13 +39,13 @@ func TestPathSegment(t *testing.T) {
 func TestPathSegmentKeys(t *testing.T) {
 	none := []string{}
 	tests := []struct {
-		in string
+		in       string
 		expected [][]string
 	}{
-		{"a/b/c", 			[][]string{none, none, none}},
-		{"a/b=c/d", 		[][]string{none, []string{"c"}, none}},
-		{"a=c,q,aaa/b/d", 	[][]string{[]string{"c", "q", "aaa"}, none, none}},
-		{"a/b/d=x", 		[][]string{none, none, []string{"x"}}},
+		{"a/b/c", [][]string{none, none, none}},
+		{"a/b=c/d", [][]string{none, []string{"c"}, none}},
+		{"a=c,q,aaa/b/d", [][]string{[]string{"c", "q", "aaa"}, none, none}},
+		{"a/b/d=x", [][]string{none, none, []string{"x"}}},
 	}
 	for _, test := range tests {
 		p, _ := ParsePath(test.in)
@@ -67,12 +66,12 @@ func TestPathSegmentKeys(t *testing.T) {
 
 func TestPathParams(t *testing.T) {
 	tests := []struct {
-		in string
+		in       string
 		expected int
 	}{
-		{"", 				32},
-		{"depth=1", 		1},
-		{"depth=99", 		99},
+		{"", 32},
+		{"depth=1", 1},
+		{"depth=99", 99},
 	}
 	for _, test := range tests {
 		p := LimitedWalk(test.in)

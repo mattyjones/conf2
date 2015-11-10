@@ -1,23 +1,24 @@
 package adapt
+
 import (
+	"fmt"
 	"schema"
 	"schema/browse"
-	"fmt"
 	"strings"
 )
 
 type Bridge struct {
 	internal *browse.Selection
-	path string
+	path     string
 	external schema.MetaList
-	Mapping *BridgeMapping
+	Mapping  *BridgeMapping
 }
 
 func NewBridge(internal *browse.Selection, external schema.MetaList) *Bridge {
 	bridge := &Bridge{
 		internal: internal,
 		external: external,
-		Mapping: NewBridgeMapping(external.GetIdent()),
+		Mapping:  NewBridgeMapping(external.GetIdent()),
 	}
 	return bridge
 }
@@ -29,7 +30,7 @@ func (b *Bridge) Selector(externalPath *browse.Path) (s *browse.Selection, err e
 
 type BridgeMapping struct {
 	InternalIdent string
-	Children map[string]*BridgeMapping
+	Children      map[string]*BridgeMapping
 }
 
 func (m *BridgeMapping) AddMapping(externalIdent string, internalIdent string) *BridgeMapping {
@@ -41,7 +42,7 @@ func (m *BridgeMapping) AddMapping(externalIdent string, internalIdent string) *
 func NewBridgeMapping(internalIdent string) *BridgeMapping {
 	return &BridgeMapping{
 		InternalIdent: internalIdent,
-		Children : make(map[string]*BridgeMapping, 0),
+		Children:      make(map[string]*BridgeMapping, 0),
 	}
 }
 
@@ -61,7 +62,7 @@ func (m *BridgeMapping) SelectMap(externalMeta schema.Meta, internalParentMeta s
 	return internalMeta, mapping
 }
 
-func (b *Bridge) internalPath(p *browse.Path, meta schema.Meta) (*browse.Path) {
+func (b *Bridge) internalPath(p *browse.Path, meta schema.Meta) *browse.Path {
 	mapping := b.Mapping
 	var found bool
 	internalPath := make([]string, len(p.Segments))
@@ -93,7 +94,7 @@ func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState 
 	return nil, false
 }
 
-func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping) (browse.Node) {
+func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping) browse.Node {
 	s := &browse.MyNode{}
 	s.OnSelect = func(state *browse.Selection, externalMeta schema.MetaList) (child browse.Node, err error) {
 		if childMapping, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
@@ -139,6 +140,3 @@ func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping
 func (b *Bridge) Schema() schema.MetaList {
 	return b.external
 }
-
-
-

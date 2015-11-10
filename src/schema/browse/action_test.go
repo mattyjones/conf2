@@ -1,11 +1,12 @@
 package browse
+
 import (
-	"testing"
+	"bytes"
+	"fmt"
+	"schema"
 	"schema/yang"
 	"strings"
-	"bytes"
-	"schema"
-	"fmt"
+	"testing"
 )
 
 func TestAction(t *testing.T) {
@@ -43,7 +44,7 @@ module m {
 			return nil, err
 		}
 		yourName = store.Values["name"]
-		store.Values["salutation"] = &Value{Str:fmt.Sprint("Hello ", yourName)}
+		store.Values["salutation"] = &Value{Str: fmt.Sprint("Hello ", yourName)}
 		return NewSelection(b.Container(""), meta.Output), nil
 	}
 	var in Node

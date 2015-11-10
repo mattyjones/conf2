@@ -1,8 +1,8 @@
 package browse
-import "schema"
 
+import "schema"
 
 type Data interface {
 	Selector(path *Path) (*Selection, error)
-	Schema() (schema.MetaList)
+	Schema() schema.MetaList
 }

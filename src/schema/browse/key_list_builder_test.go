@@ -1,16 +1,16 @@
 package browse
 
 import (
-	"testing"
 	"strings"
+	"testing"
 )
 
 func TestKeyListBuilder(t *testing.T) {
 	b := NewKeyListBuilder("a/b/c")
-	tests := []struct{
-		key string
+	tests := []struct {
+		key   string
 		iskey bool
-	} {
+	}{
 		{"a/b/c", false},
 		{"no/way", false},
 		{"a/b/cc=z/x", false},

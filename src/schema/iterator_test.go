@@ -1,4 +1,5 @@
 package schema
+
 import (
 	"testing"
 )
@@ -11,9 +12,9 @@ func TestEmptyIterator(t *testing.T) {
 }
 
 func TestSingletonIterator(t *testing.T) {
-	leaf := &Leaf{Ident:"L"}
+	leaf := &Leaf{Ident: "L"}
 	i := &SingletonIterator{leaf}
-	if ! i.HasNextMeta() {
+	if !i.HasNextMeta() {
 		t.Fail()
 	}
 	if i.NextMeta() != leaf {
@@ -25,7 +26,7 @@ func TestSingletonIterator(t *testing.T) {
 }
 
 func TestEmptyContainerIterator(t *testing.T) {
-	c := &Container{Ident:"C"}
+	c := &Container{Ident: "C"}
 	i := NewMetaListIterator(c, true)
 	if i.HasNextMeta() {
 		t.Fail()
@@ -33,15 +34,15 @@ func TestEmptyContainerIterator(t *testing.T) {
 }
 
 func TestContainerIterator(t *testing.T) {
-	c := &Container{Ident:"C"}
+	c := &Container{Ident: "C"}
 	i := NewMetaListIterator(c, true)
 	if i.HasNextMeta() {
 		t.Fail()
 	}
-	leaf := &Leaf{Ident:"l"}
+	leaf := &Leaf{Ident: "l"}
 	c.AddMeta(leaf)
 	i = NewMetaListIterator(c, true)
-	if ! i.HasNextMeta() {
+	if !i.HasNextMeta() {
 		t.Fail()
 	}
 	if i.NextMeta() != leaf {
@@ -53,20 +54,20 @@ func TestContainerIterator(t *testing.T) {
 }
 
 func TestIteratorWithGrouping(t *testing.T) {
-	p := &Container{Ident:"p"}
-	c := &Container{Ident:"C"}
+	p := &Container{Ident: "p"}
+	c := &Container{Ident: "C"}
 	p.AddMeta(c)
-	c.AddMeta(&Uses{Ident:"g"})
-	g := &Grouping{Ident:"g"}
+	c.AddMeta(&Uses{Ident: "g"})
+	g := &Grouping{Ident: "g"}
 	p.AddMeta(g)
 	i := NewMetaListIterator(c, true)
 	if i.HasNextMeta() {
 		t.Error("Container with uses pointing to empty group should have no items")
 	}
-	leaf := &Leaf{Ident:"l"}
+	leaf := &Leaf{Ident: "l"}
 	g.AddMeta(leaf)
 	i = NewMetaListIterator(c, true)
-	if ! i.HasNextMeta() {
+	if !i.HasNextMeta() {
 		t.Error("Container with uses pointing to group with one item should be found")
 	}
 	if i.NextMeta() != leaf {
@@ -76,4 +77,3 @@ func TestIteratorWithGrouping(t *testing.T) {
 		t.Error("Container with uses pointing to group with one item did not end on time")
 	}
 }
-

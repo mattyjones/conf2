@@ -1,15 +1,15 @@
 package browse
 
 import (
-	"testing"
+	"bytes"
 	"schema"
 	"schema/yang"
 	"strings"
-	"bytes"
+	"testing"
 )
 
-func LoadSampleModule(t *testing.T) (*schema.Module) {
-	m, err:= yang.LoadModuleFromByteArray([]byte(yang.TestDataRomancingTheStone), nil)
+func LoadSampleModule(t *testing.T) *schema.Module {
+	m, err := yang.LoadModuleFromByteArray([]byte(yang.TestDataRomancingTheStone), nil)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -54,13 +54,12 @@ func TestWalkYang(t *testing.T) {
 	} else {
 		t.Log(string(actualBuff.Bytes()))
 	}
-//		actualBuff.Reset()
-//
-//		var p *Path
-//		p, _ = NewPath("module/definitions=game?depth=2")
-//		if err = InsertIntoPath(root, out, p); err != nil {
-//			t.Error(err)
-//		}
-//		t.Log(string(actualBuff.Bytes()))
+	//		actualBuff.Reset()
+	//
+	//		var p *Path
+	//		p, _ = NewPath("module/definitions=game?depth=2")
+	//		if err = InsertIntoPath(root, out, p); err != nil {
+	//			t.Error(err)
+	//		}
+	//		t.Log(string(actualBuff.Bytes()))
 }
-

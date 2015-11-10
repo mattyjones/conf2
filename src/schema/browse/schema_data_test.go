@@ -1,10 +1,11 @@
 package browse
+
 import (
-	"testing"
-	"schema"
-	"schema/yang"
 	"bytes"
 	"fmt"
+	"schema"
+	"schema/yang"
+	"testing"
 )
 
 func printMeta(m schema.Meta, level string) {
@@ -15,7 +16,7 @@ func printMeta(m schema.Meta, level string) {
 		}
 		i2 := schema.NewMetaListIterator(nest, false)
 		for i2.HasNextMeta() {
-			printMeta(i2.NextMeta(), level + "  ")
+			printMeta(i2.NextMeta(), level+"  ")
 		}
 	}
 }
@@ -82,10 +83,10 @@ func TestYangWrite(t *testing.T) {
 			}
 			if actual != expected {
 				t.Log("Different")
-//				t.Log(expected)
-//				t.Log("Actual")
-//				t.Log(actual)
-//				t.Fail()
+				//				t.Log(expected)
+				//				t.Log("Actual")
+				//				t.Log(actual)
+				//				t.Fail()
 			}
 		}
 	}
@@ -101,4 +102,3 @@ func DumpModule(b *SchemaData) (string, error) {
 	}
 	return string(buff.Bytes()), nil
 }
-

@@ -1,11 +1,12 @@
 package browse
+
 import (
-	"testing"
-	"schema/yang"
-	"strings"
 	"bytes"
 	"fmt"
 	"schema"
+	"schema/yang"
+	"strings"
+	"testing"
 )
 
 func TestFindTargetIterator(t *testing.T) {
@@ -41,7 +42,7 @@ module m {
 	}
 }
 `
-	module, err := yang.LoadModuleFromByteArray([]byte(mstr), nil);
+	module, err := yang.LoadModuleFromByteArray([]byte(mstr), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,14 +56,14 @@ module m {
 	root := NewSelection(node, module)
 	var selection *Selection
 	tests := []struct {
-		path string
+		path     string
 		expected string
 	}{
-		{"", 					"m/<nil>"},
-		{"a", 					"m/a/<nil>"},
-		{"b", 					"m/b/<nil>"},
-		{"b=x",					"m/b=x/<nil>"},
-		{"a/aa=key/aab",     	"m/a/aa=key/aab/<nil>"},
+		{"", "m/<nil>"},
+		{"a", "m/a/<nil>"},
+		{"b", "m/b/<nil>"},
+		{"b=x", "m/b=x/<nil>"},
+		{"a/aa=key/aab", "m/a/aa=key/aab/<nil>"},
 	}
 	for _, test := range tests {
 		selection, err = WalkPath(root, NewPath(test.path))
@@ -76,7 +77,6 @@ module m {
 		}
 	}
 }
-
 
 func TestFindTargetAndInsert(t *testing.T) {
 	moduleStr := `
@@ -110,17 +110,17 @@ module json-test {
 "reference":{"name":"Peterson's Guide"}
 }}`
 
-		tests := [] struct {
-			path string
+		tests := []struct {
+			path     string
 			expected string
-		} {
-			{ "", strings.Replace(json, "\n", "", -1)},
-			{ "birding", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"},{"species":"robin","location":"East Rock, CT"}],"reference":{"name":"Peterson's Guide"}}`},
-			{ "birding/lifer=towhee", `{"species":"towhee","location":"Hammonasset, CT"}` },
-			{ "birding?depth=1", `{"lifer":[],"reference":{}}` },
-			{ "birding/lifer", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"},{"species":"robin","location":"East Rock, CT"}]}` },
-			{ "birding/lifer?depth=1", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"},{"species":"robin","location":"East Rock, CT"}]}` },
-			{ "birding/reference", `{"name":"Peterson's Guide"}` },
+		}{
+			{"", strings.Replace(json, "\n", "", -1)},
+			{"birding", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"},{"species":"robin","location":"East Rock, CT"}],"reference":{"name":"Peterson's Guide"}}`},
+			{"birding/lifer=towhee", `{"species":"towhee","location":"Hammonasset, CT"}`},
+			{"birding?depth=1", `{"lifer":[],"reference":{}}`},
+			{"birding/lifer", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"},{"species":"robin","location":"East Rock, CT"}]}`},
+			{"birding/lifer?depth=1", `{"lifer":[{"species":"towhee","location":"Hammonasset, CT"},{"species":"robin","location":"East Rock, CT"}]}`},
+			{"birding/reference", `{"name":"Peterson's Guide"}`},
 		}
 
 		var in *Selection
@@ -143,7 +143,7 @@ module json-test {
 				actual := string(actualBuff.Bytes())
 				if actual != test.expected {
 					msg := fmt.Sprintf("Failed subtest #%d - '%s'\nExpected:'%s'\n  Actual:'%s'",
-						i + 1, test.path, test.expected, actual)
+						i+1, test.path, test.expected, actual)
 					t.Error(msg)
 				}
 			}

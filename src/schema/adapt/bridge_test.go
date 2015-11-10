@@ -1,11 +1,12 @@
 package adapt
+
 import (
-	"testing"
+	"bytes"
 	"schema"
 	"schema/browse"
 	"schema/yang"
 	"strings"
-	"bytes"
+	"testing"
 )
 
 func TestBridge(t *testing.T) {

@@ -1,20 +1,21 @@
 package schema
+
 import "testing"
 
 func TestLeafListFormatSetting(t *testing.T) {
 	leafList := LeafList{}
-	leafList.SetDataType(&DataType{Format:FMT_STRING})
+	leafList.SetDataType(&DataType{Format: FMT_STRING})
 	if leafList.DataType.Format != FMT_STRING_LIST {
 		t.Error("Not converted to list")
 	}
 }
 
 func TestMetaIsConfig(t *testing.T) {
-	l := &List{Ident:"l"}
-	m := &Leaf{Ident:"leaf"}
-	path := &MetaPath{Meta:m}
-	path.ParentPath = &MetaPath{Meta:l}
-	if ! m.Details().Config(path) {
+	l := &List{Ident: "l"}
+	m := &Leaf{Ident: "leaf"}
+	path := &MetaPath{Meta: m}
+	path.ParentPath = &MetaPath{Meta: l}
+	if !m.Details().Config(path) {
 		t.Error("Should be config")
 	}
 	l.details.ConfigFlag = SET_FALSE
@@ -24,8 +25,8 @@ func TestMetaIsConfig(t *testing.T) {
 }
 
 func TestMetaList(t *testing.T) {
-	g1 := &Grouping{Ident:"G1"}
-	g2 := &Grouping{Ident:"G2"}
+	g1 := &Grouping{Ident: "G1"}
+	g2 := &Grouping{Ident: "G2"}
 	c := MetaContainer{}
 	c.AddMeta(g1)
 	c.AddMeta(g2)
@@ -50,10 +51,10 @@ func TestMetaList(t *testing.T) {
 }
 
 func TestMetaProxy(t *testing.T) {
-	g1 := &Grouping{Ident:"G1"}
-	g1a := &Leaf{Ident:"G1A"}
+	g1 := &Grouping{Ident: "G1"}
+	g1a := &Leaf{Ident: "G1A"}
 	g1.AddMeta(g1a)
-	u1 := &Uses{Ident:"G1"}
+	u1 := &Uses{Ident: "G1"}
 	groupings := MetaContainer{}
 	groupings.AddMeta(g1)
 	u1.grouping = g1
@@ -75,12 +76,12 @@ func TestMetaProxy(t *testing.T) {
 }
 
 func TestChoiceGetCase(t *testing.T) {
-	c1 := Choice{Ident:"c1"}
-	cc1 := ChoiceCase{Ident:"cc1"}
-	l1 := Leaf{Ident:"l1"}
+	c1 := Choice{Ident: "c1"}
+	cc1 := ChoiceCase{Ident: "cc1"}
+	l1 := Leaf{Ident: "l1"}
 	cc1.AddMeta(&l1)
-	cc2 := ChoiceCase{Ident:"cc2"}
-	l2 := Leaf{Ident:"l2"}
+	cc2 := ChoiceCase{Ident: "cc2"}
+	l2 := Leaf{Ident: "l2"}
 	cc2.AddMeta(&l2)
 	c1.AddMeta(&cc1)
 	c1.AddMeta(&cc2)
@@ -89,5 +90,3 @@ func TestChoiceGetCase(t *testing.T) {
 		t.Error("GetCase failed")
 	}
 }
-
-

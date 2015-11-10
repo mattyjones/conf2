@@ -1,8 +1,8 @@
 package browse
+
 import (
 	"schema"
 )
-
 
 func Diff(a Node, b Node) Node {
 	n := &MyNode{}
@@ -22,7 +22,7 @@ func Diff(a Node, b Node) Node {
 		}
 		return Diff(aNode, bNode), nil
 	}
-	n.OnRead = func (state *Selection, meta schema.HasDataType) (changedValue *Value, err error) {
+	n.OnRead = func(state *Selection, meta schema.HasDataType) (changedValue *Value, err error) {
 		var aVal, bVal *Value
 		if aVal, err = a.Read(state, meta); err != nil {
 			return nil, err

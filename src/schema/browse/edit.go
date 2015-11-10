@@ -1,12 +1,14 @@
 package browse
+
 import (
-	"schema"
+	"errors"
 	"fmt"
 	"net/http"
-	"errors"
+	"schema"
 )
 
 type Operation int
+
 const (
 	CREATE_CONTAINER Operation = 1 + iota
 	POST_CREATE_CONTAINER
@@ -20,7 +22,7 @@ const (
 	POST_CREATE_LIST_ITEM
 )
 
-var operationNames = []string {
+var operationNames = []string{
 	"N/A",
 	"CREATE_CHILD",
 	"POST_CREATE_CHILD",
@@ -39,6 +41,7 @@ func (op Operation) String() string {
 }
 
 type Strategy int
+
 const (
 	UPSERT Strategy = iota + 1
 	INSERT
@@ -47,8 +50,7 @@ const (
 	ACTION
 )
 
-type editor struct {}
-
+type editor struct{}
 
 func Insert(src *Selection, dest *Selection) (err error) {
 	return Edit(src, dest, INSERT, FullWalk())
@@ -144,12 +146,12 @@ func Edit(from *Selection, dest *Selection, strategy Strategy, controller WalkCo
 
 func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 	if to == nil {
-		return nil, &browseError{Msg:fmt.Sprint("Unable to get target node")}
+		return nil, &browseError{Msg: fmt.Sprint("Unable to get target node")}
 	}
 	if from == nil {
-		return nil, &browseError{Msg:fmt.Sprint("Unable to get source node")}
+		return nil, &browseError{Msg: fmt.Sprint("Unable to get source node")}
 	}
-	s := &MyNode{Label:fmt.Sprint("Edit list ", from.String(), "=>", to.String())}
+	s := &MyNode{Label: fmt.Sprint("Edit list ", from.String(), "=>", to.String())}
 	var createdListItem bool
 	createListItem := func(selection *Selection, meta *schema.List, key []*Value) (next Node, err error) {
 		err = to.Write(selection, meta, CREATE_LIST_ITEM, nil)
@@ -194,7 +196,7 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 		case UPDATE:
 			if toNextNode == nil {
 				msg := fmt.Sprint("No item found with given key in list ", selection.String())
-				return nil, &browseError{Code:http.StatusNotFound, Msg:msg}
+				return nil, &browseError{Code: http.StatusNotFound, Msg: msg}
 			}
 		case UPSERT:
 			if toNextNode == nil {
@@ -205,13 +207,13 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 		case INSERT:
 			if toNextNode != nil {
 				msg := fmt.Sprint("Duplicate item found with same key in list ", selection.String())
-				return nil, &browseError{Code:http.StatusConflict, Msg:msg}
+				return nil, &browseError{Code: http.StatusConflict, Msg: msg}
 			}
 			if toNextNode, err = createListItem(selection, meta, nextKey); err != nil {
 				return nil, err
 			}
 		default:
-			return nil, &browseError{Msg:"Stratgey not implmented"}
+			return nil, &browseError{Msg: "Stratgey not implmented"}
 		}
 		return e.container(fromNextNode, toNextNode, UPSERT)
 	}
@@ -220,14 +222,14 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 
 func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) {
 	if to == nil {
-		return nil, &browseError{Msg:fmt.Sprint("Unable to get target container selection")}
+		return nil, &browseError{Msg: fmt.Sprint("Unable to get target container selection")}
 	}
 	if from == nil {
-		return nil, &browseError{Msg:fmt.Sprint("Unable to get source node")}
+		return nil, &browseError{Msg: fmt.Sprint("Unable to get source node")}
 	}
 	var createdContainer bool
 	var createdList bool
-	s := &MyNode{Label:fmt.Sprint("Edit container ", from.String(), "=>", to.String())}
+	s := &MyNode{Label: fmt.Sprint("Edit container ", from.String(), "=>", to.String())}
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (schema.Meta, error) {
 		return from.Choose(state, choice)
 	}
@@ -242,7 +244,7 @@ func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) 
 		}
 		if listNode == nil {
 			msg := fmt.Sprint("Failure selecting newly created list ", selection.String())
-			return nil, &browseError{Code:http.StatusNotFound, Msg:msg}
+			return nil, &browseError{Code: http.StatusNotFound, Msg: msg}
 
 		}
 		createdList = true
@@ -259,7 +261,7 @@ func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) 
 		}
 		if containerNode == nil {
 			msg := fmt.Sprint("Failure selection newly created container ", selection.String())
-			return nil, &browseError{Code:http.StatusNotFound, Msg:msg}
+			return nil, &browseError{Code: http.StatusNotFound, Msg: msg}
 
 		}
 		createdContainer = true
@@ -285,7 +287,7 @@ func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) 
 		case INSERT:
 			if toChild != nil {
 				msg := fmt.Sprint("Found existing container ", selection.String())
-				return nil, &browseError{Code:http.StatusConflict, Msg:msg}
+				return nil, &browseError{Code: http.StatusConflict, Msg: msg}
 			}
 			if isList {
 				toChild, err = createList(selection)
@@ -303,10 +305,10 @@ func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) 
 		case UPDATE:
 			if toChild == nil {
 				msg := fmt.Sprint("Container not found in list ", selection.String())
-				return nil, &browseError{Code:http.StatusNotFound, Msg:msg}
+				return nil, &browseError{Code: http.StatusNotFound, Msg: msg}
 			}
 		default:
-			return nil, &browseError{Msg:"Stratgey not implmented"}
+			return nil, &browseError{Msg: "Stratgey not implmented"}
 		}
 
 		if err != nil {
@@ -332,7 +334,7 @@ func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) 
 			}
 			createdList = false
 		}
-		if err = from.Unselect(selection, meta); err != nil  {
+		if err = from.Unselect(selection, meta); err != nil {
 			return
 		}
 		if err = to.Unselect(selection, meta); err != nil {

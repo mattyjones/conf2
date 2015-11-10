@@ -2,13 +2,13 @@ package restconf
 
 import (
 	"schema"
-	"schema/yang"
 	"schema/browse"
+	"schema/yang"
 )
 
 type Data struct {
 	Service *Service
-	Meta *schema.Module
+	Meta    *schema.Module
 }
 
 func NewData(restconf *Service) (rcb *Data, err error) {
@@ -21,22 +21,22 @@ func NewData(restconf *Service) (rcb *Data, err error) {
 		targetMaster := schema.FindByPath(targetParent, "module").(*schema.Container)
 		// shallow clone target otherwise we alter browser's schema
 		target := *targetMaster
-		parent.ReplaceMeta(placeholder, &target);
-		rcb = &Data{Meta:module, Service:restconf}
+		parent.ReplaceMeta(placeholder, &target)
+		rcb = &Data{Meta: module, Service: restconf}
 	}
 	return
 }
 
-func (rcb *Data) Schema() (schema.MetaList) {
+func (rcb *Data) Schema() schema.MetaList {
 	return rcb.Meta
 }
 
 func (rcb *Data) Selector(path *browse.Path) (*browse.Selection, error) {
 	s := &browse.MyNode{}
-	s.OnSelect = func (state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
+	s.OnSelect = func(state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
 		switch meta.GetIdent() {
-			case "modules":
-				return enterRegistrations(rcb.Service.registrations)
+		case "modules":
+			return enterRegistrations(rcb.Service.registrations)
 		}
 		return nil, nil
 	}
@@ -66,8 +66,8 @@ func enterRegistrations(registrations map[string]*registration) (browse.Node, er
 	}
 	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
 		switch meta.GetIdent() {
-			case "name":
-				return &browse.Value{Str : index.Index.CurrentKey()}, nil
+		case "name":
+			return &browse.Value{Str: index.Index.CurrentKey()}, nil
 		}
 		return nil, nil
 	}
@@ -75,13 +75,13 @@ func enterRegistrations(registrations map[string]*registration) (browse.Node, er
 }
 
 type regIndex struct {
-	Index browse.StringIndex
+	Index    browse.StringIndex
 	Selected *registration
-	Data map[string]*registration
+	Data     map[string]*registration
 }
 
 func newRegIndex(registrations map[string]*registration) *regIndex {
-	ndx := &regIndex{Data:registrations}
+	ndx := &regIndex{Data: registrations}
 	ndx.Index.Builder = ndx
 	return ndx
 }

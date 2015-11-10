@@ -1,9 +1,9 @@
 package browse
 
 import (
-	"testing"
 	"schema/yang"
 	"strings"
+	"testing"
 )
 
 func TestJsonWalk(t *testing.T) {
@@ -36,13 +36,13 @@ module json-test {
 {"name":"hockey", "favorite": {"common-name" : "bruins", "location" : "Boston"}}
 ]}`
 
-		tests := [] struct {
-			path string
-			expectedMeta	string
-		} {
-			{ "hobbies", 			"json-test/hobbies/<nil>" },
-			{ "hobbies=birding", 	"json-test/hobbies=birding/<nil>" },
-			{ "hobbies=birding/favorite", "json-test/hobbies=birding/favorite/<nil>" },
+		tests := []struct {
+			path         string
+			expectedMeta string
+		}{
+			{"hobbies", "json-test/hobbies/<nil>"},
+			{"hobbies=birding", "json-test/hobbies=birding/<nil>"},
+			{"hobbies=birding/favorite", "json-test/hobbies=birding/favorite/<nil>"},
 		}
 		var in, selection *Selection
 		for _, test := range tests {
@@ -52,11 +52,9 @@ module json-test {
 				t.Error("failed to transmit json", err)
 			} else if selection == nil {
 				t.Error(test.path, "- Target not found, state nil")
-			} else if (selection.Path().String() != test.expectedMeta) {
+			} else if selection.Path().String() != test.expectedMeta {
 				t.Error(test.path, "-", test.expectedMeta, "!=", selection.String())
 			}
 		}
 	}
 }
-
-

@@ -14,4 +14,3 @@ type WalkController interface {
 func WalkAll() WalkController {
 	return FullWalk()
 }
-
