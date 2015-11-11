@@ -8,18 +8,18 @@ import (
 	"strconv"
 )
 
-var editOps = map[Operation]string{
-	CREATE_CONTAINER:      "CREATE_CHILD",
-	POST_CREATE_CONTAINER: "POST_CREATE_CHILD",
-	CREATE_LIST:           "CREATE_LIST",
-	POST_CREATE_LIST:      "POST_CREATE_LIST",
-	UPDATE_VALUE:          "UPDATE_VALUE",
-	DELETE:                "DELETE",
-	BEGIN_EDIT:            "BEGIN_EDIT",
-	END_EDIT:              "END_EDIT",
-	CREATE_LIST_ITEM:      "CREATE_LIST_ITEM",
-	POST_CREATE_LIST_ITEM: "POST_CREATE_LIST_ITEM",
-}
+//var editOps = map[Operation]string{
+//	CREATE_CONTAINER:      "CREATE_CHILD",
+//	POST_CREATE_CONTAINER: "POST_CREATE_CHILD",
+//	CREATE_LIST:           "CREATE_LIST",
+//	POST_CREATE_LIST:      "POST_CREATE_LIST",
+//	UPDATE_VALUE:          "UPDATE_VALUE",
+//	DELETE:                "DELETE",
+//	BEGIN_EDIT:            "BEGIN_EDIT",
+//	END_EDIT:              "END_EDIT",
+//	CREATE_LIST_ITEM:      "CREATE_LIST_ITEM",
+//	POST_CREATE_LIST_ITEM: "POST_CREATE_LIST_ITEM",
+//}
 
 const Padding = "                                                                                       "
 
@@ -98,6 +98,6 @@ func (d *Dumper) dumpValue(v *Value, level int) {
 }
 
 func (d *Dumper) dumpEditOp(state *Selection, op Operation, level int) {
-	line := fmt.Sprintf("%s%s %s\n", Padding[:level], editOps[op], state.String())
+	line := fmt.Sprintf("%s%s %s\n", Padding[:level], operationNames[int(op)], state.String())
 	d.out.WriteString(line)
 }

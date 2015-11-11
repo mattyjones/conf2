@@ -6,6 +6,7 @@ import (
 	"schema"
 	"strconv"
 	"strings"
+	"conf2"
 )
 
 // Stores stuff in memory according to a given schema.  Useful in testing or store of

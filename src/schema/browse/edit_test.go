@@ -5,6 +5,7 @@ import (
 	"schema/yang"
 	"strings"
 	"testing"
+	"conf2"
 )
 
 const EDIT_TEST_MODULE = `

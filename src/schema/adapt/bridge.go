@@ -95,7 +95,7 @@ func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState 
 }
 
 func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping) browse.Node {
-	s := &browse.MyNode{}
+	s := &browse.MyNode{OnEvent: internal.Node().Event}
 	s.OnSelect = func(state *browse.Selection, externalMeta schema.MetaList) (child browse.Node, err error) {
 		if childMapping, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
 			var internalChild browse.Node
@@ -109,9 +109,6 @@ func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping
 		return
 	}
 	s.OnWrite = func(state *browse.Selection, externalMeta schema.Meta, op browse.Operation, val *browse.Value) error {
-		if op == browse.BEGIN_EDIT || op == browse.END_EDIT {
-			return internal.Node().Write(internal, internal.SelectedMeta(), op, val)
-		}
 		if _, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
 			return internal.Node().Write(internal, internal.Position(), op, val)
 		}

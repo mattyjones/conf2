@@ -58,6 +58,10 @@ func (s *MarshalContainer) Action(state *Selection, meta *schema.Rpc, input Node
 	panic("Not implemented")
 }
 
+func (s *MarshalContainer) Event(state *Selection, e Event) (err error) {
+	return nil
+}
+
 func (s *MarshalContainer) Write(selection *Selection, meta schema.Meta, op Operation, val *Value) (err error) {
 	switch op {
 	case UPDATE_VALUE:

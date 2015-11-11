@@ -2,6 +2,7 @@ package browse
 
 import (
 	"schema"
+	"conf2"
 )
 
 func WalkPath(selection *Selection, path *Path) (*Selection, error) {

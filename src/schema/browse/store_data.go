@@ -35,8 +35,16 @@ func (kv *StoreData) Selector(path *Path) (selection *Selection, err error) {
 	return
 }
 
+func (kv *StoreData) OnEvent(sel *Selection, e Event) error {
+	switch e {
+	case END_EDIT:
+		return kv.store.Save()
+	}
+	return nil
+}
+
 func (kv *StoreData) List(parentPath string) Node {
-	s := &MyNode{}
+	s := &MyNode{OnEvent: kv.OnEvent}
 	var keyList []string
 	var i int
 	var created Node
@@ -74,8 +82,6 @@ func (kv *StoreData) List(parentPath string) Node {
 	}
 	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
 		switch op {
-		case END_EDIT:
-			kv.store.Save()
 		case CREATE_LIST_ITEM:
 			childPath := kv.listPath(parentPath, state.Key())
 			created = kv.Container(childPath)
@@ -115,7 +121,7 @@ func (kv *StoreData) listPathWithNewKey(parentPath string, key []*Value) string 
 }
 
 func (kv *StoreData) Container(parentPath string) Node {
-	s := &MyNode{}
+	s := &MyNode{OnEvent: kv.OnEvent}
 	//path := storePath{parent:parentPath}
 	var created Node
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
@@ -166,8 +172,6 @@ func (kv *StoreData) Container(parentPath string) Node {
 	}
 	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
 		switch op {
-		case END_EDIT:
-			kv.store.Save()
 		case CREATE_LIST:
 			childPath := kv.containerPath(parentPath, meta)
 			created = kv.List(childPath)

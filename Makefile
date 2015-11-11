@@ -93,6 +93,9 @@ JAVA_TEST_JARS = \
 	$(wildcard drivers/java/lib/hamcrest-library-*.jar) \
 	$(wildcard drivers/java/lib/junit-*.jar)
 
+remove-debug-prints :
+	grep -rl conf2.Debug src | xargs sed -i -e '/conf2.Debug.Printf/d'
+
 EMPTY :=
 SPACE := $(EMPTY) $(EMPTY)
 JAVA_TEST_CP = drivers/java/classes:$(subst $(SPACE),:,$(JAVA_TEST_JARS))

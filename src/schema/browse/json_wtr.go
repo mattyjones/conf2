@@ -42,11 +42,11 @@ func (json *JsonWriter) Container() Node {
 		created = nil
 		return nest, nil
 	}
-	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
-		switch op {
+	s.OnEvent = func(sel *Selection, e Event) (err error) {
+		switch e {
 		case BEGIN_EDIT:
 			_, err = json.out.WriteRune(OPEN_OBJ)
-			json.startingInsideList = schema.IsList(meta)
+			json.startingInsideList = schema.IsList(sel.SelectedMeta())
 			json.firstWrite = true
 			return err
 		case END_EDIT:
@@ -55,6 +55,11 @@ func (json *JsonWriter) Container() Node {
 					err = json.out.Flush()
 				}
 			}
+		}
+		return
+	}
+	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
+		switch op {
 		case CREATE_CONTAINER:
 			err = json.beginContainer(meta.GetIdent())
 			created = json.Container()

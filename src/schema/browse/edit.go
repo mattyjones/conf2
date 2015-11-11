@@ -16,8 +16,6 @@ const (
 	POST_CREATE_LIST
 	UPDATE_VALUE
 	DELETE
-	BEGIN_EDIT
-	END_EDIT
 	CREATE_LIST_ITEM
 	POST_CREATE_LIST_ITEM
 )
@@ -30,8 +28,6 @@ var operationNames = []string{
 	"POST_CREATE_LIST",
 	"UPDATE_VALUE",
 	"DELETE",
-	"BEGIN_EDIT",
-	"END_EDIT",
 	"CREATE_LIST_ITEM",
 	"POST_CREATE_LIST_ITEM",
 }
@@ -78,9 +74,12 @@ func EditByNode(selection *Selection, src Node, dest Node, strategy Strategy) (e
 	}
 	if err == nil {
 		s := selection.Copy(n)
-		if err = dest.Write(s, s.SelectedMeta(), BEGIN_EDIT, nil); err == nil {
+		if err = s.Events.StartEdit(s); err == nil {
 			if err = Walk(s, FullWalk()); err == nil {
-				err = dest.Write(s, s.SelectedMeta(), END_EDIT, nil)
+				err = s.Events.EndEdit(s)
+			} else {
+				// TODO: guard against panics not calling undo
+				err = s.Events.UndoEdit(s)
 			}
 		}
 	}
@@ -109,13 +108,14 @@ func ControlledUpdate(src *Selection, dest *Selection, cntrl WalkController) (er
 
 func Delete(sel *Selection) (err error) {
 	node := sel.Node()
-	if err = node.Write(sel, sel.SelectedMeta(), BEGIN_EDIT, nil); err != nil {
+	if err = sel.Events.StartEdit(sel); err != nil {
 		return err
 	}
 	if err = node.Write(sel, sel.SelectedMeta(), DELETE, nil); err != nil {
+		err = sel.Events.UndoEdit(sel)
 		return err
 	}
-	err = node.Write(sel, sel.SelectedMeta(), END_EDIT, nil)
+	err = sel.Events.EndEdit(sel)
 	return
 }
 
@@ -134,10 +134,12 @@ func Edit(from *Selection, dest *Selection, strategy Strategy, controller WalkCo
 	}
 	if err == nil {
 		// sync dest and from
-		if err = dest.Node().Write(dest, dest.SelectedMeta(), BEGIN_EDIT, nil); err == nil {
+		if err = dest.Events.StartEdit(dest); err == nil {
 			s := from.Copy(n)
 			if err = Walk(s, controller); err == nil {
-				err = dest.Node().Write(dest, dest.SelectedMeta(), END_EDIT, nil)
+				err = dest.Events.EndEdit(dest)
+			} else {
+				err = dest.Events.UndoEdit(dest)
 			}
 		}
 	}

@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"schema"
+	"conf2"
 )
 
 type Selection struct {
+	Events *Events
 	path       schema.MetaPath
 	node       Node
 	key        []*Value
@@ -18,7 +20,10 @@ func (s *Selection) Node() Node {
 }
 
 func NewSelection(node Node, meta schema.MetaList) *Selection {
-	state := &Selection{node: node}
+	state := &Selection{
+		node: node,
+		Events: &Events{},
+	}
 	state.path.ParentPath = &schema.MetaPath{Meta: meta}
 	return state
 }
@@ -34,7 +39,10 @@ func (state *Selection) SelectedMeta() schema.MetaList {
 }
 
 func (state *Selection) Select(node Node) *Selection {
-	child := &Selection{node: node}
+	child := &Selection{
+		node: node,
+		Events: &Events{},
+	}
 	child.path.ParentPath = &state.path
 	return child
 }

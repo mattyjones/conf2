@@ -14,6 +14,7 @@ type Node interface {
 	Write(state *Selection, meta schema.Meta, op Operation, val *Value) error
 	Choose(state *Selection, choice *schema.Choice) (m schema.Meta, err error)
 	Unselect(state *Selection, meta schema.MetaList) error
+	Event(sel *Selection, e Event) error
 	Action(state *Selection, meta *schema.Rpc, input Node) (output *Selection, err error)
 }
 
@@ -26,6 +27,7 @@ type MyNode struct {
 	OnUnselect UnselectFunc
 	OnChoose   ChooseFunc
 	OnAction   ActionFunc
+	OnEvent	   EventHandler
 	Resource   schema.Resource
 }
 
@@ -109,6 +111,13 @@ func (s *MyNode) Action(state *Selection, meta *schema.Rpc, input Node) (output 
 	return s.OnAction(state, meta, input)
 }
 
+func (s *MyNode) Event(sel *Selection, e Event) error {
+	if s.OnEvent != nil {
+		return s.OnEvent(sel, e)
+	}
+	return nil
+}
+
 func (my *MyNode) Mixin(delegate Node) {
 	my.OnAction = delegate.Action
 	my.OnSelect = delegate.Select
@@ -117,6 +126,7 @@ func (my *MyNode) Mixin(delegate Node) {
 	my.OnRead = delegate.Read
 	my.OnWrite = delegate.Write
 	my.OnChoose = delegate.Choose
+	my.OnEvent = delegate.Event
 }
 
 type NextFunc func(selection *Selection, meta *schema.List, key []*Value, first bool) (next Node, err error)
