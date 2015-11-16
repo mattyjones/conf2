@@ -96,10 +96,10 @@ func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState 
 
 func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping) browse.Node {
 	s := &browse.MyNode{OnEvent: internal.Node().Event}
-	s.OnSelect = func(state *browse.Selection, externalMeta schema.MetaList) (child browse.Node, err error) {
+	s.OnSelect = func(state *browse.Selection, externalMeta schema.MetaList, new bool) (child browse.Node, err error) {
 		if childMapping, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
 			var internalChild browse.Node
-			if internalChild, err = internal.Node().Select(internal, internal.Position().(schema.MetaList)); err != nil {
+			if internalChild, err = internal.Node().Select(internal, internal.Position().(schema.MetaList), new); err != nil {
 				return nil, err
 			} else if internalChild == nil {
 				return nil, nil
@@ -108,9 +108,9 @@ func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping
 		}
 		return
 	}
-	s.OnWrite = func(state *browse.Selection, externalMeta schema.Meta, op browse.Operation, val *browse.Value) error {
+	s.OnWrite = func(state *browse.Selection, externalMeta schema.HasDataType, val *browse.Value) error {
 		if _, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
-			return internal.Node().Write(internal, internal.Position(), op, val)
+			return internal.Node().Write(internal, internal.Position().(schema.HasDataType), val)
 		}
 		return nil
 	}
@@ -121,10 +121,10 @@ func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping
 		}
 		return nil, nil
 	}
-	s.OnNext = func(state *browse.Selection, meta *schema.List, key []*browse.Value, first bool) (next browse.Node, err error) {
+	s.OnNext = func(state *browse.Selection, meta *schema.List, new bool, key []*browse.Value, first bool) (next browse.Node, err error) {
 		var internalNextNode browse.Node
 		// TODO: translate keys?
-		internalNextNode, err = internal.Node().Next(internal, meta, key, first)
+		internalNextNode, err = internal.Node().Next(internal, meta, new, key, first)
 		if internalNextNode != nil && err == nil {
 			internalNext := internal.SelectListItem(internalNextNode, internal.Key())
 			next = b.selectBridge(internalNext, mapping)

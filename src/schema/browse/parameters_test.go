@@ -3,6 +3,7 @@ package browse
 import (
 	"schema/yang"
 	"testing"
+	"schema"
 )
 
 func TestParameters(t *testing.T) {
@@ -17,6 +18,10 @@ module m {
 	}
 	leaf b {
 		type string;
+		default "y";
+	}
+	leaf c {
+		type string;
 	}
 }
 `
@@ -24,9 +29,27 @@ module m {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := NewParameters(m)
-	v := p.Value("a")
-	if v.Str != "x" {
-		t.Error("wrong parameter default value ", v.Str)
+	p := &Parameters{}
+	obj := struct {
+		A string
+		B string
+		C string
+	} {}
+	p.Collect("c", &Value{Type: schema.NewDataType("string"), Str: "z"})
+	p.Ignore("b")
+	n := MarshalContainer(&obj)
+	sel := NewSelection(n, m)
+	err = p.Configure(sel, n)
+	if err != nil {
+		t.Error(err)
+	}
+	if obj.A != "x" {
+		t.Error("wrong parameter default value ", obj.A)
+	}
+	if obj.B != "" {
+		t.Error("wrong parameter default value ", obj.B)
+	}
+	if obj.C != "z" {
+		t.Error("wrong parameter default value ", obj.C)
 	}
 }

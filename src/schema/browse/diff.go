@@ -6,12 +6,12 @@ import (
 
 func Diff(a Node, b Node) Node {
 	n := &MyNode{}
-	n.OnSelect = func(state *Selection, meta schema.MetaList) (n Node, err error) {
+	n.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (n Node, err error) {
 		var aNode, bNode Node
-		if aNode, err = a.Select(state, meta); err != nil {
+		if aNode, err = a.Select(state, meta, false); err != nil {
 			return nil, err
 		}
-		if bNode, err = b.Select(state, meta); err != nil {
+		if bNode, err = b.Select(state, meta, false); err != nil {
 			return nil, err
 		}
 		if aNode == nil {

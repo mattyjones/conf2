@@ -1,52 +1,22 @@
 package browse
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"schema"
+	"conf2"
 )
-
-type Operation int
-
-const (
-	CREATE_CONTAINER Operation = 1 + iota
-	POST_CREATE_CONTAINER
-	CREATE_LIST
-	POST_CREATE_LIST
-	UPDATE_VALUE
-	DELETE
-	CREATE_LIST_ITEM
-	POST_CREATE_LIST_ITEM
-)
-
-var operationNames = []string{
-	"N/A",
-	"CREATE_CHILD",
-	"POST_CREATE_CHILD",
-	"CREATE_LIST",
-	"POST_CREATE_LIST",
-	"UPDATE_VALUE",
-	"DELETE",
-	"CREATE_LIST_ITEM",
-	"POST_CREATE_LIST_ITEM",
-}
-
-func (op Operation) String() string {
-	return operationNames[op]
-}
 
 type Strategy int
-
 const (
 	UPSERT Strategy = iota + 1
 	INSERT
 	UPDATE
-	READ
-	ACTION
 )
 
-type editor struct{}
+type editor struct{
+	created bool
+}
 
 func Insert(src *Selection, dest *Selection) (err error) {
 	return Edit(src, dest, INSERT, FullWalk())
@@ -68,18 +38,20 @@ func EditByNode(selection *Selection, src Node, dest Node, strategy Strategy) (e
 	e := editor{}
 	var n Node
 	if schema.IsList(selection.SelectedMeta()) && !selection.InsideList() {
-		n, err = e.list(src, dest, strategy)
+		n, err = e.list(src, dest, false, strategy)
 	} else {
-		n, err = e.container(src, dest, strategy)
+		n, err = e.container(src, dest, false, strategy)
 	}
 	if err == nil {
 		s := selection.Copy(n)
-		if err = s.Events.StartEdit(s); err == nil {
+		if err = s.Fire(BEGIN_EDIT); err == nil {
 			if err = Walk(s, FullWalk()); err == nil {
-				err = s.Events.EndEdit(s)
+				err = s.Fire(END_EDIT)
 			} else {
 				// TODO: guard against panics not calling undo
-				err = s.Events.UndoEdit(s)
+				if suberr := s.Fire(UNDO_EDIT); suberr != nil {
+					conf2.Err.Printf("Could not roll back edit, err=" + suberr.Error())
+				}
 			}
 		}
 	}
@@ -106,16 +78,17 @@ func ControlledUpdate(src *Selection, dest *Selection, cntrl WalkController) (er
 	return Edit(src, dest, UPDATE, cntrl)
 }
 
-func Delete(sel *Selection) (err error) {
-	node := sel.Node()
-	if err = sel.Events.StartEdit(sel); err != nil {
+func Delete(sel *Selection, node Node) (err error) {
+	if err = sel.Fire(BEGIN_EDIT); err != nil {
 		return err
 	}
-	if err = node.Write(sel, sel.SelectedMeta(), DELETE, nil); err != nil {
-		err = sel.Events.UndoEdit(sel)
+	if err = sel.Fire(DELETE); err != nil {
+		if suberr := sel.Fire(UNDO_EDIT); suberr != nil {
+			conf2.Err.Printf("Could not roll back edit, err=" + suberr.Error())
+		}
 		return err
 	}
-	err = sel.Events.EndEdit(sel)
+	err = sel.Fire(END_EDIT)
 	return
 }
 
@@ -128,25 +101,27 @@ func Edit(from *Selection, dest *Selection, strategy Strategy, controller WalkCo
 	e := editor{}
 	var n Node
 	if schema.IsList(from.SelectedMeta()) && !from.InsideList() {
-		n, err = e.list(from.Node(), dest.Node(), strategy)
+		n, err = e.list(from.Node(), dest.Node(), false, strategy)
 	} else {
-		n, err = e.container(from.Node(), dest.Node(), strategy)
+		n, err = e.container(from.Node(), dest.Node(), false, strategy)
 	}
 	if err == nil {
 		// sync dest and from
-		if err = dest.Events.StartEdit(dest); err == nil {
-			s := from.Copy(n)
+		s := from.Copy(n)
+		if err = s.Fire(BEGIN_EDIT); err == nil {
 			if err = Walk(s, controller); err == nil {
-				err = dest.Events.EndEdit(dest)
+				err = s.Fire(END_EDIT)
 			} else {
-				err = dest.Events.UndoEdit(dest)
+				if suberr := s.Fire(UNDO_EDIT); suberr != nil {
+					conf2.Err.Printf("Could not roll back edit, err=" + suberr.Error())
+				}
 			}
 		}
 	}
 	return
 }
 
-func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
+func (e *editor) list(from Node, to Node, new bool, strategy Strategy) (Node, error) {
 	if to == nil {
 		return nil, &browseError{Msg: fmt.Sprint("Unable to get target node")}
 	}
@@ -154,32 +129,11 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 		return nil, &browseError{Msg: fmt.Sprint("Unable to get source node")}
 	}
 	s := &MyNode{Label: fmt.Sprint("Edit list ", from.String(), "=>", to.String())}
-	var createdListItem bool
-	createListItem := func(selection *Selection, meta *schema.List, key []*Value) (next Node, err error) {
-		err = to.Write(selection, meta, CREATE_LIST_ITEM, nil)
-		createdListItem = true
-		if err == nil {
-			next, err = to.Next(selection, meta, key, true)
-			if next == nil {
-				return nil, errors.New("Could not create list item")
-			}
-			return
-		}
-
-		return
-	}
 	// List Edit - See "List Edit State Machine" diagram for additional documentation
-	s.OnNext = func(selection *Selection, meta *schema.List, key []*Value, first bool) (next Node, err error) {
-		if createdListItem {
-			err = to.Write(selection, meta, POST_CREATE_LIST_ITEM, nil)
-			createdListItem = false
-			if err != nil {
-				return nil, err
-			}
-		}
-
+	s.OnNext = func(selection *Selection, meta *schema.List, _ bool, key []*Value, first bool) (next Node, err error) {
+		var created bool
 		var fromNextNode Node
-		fromNextNode, err = from.Next(selection, meta, key, first)
+		fromNextNode, err = from.Next(selection, meta, false, key, first)
 		if err != nil || fromNextNode == nil {
 			return nil, err
 		}
@@ -190,7 +144,7 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 			return nil, err
 		}
 		if len(nextKey) > 0 {
-			if toNextNode, err = to.Next(selection, meta, nextKey, true); err != nil {
+			if toNextNode, err = to.Next(selection, meta, false, nextKey, true); err != nil {
 				return nil, err
 			}
 		}
@@ -202,86 +156,75 @@ func (e *editor) list(from Node, to Node, strategy Strategy) (Node, error) {
 			}
 		case UPSERT:
 			if toNextNode == nil {
-				if toNextNode, err = createListItem(selection, meta, nextKey); err != nil {
+				if toNextNode, err = to.Next(selection, meta, true, nextKey, true); err != nil {
 					return nil, err
 				}
+				created = true
 			}
 		case INSERT:
 			if toNextNode != nil {
 				msg := fmt.Sprint("Duplicate item found with same key in list ", selection.String())
 				return nil, &browseError{Code: http.StatusConflict, Msg: msg}
 			}
-			if toNextNode, err = createListItem(selection, meta, nextKey); err != nil {
+			if toNextNode, err = to.Next(selection, meta, true, nextKey, true); err != nil {
 				return nil, err
 			}
+			created = true
 		default:
 			return nil, &browseError{Msg: "Stratgey not implmented"}
 		}
-		return e.container(fromNextNode, toNextNode, UPSERT)
+		return e.container(fromNextNode, toNextNode, created, UPSERT)
+	}
+	s.OnEvent = func(sel *Selection, event Event) (err error) {
+		return e.handleEvent(sel, from, to, new, event)
 	}
 	return s, nil
 }
 
-func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) {
+func (e *editor) handleEvent(sel *Selection, from Node, to Node, new bool, event Event) (err error) {
+	if event == LEAVE && new {
+		if err = sel.Fire(NEW); err != nil {
+			return
+		}
+	}
+	if err = to.Event(sel, event); err != nil {
+		return
+	}
+	switch event {
+	// don't send write-only events to reader
+	case BEGIN_EDIT, END_EDIT, NEW, UNDO_EDIT, DELETE:
+		return
+	}
+	if err = from.Event(sel, event); err != nil {
+		return
+	}
+	return
+}
+
+func (e *editor) container(from Node, to Node, new bool, strategy Strategy) (Node, error) {
 	if to == nil {
 		return nil, &browseError{Msg: fmt.Sprint("Unable to get target container selection")}
 	}
 	if from == nil {
 		return nil, &browseError{Msg: fmt.Sprint("Unable to get source node")}
 	}
-	var createdContainer bool
-	var createdList bool
 	s := &MyNode{Label: fmt.Sprint("Edit container ", from.String(), "=>", to.String())}
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (schema.Meta, error) {
 		return from.Choose(state, choice)
 	}
-	createList := func(selection *Selection) (toChild Node, err error) {
-		if err = to.Write(selection, selection.Position(), CREATE_LIST, nil); err != nil {
-			return nil, err
-		}
-		metaList := selection.Position().(schema.MetaList)
-		var listNode Node
-		if listNode, err = to.Select(selection, metaList); err != nil {
-			return nil, err
-		}
-		if listNode == nil {
-			msg := fmt.Sprint("Failure selecting newly created list ", selection.String())
-			return nil, &browseError{Code: http.StatusNotFound, Msg: msg}
-
-		}
-		createdList = true
-		return listNode, nil
-	}
-	createContainer := func(selection *Selection) (toChild Node, err error) {
-		if err = to.Write(selection, selection.Position(), CREATE_CONTAINER, nil); err != nil {
-			return
-		}
-		metaList := selection.Position().(schema.MetaList)
-		var containerNode Node
-		if containerNode, err = to.Select(selection, metaList); err != nil {
-			return
-		}
-		if containerNode == nil {
-			msg := fmt.Sprint("Failure selection newly created container ", selection.String())
-			return nil, &browseError{Code: http.StatusNotFound, Msg: msg}
-
-		}
-		createdContainer = true
-		return containerNode, nil
-	}
-	s.OnSelect = func(selection *Selection, meta schema.MetaList) (c Node, err error) {
+	s.OnSelect = func(selection *Selection, meta schema.MetaList, _ bool) (Node, error) {
+		var created bool
+		var err error
 		var fromChild Node
-		fromChild, err = from.Select(selection, meta)
-		if err != nil {
-			return
-		} else if fromChild == nil {
-			return
+		fromChild, err = from.Select(selection, meta, false)
+		if err != nil || fromChild == nil {
+			return nil, err
 		}
 
 		var toChild Node
-		toChild, err = to.Select(selection, meta)
+		toChild, err = to.Select(selection, meta, false)
 		if err != nil {
-			return
+			return nil, err
 		}
 		isList := schema.IsList(meta)
 
@@ -291,18 +234,16 @@ func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) 
 				msg := fmt.Sprint("Found existing container ", selection.String())
 				return nil, &browseError{Code: http.StatusConflict, Msg: msg}
 			}
-			if isList {
-				toChild, err = createList(selection)
-			} else {
-				toChild, err = createContainer(selection)
+			if toChild, err = to.Select(selection, meta, true); err != nil {
+				return nil, err
 			}
+			created = true
 		case UPSERT:
 			if toChild == nil {
-				if isList {
-					toChild, err = createList(selection)
-				} else {
-					toChild, err = createContainer(selection)
+				if toChild, err = to.Select(selection, meta, true); err != nil {
+					return nil, err
 				}
+				created = true
 			}
 		case UPDATE:
 			if toChild == nil {
@@ -319,30 +260,12 @@ func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) 
 		// we always switch to upsert strategy because if there were any conflicts, it would have been
 		// discovered in top-most level.
 		if isList {
-			return e.list(fromChild, toChild, UPSERT)
+			return e.list(fromChild, toChild, created, UPSERT)
 		}
-		return e.container(fromChild, toChild, UPSERT)
+		return e.container(fromChild, toChild, created, UPSERT)
 	}
-	s.OnUnselect = func(selection *Selection, meta schema.MetaList) (err error) {
-		if createdContainer {
-			if err = to.Write(selection, meta, POST_CREATE_CONTAINER, nil); err != nil {
-				return
-			}
-			createdContainer = false
-		}
-		if createdList {
-			if err = to.Write(selection, meta, POST_CREATE_LIST, nil); err != nil {
-				return
-			}
-			createdList = false
-		}
-		if err = from.Unselect(selection, meta); err != nil {
-			return
-		}
-		if err = to.Unselect(selection, meta); err != nil {
-			return
-		}
-		return
+	s.OnEvent = func(sel *Selection, event Event) (err error) {
+		return e.handleEvent(sel, from, to, new, event)
 	}
 	s.OnRead = func(selection *Selection, meta schema.HasDataType) (v *Value, err error) {
 		if v, err = from.Read(selection, meta); err != nil {
@@ -350,7 +273,7 @@ func (e *editor) container(from Node, to Node, strategy Strategy) (Node, error) 
 		}
 		if v != nil {
 			v.Type = meta.GetDataType()
-			if err = to.Write(selection, meta, UPDATE_VALUE, v); err != nil {
+			if err = to.Write(selection, meta, v); err != nil {
 				return
 			}
 		}

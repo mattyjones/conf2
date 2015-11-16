@@ -47,10 +47,10 @@ module m {
 		t.Fatal(err)
 	}
 	node := &MyNode{}
-	node.OnNext = func(*Selection, *schema.List, []*Value, bool) (Node, error) {
+	node.OnNext = func(*Selection, *schema.List, bool, []*Value, bool) (Node, error) {
 		return node, nil
 	}
-	node.OnSelect = func(*Selection, schema.MetaList) (Node, error) {
+	node.OnSelect = func(*Selection, schema.MetaList, bool) (Node, error) {
 		return node, nil
 	}
 	root := NewSelection(node, module)
@@ -59,11 +59,11 @@ module m {
 		path     string
 		expected string
 	}{
-		{"", "m/<nil>"},
-		{"a", "m/a/<nil>"},
-		{"b", "m/b/<nil>"},
-		{"b=x", "m/b=x/<nil>"},
-		{"a/aa=key/aab", "m/a/aa=key/aab/<nil>"},
+		{"", "m"},
+		{"a", "m/a"},
+		{"b", "m/b"},
+		{"b=x", "m/b=x"},
+		{"a/aa=key/aab", "m/a/aa=key/aab"},
 	}
 	for _, test := range tests {
 		selection, err = WalkPath(root, NewPath(test.path))

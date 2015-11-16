@@ -64,12 +64,11 @@ func (e *ControlledWalk) ListIterator(selection *Selection, first bool) (next *S
 	}
 	listMeta := selection.SelectedMeta().(*schema.List)
 	var listNode Node
-	if listNode, err = selection.Node().Next(selection, listMeta, NO_KEYS, first); err != nil {
+	listNode, err = selection.Node().Next(selection, listMeta, false, NO_KEYS, first)
+	if listNode == nil || err != nil {
 		return nil, err
 	}
-	if listNode != nil {
-		next = selection.SelectListItem(listNode, selection.Key())
-	}
+	next = selection.SelectListItem(listNode, selection.Key())
 	return
 }
 

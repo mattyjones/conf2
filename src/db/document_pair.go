@@ -100,50 +100,28 @@ func (self *DocumentPair) Schema() schema.MetaList {
 func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) browse.Node {
 	s := &browse.MyNode{}
 	IsContainerConfig := config != nil
-	var createdListItem bool
-	var postCreateItem browse.Operation
-	s.OnNext = func(state *browse.Selection, meta *schema.List, key []*browse.Value, first bool) (browse.Node, error) {
+	s.OnNext = func(state *browse.Selection, meta *schema.List, new bool, key []*browse.Value, first bool) (browse.Node, error) {
 		var err error
-		if createdListItem {
-			if err = config.Write(state, meta, browse.POST_CREATE_LIST_ITEM, nil); err != nil {
-				return nil, err
-			}
-			createdListItem = false
-		}
 		var operNext, configNext browse.Node
-		if operNext, err = oper.Next(state, meta, key, first); err != nil {
+		if operNext, err = oper.Next(state, meta, new, key, first); err != nil {
 			return nil, err
 		}
 		if operNext == nil {
 			return nil, nil
 		}
-
 		if IsContainerConfig {
-			configNext, err = config.Next(state, meta, state.Key(), true)
+			configNext, err = config.Next(state, meta, new, state.Key(), true)
 			if err != nil {
 				return nil, err
-			}
-			if configNext == nil {
-				if err = config.Write(state, meta, browse.CREATE_LIST_ITEM, nil); err != nil {
-					return nil, err
-				}
-				createdListItem = true
-				configNext, err = config.Next(state, meta, state.Key(), true)
-				if err != nil {
-					return nil, err
-				}
-				if configNext == nil {
-					return nil, errors.New("Could not create config item")
-				}
 			}
 		}
 		return self.selectPair(operNext, configNext), nil
 	}
-	s.OnWrite = func(state *browse.Selection, meta schema.Meta, op browse.Operation, val *browse.Value) (err error) {
-		err = oper.Write(state, meta, op, val)
+	s.OnWrite = func(state *browse.Selection, meta schema.HasDataType, val *browse.Value) (err error) {
+		err = oper.Write(state, meta, val)
 		if err == nil && state.IsConfig() {
 
-			err = config.Write(state, meta, op, val)
+			err = config.Write(state, meta, val)
 			// TODO: if there's now an error, config and operation are out of sync. To fix
 			// this we must "rollback the Write
 		}
@@ -159,10 +137,10 @@ func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) brows
 		}
 		return
 	}
-	s.OnSelect = func(state *browse.Selection, meta schema.MetaList) (browse.Node, error) {
+	s.OnSelect = func(state *browse.Selection, meta schema.MetaList, createOk bool) (browse.Node, error) {
 		var err error
 		var configChild, operChild browse.Node
-		if operChild, err = oper.Select(state, meta); err != nil {
+		if operChild, err = oper.Select(state, meta, createOk); err != nil {
 			return nil, err
 		}
 		if operChild == nil {
@@ -170,53 +148,23 @@ func (self *DocumentPair) selectPair(oper browse.Node, config browse.Node) brows
 		}
 
 		if IsContainerConfig && state.IsConfig() {
-			if configChild, err = config.Select(state, meta); err != nil {
+			if configChild, err = config.Select(state, meta, createOk); err != nil {
 				return nil, err
-			}
-			if configChild == nil {
-				if schema.IsList(meta) {
-					if err = config.Write(state, meta, browse.CREATE_LIST, nil); err != nil {
-						return nil, err
-					}
-					postCreateItem = browse.POST_CREATE_LIST
-
-				} else {
-					if err = config.Write(state, meta, browse.CREATE_CONTAINER, nil); err != nil {
-						return nil, err
-					}
-					postCreateItem = browse.POST_CREATE_CONTAINER
-				}
-
-				configChild, err = config.Select(state, meta)
-				if err != nil {
-					return nil, err
-				}
-				if configChild == nil {
-					return nil, errors.New("Could not create config item")
-				}
 			}
 		}
 		return self.selectPair(operChild, configChild), nil
 	}
-	s.OnUnselect = func(state *browse.Selection, meta schema.MetaList) (err error) {
-		if postCreateItem > 0 {
-			if err = config.Write(state, meta, postCreateItem, nil); err != nil {
-				return err
-			}
-			postCreateItem = browse.Operation(0)
-		}
-		if err = oper.Unselect(state, meta); err != nil {
-			return err
-		}
-		if IsContainerConfig {
-			if err = config.Unselect(state, meta); err != nil {
-				return err
-			}
-		}
-		return
-	}
 	s.OnChoose = func(state *browse.Selection, choice *schema.Choice) (choosen schema.Meta, err error) {
 		choosen, err = oper.Choose(state, choice)
+		return
+	}
+	s.OnEvent = func(sel *browse.Selection, e browse.Event) (err error) {
+		if err = oper.Event(sel, e); err != nil {
+			return err
+		}
+		if IsContainerConfig && sel.IsConfig() {
+			err = config.Event(sel, e)
+		}
 		return
 	}
 	return s

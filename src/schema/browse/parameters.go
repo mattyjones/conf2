@@ -5,57 +5,50 @@ import (
 )
 
 type Parameters struct {
-	Given  map[string]*Value
-	Schema schema.MetaList
+	Ignores  map[string]struct{}
+	Collected map[string]*Value
 }
 
-func NewParameters(schema schema.MetaList) *Parameters {
-	return &Parameters{
-		Given:  make(map[string]*Value, 5),
-		Schema: schema,
+func (p *Parameters) Ignore(ident string) {
+	if p.Ignores == nil {
+		p.Ignores = make(map[string]struct{})
 	}
+	p.Ignores[ident] = struct{}{}
 }
 
-func (p *Parameters) Value(ident string) *Value {
-	if v, found := p.Given[ident]; found {
-		return v
-	} else {
-		meta := schema.FindByIdent2(p.Schema, ident)
-		if prop, isProp := meta.(schema.HasDataType); isProp {
-			t := prop.GetDataType()
-			v := &Value{Type: t}
-			if len(t.Default) > 0 {
-				v.CoerseStrValue(t.Default)
-				return v
-			}
-		}
+func (p *Parameters) Collect(ident string, val *Value) {
+	if p.Collected == nil {
+		p.Collected = make(map[string]*Value)
 	}
-	return nil
+	p.Collected[ident] = val
 }
 
-func (p *Parameters) Collect() (Node, error) {
-	s := &MyNode{}
-	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
-		switch op {
-		case UPDATE_VALUE:
-			p.Given[meta.GetIdent()] = v
-		}
-		return nil
-	}
-	return s, nil
-}
-
-func (p *Parameters) Configure(obj interface{}) (err error) {
-	i := schema.NewMetaListIterator(p.Schema, true)
+func (p *Parameters) Configure(sel *Selection, node Node) (err error) {
+	i := schema.NewMetaListIterator(sel.SelectedMeta(), true)
 	for i.HasNextMeta() {
 		m := i.NextMeta()
-		if t, hasType := m.(schema.HasDataType); hasType {
-			v := p.Value(m.GetIdent())
-			if v != nil {
-				if err = WriteField(t, obj, v); err != nil {
-					return err
-				}
+		if _, ignore := p.Ignores[m.GetIdent()]; ignore {
+			continue
+		}
+		t, hasType := m.(schema.HasDataType)
+		if ! hasType {
+			continue
+		}
+		var v *Value
+		var found bool
+		v, found = p.Collected[m.GetIdent()]
+		if !found {
+			def := t.GetDataType().Default
+			if len(def) == 0 {
+				continue
 			}
+			v = &Value{Type:t.GetDataType()}
+			if err = v.CoerseStrValue(def); err != nil {
+				return err
+			}
+		}
+		if err = node.Write(sel, t, v); err != nil {
+			return err
 		}
 	}
 	return nil

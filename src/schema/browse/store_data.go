@@ -44,13 +44,13 @@ func (kv *StoreData) OnEvent(sel *Selection, e Event) error {
 }
 
 func (kv *StoreData) List(parentPath string) Node {
-	s := &MyNode{OnEvent: kv.OnEvent}
+	s := &MyNode{}
 	var keyList []string
 	var i int
-	var created Node
-	s.OnNext = func(state *Selection, meta *schema.List, key []*Value, first bool) (next Node, err error) {
-		if created != nil {
-			return created, nil
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+		if new {
+			childPath := kv.listPath(parentPath, state.Key())
+			return kv.Container(childPath), nil
 		}
 		if len(key) > 0 {
 			if first {
@@ -80,17 +80,12 @@ func (kv *StoreData) List(parentPath string) Node {
 		}
 		return
 	}
-	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
-		switch op {
-		case CREATE_LIST_ITEM:
-			childPath := kv.listPath(parentPath, state.Key())
-			created = kv.Container(childPath)
-		case POST_CREATE_LIST_ITEM:
-			created = nil
+	s.OnEvent = func(sel *Selection, e Event) error {
+		switch e {
 		case DELETE:
-			err = kv.store.RemoveAll(parentPath)
+			return kv.store.RemoveAll(parentPath)
 		}
-		return
+		return kv.OnEvent(sel, e)
 	}
 	s.OnAction = func(state *Selection, rpc *schema.Rpc, input Node) (output *Selection, err error) {
 		path := kv.listPath(parentPath, state.Key())
@@ -120,10 +115,9 @@ func (kv *StoreData) listPathWithNewKey(parentPath string, key []*Value) string 
 	return kv.listPath(parentPath[:eq], key)
 }
 
-func (kv *StoreData) Container(parentPath string) Node {
-	s := &MyNode{OnEvent: kv.OnEvent}
+func (kv *StoreData) Container(copy string) Node {
+	s := &MyNode{}
 	//path := storePath{parent:parentPath}
-	var created Node
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		// go thru each case and if there are any properties in the data that are not
 		// part of the schema, that disqualifies that case and we move onto next case
@@ -136,7 +130,7 @@ func (kv *StoreData) Container(parentPath string) Node {
 			props := schema.NewMetaListIterator(kase, true)
 			for props.HasNextMeta() {
 				prop := props.NextMeta()
-				candidatePath := kv.containerPath(parentPath, prop)
+				candidatePath := kv.containerPath(copy, prop)
 				found := kv.store.HasValues(candidatePath)
 				if !found {
 					aligned = false
@@ -153,51 +147,51 @@ func (kv *StoreData) Container(parentPath string) Node {
 		return nil, errors.New(msg)
 	}
 	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
-		return kv.store.Value(kv.containerPath(parentPath, meta), meta.GetDataType()), nil
+		return kv.store.Value(kv.containerPath(copy, meta), meta.GetDataType()), nil
 	}
-	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, err error) {
-		if created != nil {
-			child = created
-		} else {
-			childPath := kv.containerPath(parentPath, meta)
-			if kv.store.HasValues(childPath) {
-				if schema.IsList(meta) {
-					child = kv.List(childPath)
-				} else {
-					child = kv.Container(childPath)
-				}
+	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (child Node, err error) {
+		if new {
+			if schema.IsList(meta) {
+				childPath := kv.containerPath(copy, meta)
+				return kv.List(childPath), nil
+			} else {
+				childPath := kv.containerPath(copy, meta)
+				return kv.Container(childPath), nil
+			}
+		}
+		childPath := kv.containerPath(copy, meta)
+		if kv.store.HasValues(childPath) {
+		if schema.IsList(meta) {
+				return kv.List(childPath), nil
+			} else {
+				return kv.Container(childPath), nil
 			}
 		}
 		return
 	}
-	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
-		switch op {
-		case CREATE_LIST:
-			childPath := kv.containerPath(parentPath, meta)
-			created = kv.List(childPath)
-		case CREATE_CONTAINER:
-			childPath := kv.containerPath(parentPath, meta)
-			created = kv.Container(childPath)
-		case POST_CREATE_LIST, POST_CREATE_CONTAINER:
-			created = nil
-		case UPDATE_VALUE:
-			propPath := kv.containerPath(parentPath, meta)
-			if err = kv.store.SetValue(propPath, v); err == nil {
-				if schema.IsKeyLeaf(state.SelectedMeta(), meta) {
-					oldPath := parentPath
-					// TODO: Support compound keys
-					newKey := []*Value{v}
-					newPath := kv.listPathWithNewKey(parentPath, newKey)
-					kv.store.RenameKey(oldPath, newPath)
-				}
-			}
+	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *Value) (err error) {
+		propPath := kv.containerPath(copy, meta)
+		if err = kv.store.SetValue(propPath, v); err != nil {
+			return err
+		}
+		if schema.IsKeyLeaf(state.SelectedMeta(), meta) {
+			oldPath := copy
+			// TODO: Support compound keys
+			newKey := []*Value{v}
+			newPath := kv.listPathWithNewKey(copy, newKey)
+			kv.store.RenameKey(oldPath, newPath)
+		}
+		return
+	}
+	s.OnEvent = func(sel *Selection, e Event) error {
+		switch e {
 		case DELETE:
-			err = kv.store.RemoveAll(parentPath)
+			return kv.store.RemoveAll(copy)
 		}
-		return
-	}
+		return kv.OnEvent(sel, e)
+    }
 	s.OnAction = func(state *Selection, rpc *schema.Rpc, input Node) (output *Selection, err error) {
-		path := kv.containerPath(parentPath, rpc)
+		path := kv.containerPath(copy, rpc)
 		var action ActionFunc
 		if action, err = kv.store.Action(path); err != nil {
 			return

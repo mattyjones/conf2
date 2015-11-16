@@ -40,9 +40,8 @@ func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selec
 	}
 	selection.SetKey(key)
 	var nextNode Node
-	if nextNode, err = selection.Node().Next(selection, list, key, true); err != nil {
-		return nil, err
-	} else if nextNode == nil {
+	nextNode, err = selection.Node().Next(selection, list, false, key, true)
+	if err != nil || nextNode == nil {
 		return nil, err
 	}
 	next = selection.SelectListItem(nextNode, key)

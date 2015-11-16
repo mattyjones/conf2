@@ -124,7 +124,10 @@ func asStringArray(data []interface{}) []string {
 func (self *JsonReader) List(list []interface{}) Node {
 	s := &MyNode{Label: "JSON Read List"}
 	var i int
-	s.OnNext = func(state *Selection, meta *schema.List, key []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+		if new {
+			panic("Cannot write to JSON reader")
+		}
 		if len(key) > 0 {
 			if first {
 				keyFields := meta.Keys
@@ -159,7 +162,6 @@ func (self *JsonReader) List(list []interface{}) Node {
 		}
 		return nil, nil
 	}
-
 	return s
 }
 
@@ -192,7 +194,10 @@ func (self *JsonReader) Container(container map[string]interface{}) Node {
 		msg := fmt.Sprintf("No discriminating data for choice schema %s ", state.String())
 		return nil, &browseError{Msg: msg}
 	}
-	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, e error) {
+	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (child Node, e error) {
+		if new {
+			panic("Cannot write to JSON reader")
+		}
 		if value, found := container[meta.GetIdent()]; found {
 			if schema.IsList(meta) {
 				return self.List(value.([]interface{})), nil

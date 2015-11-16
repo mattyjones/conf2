@@ -2,7 +2,6 @@ package browse
 
 import (
 	"schema"
-	"conf2"
 )
 
 func WalkPath(selection *Selection, path *Path) (*Selection, error) {
@@ -25,6 +24,9 @@ func walk(selection *Selection, controller WalkController) (err error) {
 			if err = walk(next, controller); err != nil {
 				return
 			}
+			if err = selection.Fire(NEXT); err != nil {
+				return err
+			}
 			if next, err = controller.ListIterator(selection, false); err != nil {
 				return
 			}
@@ -35,11 +37,11 @@ func walk(selection *Selection, controller WalkController) (err error) {
 		for i.HasNextMeta() {
 			selection.SetPosition(i.NextMeta())
 			if choice, isChoice := selection.Position().(*schema.Choice); isChoice {
-				var choosen schema.Meta
-				if choosen, err = selection.Node().Choose(selection, choice); err != nil {
+				var chosen schema.Meta
+				if chosen, err = selection.Node().Choose(selection, choice); err != nil {
 					return
 				}
-				selection.SetPosition(choosen)
+				selection.SetPosition(chosen)
 			}
 			if schema.IsLeaf(selection.Position()) {
 				// only walking here, not interested in value
@@ -53,18 +55,20 @@ func walk(selection *Selection, controller WalkController) (err error) {
 						return err
 					}
 				} else {
-					child, err = selection.Node().Select(selection, metaList)
-					if err != nil {
-						return
-					} else if child == nil {
+					if child, err = selection.Node().Select(selection, metaList, false); err != nil {
+						return err
+					}
+					if child == nil {
 						continue
 					}
 					defer schema.CloseResource(child)
-					if err = walk(selection.Select(child), controller); err != nil {
+					childSel := selection.Select(child)
+					if err = walk(childSel, controller); err != nil {
 						return
 					}
-
-					err = selection.Node().Unselect(selection, metaList)
+					if err = childSel.Fire(LEAVE); err != nil {
+						return err
+					}
 				}
 			}
 		}

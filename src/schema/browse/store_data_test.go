@@ -191,7 +191,7 @@ func TestStoreRemoveAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = Delete(in); err != nil {
+	if err = Delete(in, in.Node()); err != nil {
 		t.Error(err)
 	}
 	if len(store.Values) != 1 {

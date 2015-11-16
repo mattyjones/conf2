@@ -16,20 +16,30 @@ func (p *MetaPath) Parent() MetaList {
 	return p.ParentPath.Meta.(MetaList)
 }
 
-func (p *MetaPath) String() string {
+func (p *MetaPath) Path() string {
+	if p.ParentPath != nil {
+		return p.ParentPath.Position()
+	}
+	if p.Meta == nil {
+		return ""
+	}
+	return p.Meta.GetIdent()
+}
+
+func (p *MetaPath) Position() string {
 	var s string
 	if p.ParentPath == nil {
 		if p.Meta == nil {
-			return "<nil>"
+			return ""
 		}
 	} else {
-		s = p.ParentPath.String()
+		s = p.ParentPath.Position()
 	}
 	if len(p.Key) > 0 {
 		s = fmt.Sprint(s, "=", p.Key)
 	}
 	if p.Meta == nil {
-		return fmt.Sprint(s, "/<nil>")
+		return s
 	}
 	if len(s) == 0 {
 		return p.Meta.GetIdent()

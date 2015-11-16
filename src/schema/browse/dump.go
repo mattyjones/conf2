@@ -44,27 +44,23 @@ func (d *Dumper) Node() Node {
 func (d *Dumper) enter(level int) Node {
 	row := 0
 	s := &MyNode{}
-	var created Node
-	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, err error) {
-		nest := created
-		created = nil
-		return nest, nil
-	}
-	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
-		switch op {
-		case CREATE_CONTAINER, CREATE_LIST, CREATE_LIST_ITEM:
-			created = d.enter(level + 1)
+	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (child Node, err error) {
+		if ! new {
+			return nil, nil
 		}
-		d.dumpEditOp(state, op, level)
+		return d.enter(level + 1), nil
+	}
+	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *Value) (err error) {
 		d.dumpValue(v, level)
 		return
 	}
-	s.OnNext = func(state *Selection, meta *schema.List, keys []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (next Node, err error) {
+		if ! new {
+			return nil, nil
+		}
 		d.out.WriteString(fmt.Sprintf("%sITERATE row=%d, first=%v\n", Padding[:level], row, first))
 		row++
-		nest := created
-		created = nil
-		return nest, nil
+		return s, nil
 	}
 	return s
 }
@@ -94,10 +90,5 @@ func (d *Dumper) dumpValue(v *Value, level int) {
 		s = fmt.Sprintf("%v", v.Boollist)
 	}
 	line := fmt.Sprintf("%s-> \"%s\" type=%s\n", Padding[:level], s, t)
-	d.out.WriteString(line)
-}
-
-func (d *Dumper) dumpEditOp(state *Selection, op Operation, level int) {
-	line := fmt.Sprintf("%s%s %s\n", Padding[:level], operationNames[int(op)], state.String())
 	d.out.WriteString(line)
 }

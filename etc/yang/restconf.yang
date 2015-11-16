@@ -4,8 +4,19 @@ module restconf {
 	revision 0000-00-00 {
 		description "initial ver";
 	}
+	container management {
+        container service {
+            leaf port {
+                type string;
+            }
+            leaf docroot {
+                type string;
+            }
+	    }
+	}
 	list modules {
 		key "name";
+		config "false";
 		leaf name {
 			type string;
 		}

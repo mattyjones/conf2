@@ -25,28 +25,64 @@ func (err *restconfError) HttpCode() int {
 	return err.Code
 }
 
-func NewService() (*Service, error) {
-	service := &Service{restconfPath: "/restconf/"}
+func NewService() *Service {
+	service := &Service{Path: "/restconf/"}
 	service.registrations = make(map[string]*registration, 5)
 	service.mux = http.NewServeMux()
 	service.mux.HandleFunc("/.well-known/host-meta", service.resources)
-	// always add browser for restconf server itself
-	rcb, err := NewData(service)
-	if err != nil {
-		return nil, err
-	}
-	if err = service.RegisterBrowser(rcb); err != nil {
-		return nil, err
-	}
-	return service, nil
+	return service
 }
 
 type Service struct {
-	restconfPath  string
+	Path          string
 	registrations map[string]*registration
 	mux           *http.ServeMux
-	docroot       *docRootImpl
+	docrootSource *docRootImpl
+	DocRoot		  string
 	Port          string
+}
+
+func (service *Service) Manage() browse.Node {
+	s := &browse.MyNode{}
+	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
+		switch meta.GetIdent() {
+		case "registrations":
+			strlist := make([]string, len(service.registrations))
+			i := 0
+			for name, _ := range service.registrations {
+				strlist[i] = name
+				i++
+			}
+			return &browse.Value{Strlist:strlist}, nil
+		default:
+			return browse.ReadField(meta, service)
+		}
+		return nil, nil
+	}
+	s.OnWrite = func(sel *browse.Selection, meta schema.HasDataType, v *browse.Value) (err error) {
+		switch meta.GetIdent() {
+		case "docRoot":
+			service.DocRoot = v.Str
+			service.SetDocRoot(&schema.FileStreamSource{Root:service.DocRoot})
+		}
+		return browse.WriteField(meta, service, v)
+	}
+	s.OnEvent = func(sel *browse.Selection, e browse.Event) (err error) {
+		switch e {
+		case browse.NEW:
+			rcb, err := NewData(service)
+			if err != nil {
+				return err
+			}
+			// always add browser for restconf server itself
+			if err = service.RegisterBrowser(rcb); err != nil {
+				return err
+			}
+		}
+		return
+	}
+
+	return s
 }
 
 type registration struct {
@@ -71,7 +107,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		switch r.Method {
 		case "DELETE":
-			err = browse.Delete(selection)
+			err = browse.Delete(selection, selection.Node())
 		case "GET":
 			w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
 			output := selection.Copy(browse.NewJsonWriter(w).Container())
@@ -134,15 +170,15 @@ func (service *Service) RegisterBrowser(browser browse.Data) error {
 func (service *Service) RegisterBrowserWithName(browser browse.Data, ident string) error {
 	reg := &registration{browser}
 	service.registrations[ident] = reg
-	fullPath := fmt.Sprint(service.restconfPath, ident, "/")
+	fullPath := fmt.Sprint(service.Path, ident, "/")
 	conf2.Info.Println("registering browser at path ", fullPath)
 	service.mux.Handle(fullPath, http.StripPrefix(fullPath, reg))
 	return nil
 }
 
 func (service *Service) SetDocRoot(docroot schema.StreamSource) {
-	service.docroot = &docRootImpl{docroot: docroot}
-	service.mux.Handle("/ui/", http.StripPrefix("/ui/", service.docroot))
+	service.docrootSource = &docRootImpl{docroot: docroot}
+	service.mux.Handle("/ui/", http.StripPrefix("/ui/", service.docrootSource))
 }
 
 func (service *Service) AddHandler(pattern string, handler http.Handler) {
@@ -162,8 +198,8 @@ func (service *Service) Listen() {
 }
 
 func (service *Service) Stop() {
-	if service.docroot != nil && service.docroot.docroot != nil {
-		schema.CloseResource(service.docroot.docroot)
+	if service.docrootSource != nil && service.docrootSource.docroot != nil {
+		schema.CloseResource(service.docrootSource.docroot)
 	}
 	// TODO - actually stop service
 }

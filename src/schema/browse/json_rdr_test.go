@@ -40,9 +40,9 @@ module json-test {
 			path         string
 			expectedMeta string
 		}{
-			{"hobbies", "json-test/hobbies/<nil>"},
-			{"hobbies=birding", "json-test/hobbies=birding/<nil>"},
-			{"hobbies=birding/favorite", "json-test/hobbies=birding/favorite/<nil>"},
+			{"hobbies", "json-test/hobbies"},
+			{"hobbies=birding", "json-test/hobbies=birding"},
+			{"hobbies=birding/favorite", "json-test/hobbies=birding/favorite"},
 		}
 		var in, selection *Selection
 		for _, test := range tests {
@@ -52,7 +52,7 @@ module json-test {
 				t.Error("failed to transmit json", err)
 			} else if selection == nil {
 				t.Error(test.path, "- Target not found, state nil")
-			} else if selection.Path().String() != test.expectedMeta {
+			} else if selection.Path().Position() != test.expectedMeta {
 				t.Error(test.path, "-", test.expectedMeta, "!=", selection.String())
 			}
 		}

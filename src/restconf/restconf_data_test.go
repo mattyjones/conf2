@@ -6,7 +6,7 @@ import (
 )
 
 func TestRestconfBrowserMetaLoad(t *testing.T) {
-	rc := &Service{restconfPath: "/restconf/"}
+	rc := &Service{Path: "/restconf/"}
 	rc.registrations = make(map[string]*registration, 5)
 	b, err := NewData(rc)
 	if err != nil {

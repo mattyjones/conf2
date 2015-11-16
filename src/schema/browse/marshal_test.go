@@ -30,7 +30,7 @@ module m {
 		t.Fatal(err)
 	}
 	var obj TestMessage
-	c := &MarshalContainer{Obj: &obj}
+	c := MarshalContainer(&obj)
 	var r Node
 	r, err = NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
 	if err != nil {

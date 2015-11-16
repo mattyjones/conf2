@@ -36,11 +36,18 @@ func (json *JsonWriter) Selector(in *Selection) *Selection {
 
 func (json *JsonWriter) Container() Node {
 	s := &MyNode{Label: "JSON Write"}
-	var created Node
-	s.OnSelect = func(state *Selection, meta schema.MetaList) (child Node, err error) {
-		nest := created
-		created = nil
-		return nest, nil
+	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (child Node, err error) {
+		if ! new {
+			return nil, nil
+		}
+		if schema.IsList(meta) {
+			err = json.beginList(meta.GetIdent())
+			child = json.Container()
+		} else {
+			err = json.beginContainer(meta.GetIdent())
+			child = json.Container()
+		}
+		return
 	}
 	s.OnEvent = func(sel *Selection, e Event) (err error) {
 		switch e {
@@ -55,40 +62,30 @@ func (json *JsonWriter) Container() Node {
 					err = json.out.Flush()
 				}
 			}
+		case LEAVE:
+			if schema.IsList(sel.SelectedMeta()) {
+				return json.endList()
+			} else {
+				err = json.endContainer()
+			}
+		case NEXT:
+			err = json.endContainer()
 		}
 		return
 	}
-	s.OnWrite = func(state *Selection, meta schema.Meta, op Operation, v *Value) (err error) {
-		switch op {
-		case CREATE_CONTAINER:
-			err = json.beginContainer(meta.GetIdent())
-			created = json.Container()
-		case POST_CREATE_CONTAINER:
-			err = json.endContainer()
-		case CREATE_LIST_ITEM:
-			if err = json.conditionallyOpenArrayOnFirstWrite(meta.GetIdent()); err == nil {
-				err = json.beginArrayItem()
-			}
-			created = json.Container()
-		case POST_CREATE_LIST_ITEM:
-			err = json.endArrayItem()
-		case CREATE_LIST:
-			err = json.beginList(meta.GetIdent())
-			created = json.Container()
-		case POST_CREATE_LIST:
-			return json.endList()
-		case UPDATE_VALUE:
-			err = json.writeValue(meta, v)
-		default:
-			err = &browseError{Msg: "Operation not supported"}
-		}
+	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *Value) (err error) {
+		err = json.writeValue(meta, v)
 		json.firstWrite = false
 		return
 	}
-	s.OnNext = func(state *Selection, meta *schema.List, keys []*Value, first bool) (next Node, err error) {
-		next = created
-		created = nil
-		return next, nil
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (next Node, err error) {
+		if ! new {
+			return nil, nil
+		}
+		if err = json.conditionallyOpenArrayOnFirstWrite(meta.GetIdent()); err == nil {
+			err = json.beginArrayItem()
+		}
+		return json.Container(), nil
 	}
 	return s
 }
