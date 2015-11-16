@@ -9,7 +9,7 @@ type Parameters struct {
 	Collected map[string]*Value
 }
 
-func (p *Parameters) Ignore(ident string) {
+func (p *Parameters) Record(ident string) {
 	if p.Ignores == nil {
 		p.Ignores = make(map[string]struct{})
 	}
@@ -23,7 +23,7 @@ func (p *Parameters) Collect(ident string, val *Value) {
 	p.Collected[ident] = val
 }
 
-func (p *Parameters) Configure(sel *Selection, node Node) (err error) {
+func (p *Parameters) Finish(sel *Selection, node Node) (err error) {
 	i := schema.NewMetaListIterator(sel.SelectedMeta(), true)
 	for i.HasNextMeta() {
 		m := i.NextMeta()
