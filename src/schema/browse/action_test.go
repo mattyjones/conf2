@@ -38,29 +38,31 @@ module m {
 	store := NewBufferStore()
 	b := NewStoreData(m, store)
 	var yourName *Value
-	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input Node) (output *Selection, err error) {
+	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input *Selection) (output *Selection, err error) {
 		readInput := NewSelection(b.Container(""), meta.Input)
-		if err = InsertByNode(readInput, input, readInput.Node()); err != nil {
+		if err = Insert(input, readInput); err != nil {
 			return nil, err
 		}
 		yourName = store.Values["name"]
 		store.Values["salutation"] = &Value{Str: fmt.Sprint("Hello ", yourName)}
 		return NewSelection(b.Container(""), meta.Output), nil
 	}
-	var in Node
-	if in, err = NewJsonReader(strings.NewReader(`{"name":"joe"}`)).Node(); err != nil {
-		t.Fatal(err)
-	}
-	var actual bytes.Buffer
-	out := NewJsonWriter(&actual)
 	var actionSel, rpcOut *Selection
 	if actionSel, err = b.Selector(NewPath("sayHello")); err != nil {
 		t.Error(err)
 	}
+	rpc := actionSel.State.Position().(*schema.Rpc)
+	var readJson Node
+	if readJson, err = NewJsonReader(strings.NewReader(`{"name":"joe"}`)).Node(); err != nil {
+		t.Fatal(err)
+	}
+	in := NewSelection(readJson, rpc.Input)
 	if rpcOut, err = Action(actionSel, in); err != nil {
 		t.Error(err)
 	}
-	if err = Insert(rpcOut, out.Selector(rpcOut)); err != nil {
+	var actual bytes.Buffer
+	out := NewJsonWriter(&actual).Selector(rpcOut.State)
+	if err = Insert(rpcOut, out); err != nil {
 		t.Error(err)
 	}
 	if yourName.Str != "joe" {

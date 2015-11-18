@@ -99,54 +99,50 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var err error
 	var path *browse.Path
+	var payload *browse.Selection
 	if path, err = browse.ParsePath(r.URL.Path); err == nil {
-		var selection *browse.Selection
-		if selection, err = reg.browser.Selector(path); err != nil {
+		var sel *browse.Selection
+		if sel, err = reg.browser.Selector(path); err != nil {
 			handleError(err)
 			return
 		}
 		switch r.Method {
 		case "DELETE":
-			err = browse.Delete(selection, selection.Node())
+			err = browse.Delete(sel)
 		case "GET":
 			w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
-			output := selection.Copy(browse.NewJsonWriter(w).Container())
-			err = browse.ControlledInsert(selection, output, browse.LimitedWalk(r.URL.RawQuery))
+			output := browse.NewJsonWriter(w).Selector(sel.State)
+			err = browse.ControlledInsert(sel, output, browse.LimitedWalk(r.URL.RawQuery))
 		case "PUT":
-			{
-				var payload browse.Node
-				if payload, err = browse.NewJsonReader(r.Body).NodeFromSelection(selection); err != nil {
+			if payload, err = browse.NewJsonReader(r.Body).Selector(sel.State); err != nil {
+				handleError(err)
+				return
+			}
+			err = browse.Upsert(payload, sel)
+		case "POST":
+			if schema.IsAction(sel.State.Position()) {
+				rpc := sel.State.Position().(*schema.Rpc)
+				var rpcInput browse.Node
+				var rpcOutput *browse.Selection
+				if rpcInput, err = browse.NewJsonReader(r.Body).Node(); err != nil {
 					handleError(err)
 					return
 				}
-				err = browse.UpsertByNode(selection, payload, selection.Node())
-			}
-		case "POST":
-			{
-				if schema.IsAction(selection.Position()) {
-					var rpcInput browse.Node
-					var rpcOutput *browse.Selection
-					if rpcInput, err = browse.NewJsonReader(r.Body).Node(); err != nil {
-						handleError(err)
-						return
-					}
-					if rpcOutput, err = browse.Action(selection, rpcInput); err != nil {
-						handleError(err)
-						return
-					}
-					if rpcOutput != nil {
-						w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
-						output := rpcOutput.Copy(browse.NewJsonWriter(w).Container())
-						browse.Insert(rpcOutput, output)
-					}
-				} else {
-					var payload browse.Node
-					if payload, err = browse.NewJsonReader(r.Body).NodeFromSelection(selection); err != nil {
-						handleError(err)
-						return
-					}
-					err = browse.InsertByNode(selection, payload, selection.Node())
+				if rpcOutput, err = browse.Action(sel, browse.NewSelection(rpcInput, rpc.Input)); err != nil {
+					handleError(err)
+					return
 				}
+				if rpcOutput != nil {
+					w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
+					output := browse.NewJsonWriter(w).Selector(rpcOutput.State)
+					browse.Insert(rpcOutput, output)
+				}
+			} else {
+				if payload, err = browse.NewJsonReader(r.Body).Selector(sel.State); err != nil {
+					handleError(err)
+					return
+				}
+				err = browse.Insert(payload, sel)
 			}
 		default:
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)

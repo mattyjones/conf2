@@ -47,7 +47,7 @@ module json-test {
 		var in *Selection
 		b := NewSchemaData(module, false)
 		in, err = b.Selector(NewPath(""))
-		json := NewJsonWriter(&actual).Selector(in)
+		json := NewJsonWriter(&actual).Selector(in.State)
 		if err = Insert(in, json); err != nil {
 			t.Error("failed to transmit json", err)
 		} else {
@@ -95,7 +95,7 @@ func TestYangWrite(t *testing.T) {
 func DumpModule(b *SchemaData) (string, error) {
 	var buff bytes.Buffer
 	in, _ := b.Selector(NewPath(""))
-	dumper := in.Copy(NewDumper(&buff).Node())
+	dumper := NewSelectionFromState(NewDumper(&buff).Node(), in.State)
 	err := Insert(in, dumper)
 	if err != nil {
 		return "", err

@@ -32,15 +32,15 @@ func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selec
 	if len(n.path.Segments[level-1].Keys) == 0 {
 		return nil, errors.New("Key required when navigating lists")
 	}
-	list := selection.SelectedMeta().(*schema.List)
+	list := selection.State.SelectedMeta().(*schema.List)
 	var key []*Value
 	key, err = CoerseKeys(list, n.path.Segments[level-1].Keys)
 	if err != nil {
 		return nil, err
 	}
-	selection.SetKey(key)
+	selection.State.SetKey(key)
 	var nextNode Node
-	nextNode, err = selection.Node().Next(selection, list, false, key, true)
+	nextNode, err = selection.Node.Next(selection, list, false, key, true)
 	if err != nil || nextNode == nil {
 		return nil, err
 	}
@@ -82,6 +82,6 @@ func (n *FindTarget) ContainerIterator(selection *Selection) schema.MetaIterator
 		n.setTarget(selection)
 		return schema.EmptyInterator(0)
 	}
-	position := schema.FindByIdentExpandChoices(selection.SelectedMeta(), n.path.Segments[level].Ident)
+	position := schema.FindByIdentExpandChoices(selection.State.SelectedMeta(), n.path.Segments[level].Ident)
 	return &schema.SingletonIterator{Meta: position}
 }

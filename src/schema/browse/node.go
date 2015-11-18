@@ -14,7 +14,7 @@ type Node interface {
 	Write(sel *Selection, meta schema.HasDataType, val *Value) error
 	Choose(sel *Selection, choice *schema.Choice) (m schema.Meta, err error)
 	Event(sel *Selection, e Event) error
-	Action(sel *Selection, meta *schema.Rpc, input Node) (output *Selection, err error)
+	Action(sel *Selection, meta *schema.Rpc, input *Selection) (output *Selection, err error)
 }
 
 type MyNode struct {
@@ -93,7 +93,7 @@ func (s *MyNode) Choose(sel *Selection, choice *schema.Choice) (m schema.Meta, e
 	return s.OnChoose(sel, choice)
 }
 
-func (s *MyNode) Action(sel *Selection, meta *schema.Rpc, input Node) (output *Selection, err error) {
+func (s *MyNode) Action(sel *Selection, meta *schema.Rpc, input *Selection) (output *Selection, err error) {
 	if s.OnAction == nil {
 		return nil, &browseError{
 			Code: http.StatusNotImplemented,
@@ -125,5 +125,5 @@ type SelectFunc func(selection *Selection, meta schema.MetaList, new bool) (chil
 type ReadFunc func(selection *Selection, meta schema.HasDataType) (*Value, error)
 type WriteFunc func(selection *Selection, meta schema.HasDataType, val *Value) error
 type ChooseFunc func(selection *Selection, choice *schema.Choice) (m schema.Meta, err error)
-type ActionFunc func(selection *Selection, rpc *schema.Rpc, input Node) (output *Selection, err error)
+type ActionFunc func(selection *Selection, rpc *schema.Rpc, input *Selection) (output *Selection, err error)
 type EventFunc func(sel *Selection, e Event) error

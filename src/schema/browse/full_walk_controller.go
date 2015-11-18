@@ -62,13 +62,13 @@ func (e *ControlledWalk) ListIterator(selection *Selection, first bool) (next *S
 	if e.maxedLevel(selection) {
 		return nil, nil
 	}
-	listMeta := selection.SelectedMeta().(*schema.List)
+	listMeta := selection.State.SelectedMeta().(*schema.List)
 	var listNode Node
-	listNode, err = selection.Node().Next(selection, listMeta, false, NO_KEYS, first)
+	listNode, err = selection.Node.Next(selection, listMeta, false, NO_KEYS, first)
 	if listNode == nil || err != nil {
 		return nil, err
 	}
-	next = selection.SelectListItem(listNode, selection.Key())
+	next = selection.SelectListItem(listNode, selection.State.Key())
 	return
 }
 
@@ -76,5 +76,5 @@ func (e *ControlledWalk) ContainerIterator(selection *Selection) schema.MetaIter
 	if e.maxedLevel(selection) {
 		return schema.EmptyInterator(0)
 	}
-	return schema.NewMetaListIterator(selection.SelectedMeta(), true)
+	return schema.NewMetaListIterator(selection.State.SelectedMeta(), true)
 }

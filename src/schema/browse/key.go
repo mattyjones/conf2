@@ -35,16 +35,16 @@ func CoerseKeys(list *schema.List, keyStrs []string) ([]*Value, error) {
 	return values, nil
 }
 
-func ReadKeys(selection *Selection) (values []*Value, err error) {
-	if len(selection.Key()) > 0 {
-		return selection.Key(), nil
+func ReadKeys(sel *Selection) (values []*Value, err error) {
+	if len(sel.State.Key()) > 0 {
+		return sel.State.Key(), nil
 	}
-	list := selection.SelectedMeta().(*schema.List)
+	list := sel.State.SelectedMeta().(*schema.List)
 	values = make([]*Value, len(list.Keys))
 	var key *Value
 	for i, keyIdent := range list.Keys {
-		keyMeta := schema.FindByIdent2(selection.SelectedMeta(), keyIdent).(schema.HasDataType)
-		if key, err = selection.Node().Read(selection, keyMeta); err != nil {
+		keyMeta := schema.FindByIdent2(sel.State.SelectedMeta(), keyIdent).(schema.HasDataType)
+		if key, err = sel.Node.Read(sel, keyMeta); err != nil {
 			return nil, err
 		}
 		if key == nil {

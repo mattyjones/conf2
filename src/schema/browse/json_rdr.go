@@ -27,33 +27,29 @@ func (self *JsonReader) Node() (Node, error) {
 	return self.Container(values), nil
 }
 
-func (self *JsonReader) NodeFromSelection(selection *Selection) (Node, error) {
-	if values, err := self.decode(); err != nil {
+func (self *JsonReader) Selector(state *WalkState) (*Selection, error) {
+	var n Node
+	values, err := self.decode()
+	if err != nil {
 		return nil, err
-	} else {
-		if schema.IsList(selection.SelectedMeta()) {
-			if selection.InsideList() {
-				return self.Container(values), nil
-			}
-			ident := selection.SelectedMeta().GetIdent()
+	}
+	if schema.IsList(state.SelectedMeta()) {
+		if state.InsideList() {
+			n = self.Container(values)
+		} else {
+			ident := state.SelectedMeta().GetIdent()
 			foundValues, found := values[ident]
 			list, ok := foundValues.([]interface{})
 			if len(values) != 1 || !found || !ok {
 				msg := fmt.Sprintf("Expected { %s: [] }", ident)
 				return nil, errors.New(msg)
 			}
-			return self.List(list), nil
+			n = self.List(list)
 		}
-		return self.Container(values), nil
-	}
-}
-
-func (self *JsonReader) Selector(meta schema.MetaList) (*Selection, error) {
-	if values, err := self.decode(); err != nil {
-		return nil, err
 	} else {
-		return NewSelection(self.Container(values), meta), nil
+		n = self.Container(values)
 	}
+	return NewSelectionFromState(n, state), nil
 }
 
 func (self *JsonReader) decode() (map[string]interface{}, error) {
@@ -124,7 +120,7 @@ func asStringArray(data []interface{}) []string {
 func (self *JsonReader) List(list []interface{}) Node {
 	s := &MyNode{Label: "JSON Read List"}
 	var i int
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
 		if new {
 			panic("Cannot write to JSON reader")
 		}
@@ -134,7 +130,7 @@ func (self *JsonReader) List(list []interface{}) Node {
 				for ; i < len(list); i++ {
 					candidate := list[i].(map[string]interface{})
 					if self.jsonKeyMatches(keyFields, candidate, key) {
-						state.SetKey(key)
+						sel.State.SetKey(key)
 						return self.Container(candidate), nil
 					}
 				}
@@ -154,7 +150,7 @@ func (self *JsonReader) List(list []interface{}) Node {
 					if hasKey {
 						keyStrs := []string{keyData.(string)}
 						key, err = CoerseKeys(meta, keyStrs)
-						state.SetKey(key)
+						sel.State.SetKey(key)
 					}
 				}
 				return self.Container(container), nil

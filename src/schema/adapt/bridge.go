@@ -87,19 +87,19 @@ func (b *Bridge) internalPath(p *browse.Path, meta schema.Meta) *browse.Path {
 func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState *browse.Selection, mapping *BridgeMapping) (*BridgeMapping, bool) {
 	var childMapping *BridgeMapping
 	var internalPosition schema.Meta
-	if internalPosition, childMapping = mapping.SelectMap(externalMeta, internalState.SelectedMeta()); internalPosition != nil {
-		internalState.SetPosition(internalPosition)
+	if internalPosition, childMapping = mapping.SelectMap(externalMeta, internalState.State.SelectedMeta()); internalPosition != nil {
+		internalState.State.SetPosition(internalPosition)
 		return childMapping, true
 	}
 	return nil, false
 }
 
 func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping) browse.Node {
-	s := &browse.MyNode{OnEvent: internal.Node().Event}
+	s := &browse.MyNode{OnEvent: internal.Node.Event}
 	s.OnSelect = func(state *browse.Selection, externalMeta schema.MetaList, new bool) (child browse.Node, err error) {
 		if childMapping, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
 			var internalChild browse.Node
-			if internalChild, err = internal.Node().Select(internal, internal.Position().(schema.MetaList), new); err != nil {
+			if internalChild, err = internal.Node.Select(internal, internal.State.Position().(schema.MetaList), new); err != nil {
 				return nil, err
 			} else if internalChild == nil {
 				return nil, nil
@@ -110,23 +110,23 @@ func (b *Bridge) selectBridge(internal *browse.Selection, mapping *BridgeMapping
 	}
 	s.OnWrite = func(state *browse.Selection, externalMeta schema.HasDataType, val *browse.Value) error {
 		if _, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
-			return internal.Node().Write(internal, internal.Position().(schema.HasDataType), val)
+			return internal.Node.Write(internal, internal.State.Position().(schema.HasDataType), val)
 		}
 		return nil
 	}
 	s.OnRead = func(state *browse.Selection, externalMeta schema.HasDataType) (*browse.Value, error) {
 		if _, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
 			// TODO: translate val
-			return internal.Node().Read(internal, internal.Position().(schema.HasDataType))
+			return internal.Node.Read(internal, internal.State.Position().(schema.HasDataType))
 		}
 		return nil, nil
 	}
 	s.OnNext = func(state *browse.Selection, meta *schema.List, new bool, key []*browse.Value, first bool) (next browse.Node, err error) {
 		var internalNextNode browse.Node
 		// TODO: translate keys?
-		internalNextNode, err = internal.Node().Next(internal, meta, new, key, first)
+		internalNextNode, err = internal.Node.Next(internal, meta, new, key, first)
 		if internalNextNode != nil && err == nil {
-			internalNext := internal.SelectListItem(internalNextNode, internal.Key())
+			internalNext := internal.SelectListItem(internalNextNode, internal.State.Key())
 			next = b.selectBridge(internalNext, mapping)
 		}
 		return

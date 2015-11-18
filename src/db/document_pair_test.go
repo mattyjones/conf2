@@ -64,7 +64,10 @@ module m {
 		configBrowser := browse.NewStoreData(m, config)
 		config.Values["a/aa/aaa"] = &browse.Value{Str: "a"}
 		var pair *DocumentPair
-		if pair, err = NewDocumentPair(operBrowser, configBrowser); err != nil {
+		rootPath := browse.NewPath("")
+		operSel, _ := operBrowser.Selector(rootPath)
+		configSel, _ := configBrowser.Selector(rootPath)
+		if pair, err = NewDocumentPair(operSel, configSel); err != nil {
 			t.Error(err)
 		}
 		if len(oper.Values) != 2 {
@@ -90,7 +93,10 @@ module m {
 		config := browse.NewBufferStore()
 		configBrowser := browse.NewStoreData(m, config)
 		var pair *DocumentPair
-		if pair, err = NewDocumentPair(operBrowser, configBrowser); err != nil {
+		rootPath := browse.NewPath("")
+		operSel, _ := operBrowser.Selector(rootPath)
+		configSel, _ := configBrowser.Selector(rootPath)
+		if pair, err = NewDocumentPair(operSel, configSel); err != nil {
 			t.Error(err)
 		}
 		var in, out *browse.Selection

@@ -24,11 +24,13 @@ func TestBridge(t *testing.T) {
 		b := NewBridge(internal, externalModule)
 		a := b.Mapping.AddMapping("a", "x")
 		a.AddMapping("b", "y")
+		var rdr browse.Node
 		var in, out *browse.Selection
-		in, err = browse.NewJsonReader(strings.NewReader(externalData)).Selector(externalModule)
+		rdr, err = browse.NewJsonReader(strings.NewReader(externalData)).Node()
 		if err != nil {
 			t.Fatal(err)
 		}
+		in = browse.NewSelection(rdr, externalModule)
 		if out, err = b.Selector(browse.NewPath("")); err != nil {
 			t.Fatal(err)
 		}

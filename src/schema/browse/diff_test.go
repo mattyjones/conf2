@@ -64,7 +64,8 @@ module m {
 	c := NewBufferStore()
 	cData := NewStoreData(m, c)
 	selection, _ := cData.Selector(NewPath(""))
-	InsertByNode(selection, Diff(bData.Node(), aData.Node()), selection.Node())
+	differ := Diff(bData.Node, aData.Node)
+	Insert(NewSelectionFromState(differ, selection.State), selection)
 
 	if len(c.Values) != 2 {
 		t.Error("Expected 1 value")

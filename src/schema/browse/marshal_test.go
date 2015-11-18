@@ -37,7 +37,8 @@ module m {
 		t.Fatal(err)
 	}
 	sel := NewSelection(c, m)
-	err = UpsertByNode(sel, r, sel.Node())
+	in := NewSelection(r, m)
+	err = Upsert(in, sel)
 	if err != nil {
 		t.Fatal(err)
 	}

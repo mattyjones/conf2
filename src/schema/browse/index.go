@@ -53,13 +53,13 @@ func (i *StringIndex) CurrentKey() string {
 	return i.Keys[i.Position]
 }
 
-func (i *StringIndex) OnNext(state *Selection, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
+func (i *StringIndex) OnNext(sel *Selection, meta *schema.List, key []*Value, first bool) (hasMore bool, err error) {
 	if len(key) > 0 {
 		if first {
 			i.Position = 0
 			i.Keys = []string{key[0].Str}
 			hasMore, err = i.Builder.Select(i.Keys[0]), nil
-			state.SetKey(key)
+			sel.State.SetKey(key)
 		} else {
 			hasMore = false
 		}
@@ -75,7 +75,7 @@ func (i *StringIndex) OnNext(state *Selection, meta *schema.List, key []*Value, 
 			if hasMore {
 				var positionKey []*Value
 				positionKey, err = CoerseKeys(meta, []string{i.Keys[i.Position]})
-				state.SetKey(positionKey)
+				sel.State.SetKey(positionKey)
 			}
 		} else {
 			hasMore = false

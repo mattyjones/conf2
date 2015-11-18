@@ -108,7 +108,7 @@ func TestStoreBrowserValueEdit(t *testing.T) {
 	kv := NewStoreData(m, store)
 	out, err := kv.Selector(NewPath(""))
 	inputJson := `{"a":{"aa":{"aaa":"hi"}},"b":[{"ba":"x"}]}`
-	json, err := NewJsonReader(strings.NewReader(inputJson)).Selector(m)
+	json, err := NewJsonReader(strings.NewReader(inputJson)).Selector(out.State)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,9 +150,9 @@ func TestStoreBrowserKeyValueEdit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var in Node
-	in, err = NewJsonReader(strings.NewReader(inputJson2)).NodeFromSelection(selection)
-	if err = UpdateByNode(selection, in, selection.Node()); err != nil {
+	var in *Selection
+	in, err = NewJsonReader(strings.NewReader(inputJson2)).Selector(selection.State)
+	if err = Update(in, selection); err != nil {
 		t.Fatal(err)
 	}
 	if v, newKeyExists := store.Values["b=y/ba"]; !newKeyExists {
@@ -176,7 +176,7 @@ func TestStoreBrowserReadListList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := NewJsonWriter(&actual).Selector(in)
+	out := NewJsonWriter(&actual).Selector(in.State)
 	Upsert(in, out)
 	t.Log(actual.String())
 }
@@ -191,7 +191,7 @@ func TestStoreRemoveAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = Delete(in, in.Node()); err != nil {
+	if err = Delete(in); err != nil {
 		t.Error(err)
 	}
 	if len(store.Values) != 1 {

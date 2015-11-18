@@ -15,7 +15,8 @@ func Walk(selection *Selection, controller WalkController) (err error) {
 }
 
 func walk(selection *Selection, controller WalkController) (err error) {
-	if schema.IsList(selection.SelectedMeta()) && !selection.InsideList() {
+	state := selection.State
+	if schema.IsList(state.SelectedMeta()) && !state.InsideList() {
 		var next *Selection
 		if next, err = controller.ListIterator(selection, true); err != nil {
 			return
@@ -35,27 +36,27 @@ func walk(selection *Selection, controller WalkController) (err error) {
 		var child Node
 		i := controller.ContainerIterator(selection)
 		for i.HasNextMeta() {
-			selection.SetPosition(i.NextMeta())
-			if choice, isChoice := selection.Position().(*schema.Choice); isChoice {
+			state.SetPosition(i.NextMeta())
+			if choice, isChoice := state.Position().(*schema.Choice); isChoice {
 				var chosen schema.Meta
-				if chosen, err = selection.Node().Choose(selection, choice); err != nil {
+				if chosen, err = selection.Node.Choose(selection, choice); err != nil {
 					return
 				}
-				selection.SetPosition(chosen)
+				state.SetPosition(chosen)
 			}
-			if schema.IsLeaf(selection.Position()) {
+			if schema.IsLeaf(state.Position()) {
 				// only walking here, not interested in value
-				if _, err = selection.Node().Read(selection, selection.Position().(schema.HasDataType)); err != nil {
+				if _, err = selection.Node.Read(selection, state.Position().(schema.HasDataType)); err != nil {
 					return err
 				}
 			} else {
-				metaList := selection.Position().(schema.MetaList)
-				if schema.IsAction(selection.Position()) {
+				metaList := state.Position().(schema.MetaList)
+				if schema.IsAction(state.Position()) {
 					if err = controller.VisitAction(selection); err != nil {
 						return err
 					}
 				} else {
-					if child, err = selection.Node().Select(selection, metaList, false); err != nil {
+					if child, err = selection.Node.Select(selection, metaList, false); err != nil {
 						return err
 					}
 					if child == nil {

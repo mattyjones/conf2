@@ -104,7 +104,7 @@ func (bb *BucketBrowser) selectList(parent map[string]interface{}, initialList [
 	var i int
 	list := initialList
 	s := &MyNode{}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, isFirst bool) (Node, error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, isFirst bool) (Node, error) {
 		var selection map[string]interface{}
 		if new {
 			selection = make(map[string]interface{}, 10)
@@ -122,7 +122,7 @@ func (bb *BucketBrowser) selectList(parent map[string]interface{}, initialList [
 					// TODO: Support compound keys
 					if candidate[meta.Keys[0]] == key[0].Value() {
 						selection = candidate
-						state.SetKey(key)
+						sel.State.SetKey(key)
 						break
 					}
 				}
@@ -138,7 +138,7 @@ func (bb *BucketBrowser) selectList(parent map[string]interface{}, initialList [
 				if key, err := bb.readKey(meta, selection); err != nil {
 					return nil, err
 				} else {
-					state.SetKey(key)
+					sel.State.SetKey(key)
 				}
 			}
 		}

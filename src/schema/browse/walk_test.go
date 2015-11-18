@@ -29,10 +29,11 @@ func TestWalkJson(t *testing.T) {
 	}
 }`
 	module := LoadSampleModule(t)
-	in, err := NewJsonReader(strings.NewReader(config)).Selector(module)
+	rdr, err := NewJsonReader(strings.NewReader(config)).Node()
 	if err != nil {
 		t.Fatal(err)
 	}
+	in := NewSelection(rdr, module)
 	var actualBuff bytes.Buffer
 	out := NewSelection(NewJsonWriter(&actualBuff).Container(), module)
 	if err = Upsert(in, out); err != nil {

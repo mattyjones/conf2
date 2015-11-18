@@ -124,9 +124,13 @@ module json-test {
 		}
 
 		var in *Selection
+		var rdr Node
 		for i, test := range tests {
 			inIo := strings.NewReader(json)
-			in, err = NewJsonReader(inIo).Selector(module)
+			if rdr, err = NewJsonReader(inIo).Node(); err != nil {
+				t.Fatal(err)
+			}
+			in = NewSelection(rdr, module)
 			if err != nil {
 				t.Error(err)
 			}
@@ -135,7 +139,7 @@ module json-test {
 				t.Error(err)
 			}
 			var actualBuff bytes.Buffer
-			out := NewJsonWriter(&actualBuff).Selector(in)
+			out := NewJsonWriter(&actualBuff).Selector(in.State)
 			err = ControlledUpsert(in, out, LimitedWalk(p.Query))
 			if err != nil {
 				t.Error(err)

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"schema"
 	"schema/yang"
-	"conf2"
 )
 
 /**
@@ -116,10 +115,10 @@ func (self *SchemaData) selectRevision(rev *schema.Revision) (Node) {
 
 func (self *SchemaData) selectType(typeData *schema.DataType) (Node) {
 	s := &MyNode{}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, typeData)
 	}
-	s.OnWrite = func(state *Selection, meta schema.HasDataType,val *Value) error {
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType,val *Value) error {
 		return WriteField(meta.(schema.HasDataType), typeData, val)
 	}
 	return s
@@ -128,17 +127,17 @@ func (self *SchemaData) selectType(typeData *schema.DataType) (Node) {
 func (self *SchemaData) selectGroupings(groupings schema.MetaList) (Node) {
 	s := &MyNode{}
 	i := listIterator{dataList: groupings, resolve: self.resolve}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		var group *schema.Grouping
 		if new {
 			group = &schema.Grouping{}
 		} else {
-			if i.iterate(state, meta, keys, first) {
+			if i.iterate(sel, meta, keys, first) {
 				group = i.data.(*schema.Grouping)
 			}
 		}
 		if group != nil {
-			state.OnChild(NEW, meta, func() error {
+			sel.OnChild(NEW, meta, func() error {
 				groupings.AddMeta(group)
 				return nil
 			})
@@ -187,7 +186,7 @@ func (self *SchemaData) createGroupingsTypedefsDefinitions(parent schema.MetaLis
 
 func (self *SchemaData) selectRpc(rpc *schema.Rpc) (Node) {
 	s := &MyNode{}
-	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (Node, error) {
+	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (Node, error) {
 		switch meta.GetIdent() {
 		case "input":
 			if new {
@@ -206,10 +205,10 @@ func (self *SchemaData) selectRpc(rpc *schema.Rpc) (Node) {
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, rpc)
 	}
-	s.OnWrite = func(state *Selection, meta schema.HasDataType, val *Value) error {
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *Value) error {
 		return WriteField(meta, rpc, val)
 	}
 	return s
@@ -218,12 +217,12 @@ func (self *SchemaData) selectRpc(rpc *schema.Rpc) (Node) {
 func (self *SchemaData) selectTypedefs(typedefs schema.MetaList) (Node) {
 	s := &MyNode{}
 	i := listIterator{dataList: typedefs, resolve: self.resolve}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		var typedef *schema.Typedef
 		if new {
 			typedef = &schema.Typedef{}
 		} else {
-			if i.iterate(state, meta, keys, first) {
+			if i.iterate(sel, meta, keys, first) {
 				typedef = i.data.(*schema.Typedef)
 			}
 		}
@@ -420,13 +419,13 @@ type listIterator struct {
 	temp     int
 }
 
-func (i *listIterator) iterate(state *Selection, meta *schema.List, keys []*Value, first bool) bool {
+func (i *listIterator) iterate(sel *Selection, meta *schema.List, keys []*Value, first bool) bool {
 	i.data = nil
 	if i.dataList == nil {
 		return false
 	}
 	if len(keys) > 0 {
-		state.SetKey(keys)
+		sel.State.SetKey(keys)
 		if first {
 			i.data = schema.FindByIdent2(i.dataList, keys[0].Str)
 		}
@@ -437,9 +436,9 @@ func (i *listIterator) iterate(state *Selection, meta *schema.List, keys []*Valu
 		if i.iterator.HasNextMeta() {
 			i.data = i.iterator.NextMeta()
 			if i.data == nil {
-				panic(fmt.Sprintf("Bad iterator at %s, item number %d", state.String(), i.temp))
+				panic(fmt.Sprintf("Bad iterator at %s, item number %d", sel.String(), i.temp))
 			}
-			state.SetKey([]*Value{
+			sel.State.SetKey([]*Value{
 				&Value{
 					Str:  i.data.GetIdent(),
 					Type: &schema.DataType{Format: schema.FMT_STRING},
@@ -457,7 +456,6 @@ func (self *SchemaData) SelectDefinition(parent schema.MetaList, data schema.Met
 		return self.resolveDefinitionCase(choice, data)
 	}
 	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (Node, error) {
-conf2.Debug.Printf("OnSelect %s", state.String())
 		if new {
 			data = self.createGroupingsTypedefsDefinitions(parent, meta)
 		}
@@ -484,7 +482,6 @@ conf2.Debug.Printf("OnSelect %s", state.String())
 		return ReadField(meta, data)
 	}
 	s.OnWrite = func(state *Selection, meta schema.HasDataType, val *Value) (err error) {
-conf2.Debug.Printf("OnWrite path=%s, meta=%s, data=%p", state.String(), meta.GetIdent(), data)
 		switch meta.GetIdent() {
 		case "ident":
 			// if data is nil then we're creating a def and we'll get name again

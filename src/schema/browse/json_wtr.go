@@ -30,13 +30,13 @@ func NewJsonWriter(out io.Writer) *JsonWriter {
 	}
 }
 
-func (json *JsonWriter) Selector(in *Selection) *Selection {
-	return in.Copy(json.Container())
+func (json *JsonWriter) Selector(state *WalkState) (*Selection) {
+	return NewSelectionFromState(json.Container(), state)
 }
 
 func (json *JsonWriter) Container() Node {
 	s := &MyNode{Label: "JSON Write"}
-	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (child Node, err error) {
+	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error) {
 		if ! new {
 			return nil, nil
 		}
@@ -53,7 +53,7 @@ func (json *JsonWriter) Container() Node {
 		switch e {
 		case BEGIN_EDIT:
 			_, err = json.out.WriteRune(OPEN_OBJ)
-			json.startingInsideList = schema.IsList(sel.SelectedMeta())
+			json.startingInsideList = schema.IsList(sel.State.SelectedMeta())
 			json.firstWrite = true
 			return err
 		case END_EDIT:
@@ -63,7 +63,7 @@ func (json *JsonWriter) Container() Node {
 				}
 			}
 		case LEAVE:
-			if schema.IsList(sel.SelectedMeta()) {
+			if schema.IsList(sel.State.SelectedMeta()) {
 				return json.endList()
 			} else {
 				err = json.endContainer()

@@ -7,10 +7,6 @@ import (
 
 // Uses reflection to marshal data into go structs
 
-func Marshal(obj interface{}, sel *Selection) (err error) {
-	return UpsertByNode(sel, sel.Node(), MarshalContainer(obj))
-}
-
 func MarshalContainer(Obj interface{}) Node {
 	s := &MyNode{Label:"Marshal " + reflect.TypeOf(Obj).Name()}
 	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (Node, error) {

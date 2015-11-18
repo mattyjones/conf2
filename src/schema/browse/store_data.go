@@ -47,9 +47,9 @@ func (kv *StoreData) List(parentPath string) Node {
 	s := &MyNode{}
 	var keyList []string
 	var i int
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
 		if new {
-			childPath := kv.listPath(parentPath, state.Key())
+			childPath := kv.listPath(parentPath, sel.State.Key())
 			return kv.Container(childPath), nil
 		}
 		if len(key) > 0 {
@@ -73,7 +73,7 @@ func (kv *StoreData) List(parentPath string) Node {
 				if key, err = CoerseKeys(meta, []string{keyList[i]}); err != nil {
 					return nil, err
 				}
-				state.SetKey(key)
+				sel.State.SetKey(key)
 				path := kv.listPath(parentPath, key)
 				return kv.Container(path), nil
 			}
@@ -87,13 +87,13 @@ func (kv *StoreData) List(parentPath string) Node {
 		}
 		return kv.OnEvent(sel, e)
 	}
-	s.OnAction = func(state *Selection, rpc *schema.Rpc, input Node) (output *Selection, err error) {
-		path := kv.listPath(parentPath, state.Key())
+	s.OnAction = func(sel *Selection, rpc *schema.Rpc, input *Selection) (output *Selection, err error) {
+		path := kv.listPath(parentPath, sel.State.Key())
 		var action ActionFunc
 		if action, err = kv.store.Action(path); err != nil {
 			return
 		}
-		return action(state, rpc, input)
+		return action(sel, rpc, input)
 	}
 	return s
 }
@@ -118,7 +118,7 @@ func (kv *StoreData) listPathWithNewKey(parentPath string, key []*Value) string 
 func (kv *StoreData) Container(copy string) Node {
 	s := &MyNode{}
 	//path := storePath{parent:parentPath}
-	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
+	s.OnChoose = func(sel *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		// go thru each case and if there are any properties in the data that are not
 		// part of the schema, that disqualifies that case and we move onto next case
 		// until one case aligns with data.  If no cases align then input in inconclusive
@@ -143,13 +143,13 @@ func (kv *StoreData) Container(copy string) Node {
 				return m, nil
 			}
 		}
-		msg := fmt.Sprintf("No discriminating data for choice schema %s ", state.String())
+		msg := fmt.Sprintf("No discriminating data for choice schema %s ", sel.String())
 		return nil, errors.New(msg)
 	}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*Value, error) {
 		return kv.store.Value(kv.containerPath(copy, meta), meta.GetDataType()), nil
 	}
-	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (child Node, err error) {
+	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error) {
 		if new {
 			if schema.IsList(meta) {
 				childPath := kv.containerPath(copy, meta)
@@ -169,12 +169,12 @@ func (kv *StoreData) Container(copy string) Node {
 		}
 		return
 	}
-	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *Value) (err error) {
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType, v *Value) (err error) {
 		propPath := kv.containerPath(copy, meta)
 		if err = kv.store.SetValue(propPath, v); err != nil {
 			return err
 		}
-		if schema.IsKeyLeaf(state.SelectedMeta(), meta) {
+		if schema.IsKeyLeaf(sel.State.SelectedMeta(), meta) {
 			oldPath := copy
 			// TODO: Support compound keys
 			newKey := []*Value{v}
@@ -190,13 +190,13 @@ func (kv *StoreData) Container(copy string) Node {
 		}
 		return kv.OnEvent(sel, e)
     }
-	s.OnAction = func(state *Selection, rpc *schema.Rpc, input Node) (output *Selection, err error) {
+	s.OnAction = func(sel *Selection, rpc *schema.Rpc, input *Selection) (output *Selection, err error) {
 		path := kv.containerPath(copy, rpc)
 		var action ActionFunc
 		if action, err = kv.store.Action(path); err != nil {
 			return
 		}
-		return action(state, rpc, input)
+		return action(sel, rpc, input)
 	}
 	return s
 }

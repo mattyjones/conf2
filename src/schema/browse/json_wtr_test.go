@@ -42,7 +42,7 @@ module m {
 		var in *Selection
 		in, err = b.Selector(NewPath(""))
 		var json bytes.Buffer
-		w := in.Copy(NewJsonWriter(&json).Container())
+		w := NewJsonWriter(&json).Selector(in.State)
 		if err = Upsert(in, w); err != nil {
 			t.Fatal(err)
 		}

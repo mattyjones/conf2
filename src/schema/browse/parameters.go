@@ -24,7 +24,7 @@ func (p *Parameters) Collect(ident string, val *Value) {
 }
 
 func (p *Parameters) Finish(sel *Selection, node Node) (err error) {
-	i := schema.NewMetaListIterator(sel.SelectedMeta(), true)
+	i := schema.NewMetaListIterator(sel.State.SelectedMeta(), true)
 	for i.HasNextMeta() {
 		m := i.NextMeta()
 		if _, ignore := p.Ignores[m.GetIdent()]; ignore {

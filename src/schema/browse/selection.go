@@ -8,141 +8,110 @@ import (
 )
 
 type Selection struct {
-	events *Events
-	path       schema.MetaPath
-	node       Node
-	key        []*Value
-	insideList bool
+	Events Events
+	Node   Node
+	State  *WalkState
 }
 
-func (s *Selection) Node() Node {
-	return s.node
+func NewSelectionFromState(node Node, state *WalkState) *Selection {
+	return &Selection{
+		Node: node,
+		Events: &EventsImpl{},
+		State: state.Copy(),
+	}
 }
 
 func NewSelection(node Node, meta schema.MetaList) *Selection {
 	sel := &Selection{
-		node: node,
-		events: &Events{},
+		Node: node,
+		Events: &EventsImpl{},
+		State: &WalkState{},
 	}
-	sel.path.ParentPath = &schema.MetaPath{Meta: meta}
+	sel.State.path.ParentPath = &schema.MetaPath{Meta: meta}
 	return sel
-}
-
-func (sel *Selection) Copy(node Node) *Selection {
-	copy := *sel
-	copy.node = node
-	return &copy
-}
-
-func (sel *Selection) SelectedMeta() schema.MetaList {
-	return sel.path.Parent()
 }
 
 func (sel *Selection) Select(node Node) *Selection {
 	child := &Selection{
-		events: sel.events,
-		node: node,
+		Events: sel.Events,
+		Node: node,
+		State: &WalkState{},
 	}
-	child.path.ParentPath = &sel.path
+	child.State.path.ParentPath = &sel.State.path
 	return child
 }
 
 func (sel *Selection) SelectListItem(node Node, key []*Value) *Selection {
 	next := *sel
 	// important flag, otherwise we recurse indefinitely
-	next.insideList = true
-	next.node = node
+	next.State.insideList = true
+	next.Node = node
 	if len(key) > 0 {
 		// TODO: Support compound keys
-		next.path.Key = key[0].String()
-		next.key = key
+		next.State.path.Key = key[0].String()
+		next.State.key = key
 	}
 	return &next
 }
 
-func (sel *Selection) Position() schema.Meta {
-	return sel.path.Meta
-}
-
-func (sel *Selection) SetPosition(position schema.Meta) {
-	sel.path.Meta = position
-}
-
-func (sel *Selection) Path() *schema.MetaPath {
-	return &sel.path
-}
-
 func (sel *Selection) String() string {
-	if sel.Node() != nil {
-		nodeStr := sel.Node().String()
+	if sel.Node != nil {
+		nodeStr := sel.Node.String()
 		if len(nodeStr) > 0 {
-			return nodeStr + " " + sel.path.Position()
+			return nodeStr + " " + sel.State.path.Position()
 		}
 	}
-	return sel.path.Position()
+	return sel.State.path.Position()
 }
 
-func (sel *Selection) InsideList() bool {
-	return sel.insideList
-}
-
-func (sel *Selection) Key() []*Value {
-	return sel.key
-}
-
-func (sel *Selection) RequireKey() ([]*Value, error) {
-	if sel.key == nil {
-		return nil, errors.New(fmt.Sprint("Cannot select list without key ", sel.String()))
+func (sel *Selection) RequireKey(key []*Value, err error) {
+	key = sel.State.Key()
+	if key == nil {
+		err = errors.New(fmt.Sprint("Cannot select list without key ", sel.String()))
 	}
-	return sel.key, nil
+	return
 }
 
-func (sel *Selection) SetKey(key []*Value) {
-	sel.key = key
+func (sel *Selection) Fire(e Event) (err error) {
+	err = sel.Node.Event(sel, e)
+	if err != nil {
+		return err
+	}
+	path := sel.State.Path().Path()
+	return sel.Events.Fire(path, e)
 }
 
 func (sel *Selection) IsConfig() bool {
-	if hasDetails, ok := sel.path.Meta.(schema.HasDetails); ok {
-		return hasDetails.Details().Config(&sel.path)
+	if hasDetails, ok := sel.State.Path().Meta.(schema.HasDetails); ok {
+		return hasDetails.Details().Config(sel.State.Path())
 	}
 	return true
 }
 
-func (sel *Selection) On(e Event, listener ListenFunc) {
-	sel.events.AddByFullPath(e, sel.path.Path(), listener)
+func (sel *Selection) On(e Event, listener ListenFunc) *Listener {
+	return sel.OnPath(e, sel.State.Path().Path(), listener)
 }
 
-func (sel *Selection) OnPath(e Event, path string, listener ListenFunc) {
-	var fullPath string
-	if len(path) == 0 || path[0] != '/' {
-		fullPath = sel.path.Path() + "/" + path
-	} else {
-		fullPath = path
-	}
-	sel.events.AddByFullPath(e, fullPath, listener)
+func (sel *Selection) OnPath(e Event, path string, handler ListenFunc) *Listener {
+	listener := &Listener{event: e, path: path, handler: handler}
+	sel.Events.AddListener(listener)
+	return listener
 }
 
-func (sel *Selection) OnRegex(e Event, regex *regexp.Regexp, listener ListenFunc) {
-	sel.events.AddByRegex(e, regex, listener)
+func (sel *Selection) OnChild(e Event, meta schema.MetaList, listener ListenFunc)  *Listener {
+	fullPath := sel.State.Path().Path() + "/" + meta.GetIdent()
+	return sel.OnPath(e, fullPath, listener)
 }
 
-func (sel *Selection) OnChild(e Event, meta schema.MetaList, listener ListenFunc) {
-	fullPath := sel.path.Path() + "/" + meta.GetIdent()
-	sel.events.AddByFullPath(e, fullPath, listener)
-}
-
-func (sel *Selection) Fire(e Event) (err error) {
-	err = sel.node.Event(sel, e)
-	if err != nil {
-		return err
-	}
-	path := sel.path.Path()
-	return sel.events.Fire(path, e)
+func (sel *Selection) OnRegex(e Event, regex *regexp.Regexp, handler ListenFunc) *Listener {
+	listener := &Listener{event: e, regex: regex, handler: handler}
+	sel.Events.AddListener(listener)
+	return listener
 }
 
 func (sel *Selection) Level() int {
 	level := -1
-	p := &sel.path
+	p := sel.State.Path()
 	for p.ParentPath != nil {
 		level++
 		p = p.ParentPath

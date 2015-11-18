@@ -3,7 +3,6 @@ package browse
 import (
 	"testing"
 	"strings"
-	"bytes"
 	"schema/yang"
 	"regexp"
 )
@@ -18,6 +17,11 @@ module m {
 		leaf hello {
 			type string;
 		}
+		container deep {
+			leaf goodbye {
+				type string;
+			}
+		}
 	}
 }
 `
@@ -25,16 +29,18 @@ module m {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var null bytes.Buffer
-	out := NewJsonWriter(&null).Container()
+	store := NewBufferStore()
+	storeData := NewStoreData(m, store)
+	sel, _ := storeData.Selector(NewPath(""))
+	//out := NewJsonWriter(&null).Container()
 	var r Node
 	r, err = NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
 	if err != nil {
 		t.Fatal(err)
 	}
-	sel := NewSelection(out, m)
+	//sel := NewSelection(out, m)
 	var relPathFired bool
-	sel.OnPath(NEW, "message", func() error {
+	sel.OnPath(NEW, "m/message", func() error {
 		relPathFired = true
 		return nil
 	})
@@ -43,7 +49,8 @@ module m {
 		regexFired = true
 		return nil
 	})
-	err = UpsertByNode(sel, r, out)
+	in := NewSelectionFromState(r, sel.State)
+	err = Upsert(in, sel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,4 +60,9 @@ module m {
 	if !regexFired {
 		t.Fatal("regex not fired")
 	}
+//
+//	sel, err = storeData.Selector(NewPath("message"))
+//	if err != nil {
+//		t.Fatal(err)
+//	}
 }

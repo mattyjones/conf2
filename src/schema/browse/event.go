@@ -29,8 +29,15 @@ var eventNames = []string {
 	"UNSELECT",
 }
 
-type Events struct {
-	listeners []*listener
+type Events interface {
+	AddListener(*Listener)
+	RemoveListener(*Listener)
+	Fire(path string, e Event) error
+}
+
+type EventsImpl struct {
+	Parent    Events
+	listeners []*Listener
 }
 
 type ListenFunc func() error
@@ -39,44 +46,40 @@ func (e Event) String() string {
 	return eventNames[e]
 }
 
-type listener struct {
+type Listener struct {
 	path string
 	regex *regexp.Regexp
 	event   Event
 	handler ListenFunc
 }
 
-func (l *listener) String() string {
+func (l *Listener) String() string {
 	if len(l.path) > 0 {
 		return fmt.Sprintf("%s:%s=>%p", l.event, l.path, l.handler)
 	}
 	return fmt.Sprintf("%s:%v=>%p", l.event, l.regex, l.handler)
 }
 
-func (impl *Events) dump() {
+func (impl *EventsImpl) dump() {
 	for _, l := range impl.listeners {
 		conf2.Debug.Print(l.String())
 	}
 }
 
-func (impl *Events) AddByFullPath(e Event, path string, handler ListenFunc) {
-	impl.listeners = append(impl.listeners, &listener{event: e, path: path, handler: handler})
+func (impl *EventsImpl) AddListener(l *Listener) {
+	impl.listeners = append(impl.listeners, l)
 }
 
-func (impl *Events) AddByRegex(e Event, regex *regexp.Regexp, handler ListenFunc) {
-	impl.listeners = append(impl.listeners, &listener{event: e, regex: regex, handler: handler})
-}
-
-func (impl *Events) Remove(handler ListenFunc) {
-	for i, l := range impl.listeners {
-		if &l.handler == &handler {
+func (impl *EventsImpl) RemoveListener(l *Listener) {
+	for i, candidate := range impl.listeners {
+		if l == candidate {
 			impl.listeners = append(impl.listeners[:i], impl.listeners[i + 1:]...)
 			break
 		}
 	}
 }
 
-func (impl *Events) Fire(path string, e Event) (err error) {
+func (impl *EventsImpl) Fire(path string, e Event) (err error) {
 	if len(impl.listeners) > 0 {
 		for _, l := range impl.listeners {
 			if l.event == e {
@@ -93,6 +96,11 @@ func (impl *Events) Fire(path string, e Event) (err error) {
 					return err
 				}
 			}
+		}
+	}
+	if impl.Parent != nil {
+		if err = impl.Parent.Fire(path, e); err != nil {
+			return err
 		}
 	}
 	return nil

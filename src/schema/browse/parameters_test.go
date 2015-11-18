@@ -36,10 +36,10 @@ module m {
 		C string
 	} {}
 	p.Collect("c", &Value{Type: schema.NewDataType("string"), Str: "z"})
-	p.Ignore("b")
+	p.Record("b")
 	n := MarshalContainer(&obj)
 	sel := NewSelection(n, m)
-	err = p.Configure(sel, n)
+	err = p.Finish(sel, n)
 	if err != nil {
 		t.Error(err)
 	}
