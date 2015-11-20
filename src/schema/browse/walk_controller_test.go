@@ -44,7 +44,7 @@ module food {
 
 func TestPathIntoListItemContainer(t *testing.T) {
 	var err error
-	var b *BucketBrowser
+	var b *BucketData
 	if b, err = LoadPathTestData(); err != nil {
 		t.Fatal(err)
 	}
@@ -62,34 +62,36 @@ func TestPathIntoListItemContainer(t *testing.T) {
 	}
 }
 
-func LoadPathTestData() (*BucketBrowser, error) {
+func LoadPathTestData() (*BucketData, error) {
 	m, err := yang.LoadModuleFromByteArray([]byte(walkTestModule), nil)
 	if err != nil {
 		return nil, err
 	} else {
-		bb := NewBucketBrowser(m)
 		// avoid using json to load because that needs edit/INSERT and
 		// we don't want to use code to load seed data that we're trying to test
-		fruits := make([]map[string]interface{}, 2)
-		fruits[0] = map[string]interface{}{
-			"name": "banana",
+		data := map[string]interface{}{
+			"fruits" : []map[string]interface{}{
+				map[string]interface{}{
+					"name" : "banana",
+					"origin" : map[string]interface{}{
+						"country" : "Brazil",
+					},
+					"plane" : map[string]interface{}{
+						"name" : "747c",
+					},
+				},
+				map[string]interface{}{
+					"name" : "apple",
+					"origin" : map[string]interface{}{
+						"country" : "US",
+					},
+					"boat" : map[string]interface{}{
+						"name" : "SS Hudson",
+					},
+				},
+			},
 		}
-		fruits[0]["origin"] = map[string]interface{}{
-			"country": "Brazil",
-		}
-		fruits[0]["plane"] = map[string]interface{}{
-			"name": "747c",
-		}
-		fruits[1] = map[string]interface{}{
-			"name": "apple",
-		}
-		fruits[1]["origin"] = map[string]interface{}{
-			"country": "US",
-		}
-		fruits[1]["boat"] = map[string]interface{}{
-			"name": "SS Hudson",
-		}
-		bb.Bucket["fruits"] = fruits
+		bb := &BucketData{Meta :m, Root: data}
 		return bb, nil
 	}
 }

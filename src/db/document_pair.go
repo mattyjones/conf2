@@ -19,17 +19,38 @@ import (
 //   "config" set to "true".
 
 type DocumentPair struct {
-	oper   *browse.Selection
-	config *browse.Selection
+	oper   browse.Data
+	config browse.Data
 }
 
-func NewDocumentPair(operational *browse.Selection, config *browse.Selection) (pair *DocumentPair, err error) {
+func NewDocumentPair(operational browse.Data, config browse.Data) (pair *DocumentPair, err error) {
 	pair = &DocumentPair{
 		oper:   operational,
 		config: config,
 	}
 	// Here we initialize the operational browser with the current configuration
-	err = browse.Upsert(config, operational)
+	err = browse.SyncData(config, operational, browse.NewPath(""), browse.UPSERT)
+	return
+}
+
+func NewSelectionPair(oper *browse.Selection, config *browse.Selection) (s *browse.Selection, err error) {
+	pair := &selectionPair{
+		operEvents : &browse.EventsImpl{Parent:oper.Events},
+	}
+	var configNode browse.Node
+	if config != nil {
+		pair.configEvents = &browse.EventsImpl{Parent:config.Events}
+		configNode = config.Node
+	}
+	combo := pair.selectPair(oper.State, oper.Node, configNode)
+	s = &browse.Selection{
+		Events: &browse.EventMulticast{
+			A: pair.configEvents,
+			B: pair.operEvents,
+		},
+		State: oper.State,
+		Node: combo,
+	}
 	return
 }
 
@@ -38,25 +59,22 @@ type selectionPair struct {
 	operEvents browse.Events
 }
 
-func (self *DocumentPair) Selector(path *browse.Path) (*browse.Selection, error) {
-	pair := &selectionPair{
-		configEvents : &browse.EventsImpl{Parent:self.config.Events},
-		operEvents : &browse.EventsImpl{Parent:self.oper.Events},
+func (self *DocumentPair) Selector(path *browse.Path) (s *browse.Selection, err error) {
+	var configSel, operSel *browse.Selection
+	if operSel, err = self.oper.Selector(path); err != nil {
+		return
 	}
-	combo := pair.selectPair(self.oper.State, self.oper.Node, self.config.Node)
-	s := &browse.Selection{
-		Events: &browse.EventMulticast{
-			A: pair.configEvents,
-			B: pair.operEvents,
-		},
-		State: self.oper.State,
-		Node: combo,
+	if operSel == nil {
+		return nil, nil
 	}
-	return browse.WalkPath(s, path)
+	if configSel, err = self.config.Selector(path); err != nil {
+		return
+	}
+	return NewSelectionPair(operSel, configSel)
 }
 
 func (self *DocumentPair) Schema() schema.MetaList {
-	return self.oper.State.SelectedMeta()
+	return self.oper.Schema()
 }
 
 func (self *selectionPair) selectPair(state *browse.WalkState, operNode browse.Node, configNode browse.Node) browse.Node {

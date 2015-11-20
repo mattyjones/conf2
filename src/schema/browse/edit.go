@@ -20,6 +20,17 @@ type editor struct{
 	created bool
 }
 
+func SyncData(from Data, to Data, p *Path, s Strategy) (err error) {
+	var fromSel, toSel *Selection
+	if fromSel, err = from.Selector(p); err != nil {
+		return err
+	}
+	if toSel, err = to.Selector(p); err != nil {
+		return err
+	}
+	return Edit(fromSel, toSel, s, FullWalk())
+}
+
 func Insert(from *Selection, to *Selection) (err error) {
 	return Edit(from, to, INSERT, FullWalk())
 }

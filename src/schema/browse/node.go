@@ -43,7 +43,6 @@ func (s *MyNode) Close() (err error) {
 
 func (s *MyNode) Select(sel *Selection, meta schema.MetaList, new bool) (Node, error) {
 	if s.OnSelect == nil {
-		panic(sel.String())
 		return nil, &browseError{
 			Code: http.StatusNotImplemented,
 			Msg:  fmt.Sprint("Select not implemented on node ", sel.String()),

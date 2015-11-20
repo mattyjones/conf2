@@ -128,6 +128,9 @@ func (v *Value) String() string {
 
 // Incoming value should be of appropriate type according to given data type format
 func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
+	if val == nil {
+		return nil, nil
+	}
 	reflectVal := reflect.ValueOf(val)
 	v := &Value{Type: typ}
 	switch typ.Format {
@@ -138,7 +141,12 @@ func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
 	case schema.FMT_INT32_LIST:
 		v.Intlist = InterfaceToIntlist(val)
 	case schema.FMT_INT32:
-		v.Int = int(reflectVal.Int())
+		switch reflectVal.Kind() {
+		case reflect.Float64:
+			v.Int = int(reflectVal.Float())
+		default:
+			v.Int = int(reflectVal.Int())
+		}
 	case schema.FMT_STRING:
 		v.Str = reflectVal.String()
 	case schema.FMT_ENUMERATION:

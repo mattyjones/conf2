@@ -30,15 +30,18 @@ module m {
 	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr), nil); err != nil {
 		t.Error("bad module", err)
 	} else {
-		b := NewBucketBrowser(module)
-		l1 := make([]map[string]interface{}, 1)
-		l1[0] = make(map[string]interface{}, 1)
-		l2 := make([]map[string]interface{}, 1)
-		l2[0] = make(map[string]interface{}, 1)
-		l2[0]["a"] = "hi"
-		l2[0]["b"] = "bye"
-		l1[0]["l2"] = l2
-		b.Bucket["l1"] = l1
+		root := map[string]interface{}{
+			"l1": []map[string]interface{}{
+				map[string]interface{}{"l2" : []map[string]interface{}{
+					map[string]interface{}{
+							"a" : "hi",
+							"b" : "bye",
+						},
+					},
+				},
+			},
+		}
+		b := BucketData{Meta: module, Root: root}
 		var in *Selection
 		in, err = b.Selector(NewPath(""))
 		var json bytes.Buffer

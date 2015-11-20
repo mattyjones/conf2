@@ -30,13 +30,13 @@ module food {
 
 func TestEditListItem(t *testing.T) {
 	var err error
-	var b *BucketBrowser
-	if b, err = LoadEditTestData(); err != nil {
+	var bd *BucketData
+	if bd, err = LoadEditTestData(); err != nil {
 		t.Fatal(err)
 	}
 	json := NewJsonReader(strings.NewReader(`{"origin":{"country":"Canada"}}`))
 	var selection *Selection
-	if selection, err = b.Selector(NewPath("fruits=apple")); err != nil {
+	if selection, err = bd.Selector(NewPath("fruits=apple")); err != nil {
 		t.Fatal(err)
 	}
 	var in *Selection
@@ -53,10 +53,8 @@ func TestEditListItem(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	} else {
-		var actual interface{}
-		if actual, err = b.Read("fruits.1.origin.country"); err != nil {
-			t.Error(err)
-		} else if actual != "Canada" {
+		actual := MapValue(bd.Root, "fruits.1.origin.country")
+		if actual != "Canada" {
 			t.Error("Edit failed", actual)
 		}
 	}
@@ -64,7 +62,7 @@ func TestEditListItem(t *testing.T) {
 	// INSERT
 	log.Println("Testing insert\n")
 	json = NewJsonReader(strings.NewReader(`{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`))
-	if selection, err = b.Selector(NewPath("fruits")); err != nil {
+	if selection, err = bd.Selector(NewPath("fruits")); err != nil {
 		t.Fatal(err)
 	}
 	var jsonNode *Selection
@@ -75,9 +73,9 @@ func TestEditListItem(t *testing.T) {
 		t.Error(err)
 	}
 
-	var actual interface{}
-	if actual, err = b.Read("fruits"); err != nil {
-		t.Error(err)
+	actual, found := bd.Root["fruits"]
+	if !found {
+		t.Error("fruits not found")
 	} else {
 		fruits := actual.([]map[string]interface{})
 		if len(fruits) != 3 {
@@ -86,28 +84,30 @@ func TestEditListItem(t *testing.T) {
 	}
 }
 
-func LoadEditTestData() (*BucketBrowser, error) {
+func LoadEditTestData() (*BucketData, error) {
 	m, err := yang.LoadModuleFromByteArray([]byte(EDIT_TEST_MODULE), nil)
 	if err != nil {
 		return nil, err
 	} else {
-		bb := NewBucketBrowser(m)
 		// avoid using json to load because that needs edit/INSERT and
 		// we don't want to use code to load seed data that we're trying to test
-		fruits := make([]map[string]interface{}, 2)
-		fruits[0] = map[string]interface{}{
-			"name": "banana",
+		fruits := map[string]interface{}{
+			"fruits" : []map[string]interface{}{
+				map[string]interface{}{
+					"name" : "banana",
+					"origin" : map[string]interface{}{
+						"country" : "Brazil",
+					},
+				},
+				map[string]interface{}{
+					"name" : "apple",
+					"origin" : map[string]interface{}{
+						"country": "US",
+					},
+				},
+			},
 		}
-		fruits[0]["origin"] = map[string]interface{}{
-			"country": "Brazil",
-		}
-		fruits[1] = map[string]interface{}{
-			"name": "apple",
-		}
-		fruits[1]["origin"] = map[string]interface{}{
-			"country": "US",
-		}
-		bb.Bucket["fruits"] = fruits
+		bb := &BucketData{Meta: m, Root:fruits}
 		return bb, nil
 	}
 }
