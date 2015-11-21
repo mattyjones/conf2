@@ -1,0 +1,36 @@
+module example-todo-management {
+    namespace "example-todo";
+    prefix "http://conf2.org/example-todo";
+    import conf2-management;
+    revision 0;
+
+    list todos {
+        key "id";
+        leaf id {
+            type int32;
+        }
+        leaf status {
+            type enumeration {
+                enum done;
+                enum todo;
+            }
+            default "todo";
+        }
+        leaf summary {
+            type string;
+        }
+        leaf description {
+            type string;
+        }
+        leaf-list keywords {
+            type string;
+        }
+        leaf dueDate {
+            type int64;
+        }
+    }
+
+    container restconf {
+        uses management;
+    }
+}

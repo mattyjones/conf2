@@ -11,6 +11,7 @@ type Value struct {
 	Type     *schema.DataType
 	Bool     bool
 	Int      int
+	Int64	  int64
 	Str      string
 	Float    float32
 	Intlist  []int
