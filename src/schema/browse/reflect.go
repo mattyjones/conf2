@@ -51,9 +51,12 @@ func WriteField(meta schema.HasDataType, obj interface{}, v *Value) error {
 func WriteFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}, v *Value) error {
 	objType := reflect.ValueOf(obj).Elem()
 	if !objType.IsValid() {
-		return &browseError{Msg: fmt.Sprintf("Cannot find property \"%s\" on invalid or nil %s", fieldName, reflect.TypeOf(obj))}
+		panic(fmt.Sprintf("Cannot find property \"%s\" on invalid or nil %s", fieldName, reflect.TypeOf(obj)))
 	}
 	value := objType.FieldByName(fieldName)
+	if !value.IsValid() {
+		panic(fmt.Sprintf("Invalid property \"%s\" on %s", fieldName, reflect.TypeOf(obj)))
+	}
 	switch v.Type.Format {
 	case schema.FMT_BOOLEAN_LIST:
 		value.Set(reflect.ValueOf(v.Boollist))
