@@ -139,17 +139,21 @@ func (json *JsonWriter) endContainer() (err error) {
 
 func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 	json.writeIdent(meta.GetIdent())
+	if schema.IsListFormat(v.Type.Format) {
+		if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
+			return
+		}
+	}
 	switch v.Type.Format {
 	case schema.FMT_BOOLEAN:
 		err = json.writeBool(v.Bool)
+	case schema.FMT_INT64:
+		err = json.writeInt64(v.Int64)
 	case schema.FMT_INT32:
 		err = json.writeInt(v.Int)
 	case schema.FMT_STRING, schema.FMT_ENUMERATION:
 		err = json.writeString(v.Str)
 	case schema.FMT_BOOLEAN_LIST:
-		if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
-			return
-		}
 		for i, b := range v.Boollist {
 			if i > 0 {
 				if _, err = json.out.WriteRune(COMMA); err != nil {
@@ -162,9 +166,6 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 		}
 		_, err = json.out.WriteRune(CLOSE_ARRAY)
 	case schema.FMT_INT32_LIST:
-		if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
-			return
-		}
 		for i, n := range v.Intlist {
 			if i > 0 {
 				if _, err = json.out.WriteRune(COMMA); err != nil {
@@ -175,11 +176,18 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 				return
 			}
 		}
-		_, err = json.out.WriteRune(CLOSE_ARRAY)
-	case schema.FMT_STRING_LIST, schema.FMT_ENUMERATION_LIST:
-		if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
-			return
+	case schema.FMT_INT64_LIST:
+		for i, n := range v.Int64list {
+			if i > 0 {
+				if _, err = json.out.WriteRune(COMMA); err != nil {
+					return
+				}
+			}
+			if err = json.writeInt64(n); err != nil {
+				return
+			}
 		}
+	case schema.FMT_STRING_LIST, schema.FMT_ENUMERATION_LIST:
 		for i, s := range v.Strlist {
 			if i > 0 {
 				if _, err = json.out.WriteRune(COMMA); err != nil {
@@ -190,7 +198,11 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 				return
 			}
 		}
-		_, err = json.out.WriteRune(CLOSE_ARRAY)
+	}
+	if schema.IsListFormat(v.Type.Format) {
+		if _, err = json.out.WriteRune(CLOSE_ARRAY); err != nil {
+			return
+		}
 	}
 	return
 }
@@ -205,6 +217,11 @@ func (json *JsonWriter) writeBool(b bool) error {
 
 func (json *JsonWriter) writeInt(i int) (err error) {
 	_, err = json.out.WriteString(strconv.Itoa(i))
+	return
+}
+
+func (json *JsonWriter) writeInt64(i int64) (err error) {
+	_, err = json.out.WriteString(strconv.FormatInt(i, 10))
 	return
 }
 

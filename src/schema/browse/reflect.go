@@ -21,8 +21,12 @@ func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj inter
 		v.Boollist = value.Interface().([]bool)
 	case schema.FMT_INT32_LIST:
 		v.Intlist = value.Interface().([]int)
+	case schema.FMT_INT64_LIST:
+		v.Int64list = value.Interface().([]int64)
 	case schema.FMT_INT32:
 		v.Int = int(value.Int())
+	case schema.FMT_INT64:
+		v.Int64 = value.Int()
 	case schema.FMT_STRING:
 		v.Str = value.String()
 	case schema.FMT_STRING_LIST:
@@ -59,6 +63,10 @@ func WriteFieldWithFieldName(fieldName string, meta schema.HasDataType, obj inte
 		value.Set(reflect.ValueOf(v.Intlist))
 	case schema.FMT_INT32:
 		value.SetInt(int64(v.Int))
+	case schema.FMT_INT64_LIST:
+		value.Set(reflect.ValueOf(v.Int64list))
+	case schema.FMT_INT64:
+		value.SetInt(v.Int64)
 	case schema.FMT_STRING_LIST:
 		value.Set(reflect.ValueOf(v.Strlist))
 	case schema.FMT_STRING:

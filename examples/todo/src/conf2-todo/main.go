@@ -50,7 +50,7 @@ func (app *App) Selector(path *browse.Path) (*browse.Selection, error) {
 	return browse.WalkPath(browse.NewSelection(app.Manage(), app.Schema()), path)
 }
 
-func (app *App) Schema() {
+func (app *App) Schema() schema.MetaList {
 	if app.schema == nil {
 		var err error
 		app.schema, err = yang.LoadModule(yang.YangPath(), "example-todo.yang")
@@ -65,9 +65,10 @@ func (app *App) Manage() browse.Node {
 	s := &browse.MyNode{}
 	s.OnSelect = func(sel *browse.Selection, meta schema.MetaList, new bool) (browse.Node, error) {
 		switch meta.GetIdent() {
-		case "management":
+		case "restconf":
 			if new {
 				app.management = restconf.NewService()
+				app.management.RegisterBrowser(app)
 			}
 			if app.management != nil {
 				return app.management.Manage(), nil

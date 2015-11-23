@@ -12,6 +12,7 @@ type Value struct {
 	Bool     bool
 	Int      int
 	Int64	  int64
+	Int64list []int64
 	Str      string
 	Float    float32
 	Intlist  []int
@@ -120,6 +121,8 @@ func (v *Value) String() string {
 		return "false"
 	case schema.FMT_INT32:
 		return strconv.Itoa(v.Int)
+	case schema.FMT_INT64:
+		return strconv.FormatInt(v.Int64, 10)
 	case schema.FMT_STRING:
 		return v.Str
 	default:

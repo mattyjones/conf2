@@ -66,6 +66,14 @@ func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interfa
 	// TODO: Consider using CoerseValue
 	v = &Value{Type: meta.GetDataType()}
 	switch v.Type.Format {
+	case schema.FMT_INT64:
+		v.Int64 = int64(data.(float64))
+	case schema.FMT_INT64_LIST:
+		a := data.([]interface{})
+		v.Int64list = make([]int64, len(a))
+		for i, f := range a {
+			v.Int64list[i] = int64(f.(float64))
+		}
 	case schema.FMT_INT32:
 		v.Int = int(data.(float64))
 	case schema.FMT_INT32_LIST:

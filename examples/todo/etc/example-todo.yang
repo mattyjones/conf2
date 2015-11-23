@@ -1,4 +1,4 @@
-module example-todo-management {
+module example-todo {
     namespace "example-todo";
     prefix "http://conf2.org/example-todo";
     import conf2-management;
