@@ -119,10 +119,10 @@ func (my *MyNode) Mixin(delegate Node) {
 	my.OnEvent = delegate.Event
 }
 
-type NextFunc func(selection *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error)
-type SelectFunc func(selection *Selection, meta schema.MetaList, new bool) (child Node, err error)
-type ReadFunc func(selection *Selection, meta schema.HasDataType) (*Value, error)
-type WriteFunc func(selection *Selection, meta schema.HasDataType, val *Value) error
-type ChooseFunc func(selection *Selection, choice *schema.Choice) (m schema.Meta, err error)
-type ActionFunc func(selection *Selection, rpc *schema.Rpc, input *Selection) (output *Selection, err error)
+type NextFunc func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error)
+type SelectFunc func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error)
+type ReadFunc func(sel *Selection, meta schema.HasDataType) (*Value, error)
+type WriteFunc func(sel *Selection, meta schema.HasDataType, val *Value) error
+type ChooseFunc func(sel *Selection, choice *schema.Choice) (m schema.Meta, err error)
+type ActionFunc func(sel *Selection, rpc *schema.Rpc, input *Selection) (output *Selection, err error)
 type EventFunc func(sel *Selection, e Event) error

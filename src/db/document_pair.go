@@ -179,5 +179,7 @@ func (self *selectionPair) selectPair(state *browse.WalkState, operNode browse.N
 		}
 		return
 	}
+	// at this time, config has no generic ability to handle actions, so forward to operational.
+	s.OnAction = operNode.Action
 	return s
 }

@@ -332,7 +332,7 @@ uses_stmt :
 rpc_stmt :
     rpc_def
     token_curly_open
-    rpc_body_stmts
+    optional_rpc_body_stmts
     token_curly_close {
         if HasError(yylex, popAndAddMeta(&yylval)) {
             goto ret1
@@ -343,6 +343,10 @@ rpc_def :
     kywd_rpc token_ident {
         yylval.stack.Push(&schema.Rpc{Ident:$2})
     };
+
+optional_rpc_body_stmts :
+    /* empty */
+    | rpc_body_stmts;
 
 rpc_body_stmts :
     rpc_body_stmt | rpc_body_stmts rpc_body_stmt;
@@ -374,7 +378,7 @@ rpc_output :
 action_stmt :
     action_def
     token_curly_open
-    action_body_stmts
+    optional_action_body_stmts
     token_curly_close {
         if HasError(yylex, popAndAddMeta(&yylval)) {
             goto ret1
@@ -385,6 +389,10 @@ action_def :
     kywd_action token_ident {
         yylval.stack.Push(&schema.Rpc{Ident:$2})
     };
+
+optional_action_body_stmts :
+    /* empty */
+    | action_body_stmts;
 
 action_body_stmts :
     action_body_stmt | action_body_stmts action_body_stmt;

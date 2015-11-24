@@ -27,6 +27,10 @@ func (v *Value) Value() interface{} {
 		return v.Bool
 	case schema.FMT_BOOLEAN_LIST:
 		return v.Boollist
+	case schema.FMT_INT64:
+		return v.Int64
+	case schema.FMT_INT64_LIST:
+		return v.Int64list
 	case schema.FMT_INT32, schema.FMT_ENUMERATION:
 		return v.Int
 	case schema.FMT_INT32_LIST, schema.FMT_ENUMERATION_LIST:
@@ -151,6 +155,10 @@ func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
 		default:
 			v.Int = int(reflectVal.Int())
 		}
+	case schema.FMT_INT64:
+		v.Int64 = reflectVal.Int()
+	case schema.FMT_INT64_LIST:
+		v.Int64list = InterfaceToInt64list(val)
 	case schema.FMT_STRING:
 		v.Str = reflectVal.String()
 	case schema.FMT_ENUMERATION:
@@ -202,6 +210,19 @@ func InterfaceToBoollist(o interface{}) (boollist []bool) {
 		boollist = make([]bool, len(arrayValues))
 		for i, arrayValue := range arrayValues {
 			boollist[i] = arrayValue.(bool)
+		}
+	}
+	return
+}
+
+func InterfaceToInt64list(o interface{}) (intlist []int64) {
+	switch arrayValues := o.(type) {
+	case []int64:
+		return arrayValues
+	case []interface{}:
+		intlist = make([]int64, len(arrayValues))
+		for i, arrayValue := range arrayValues {
+			intlist[i] = arrayValue.(int64)
 		}
 	}
 	return
