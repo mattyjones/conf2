@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"schema/browse"
+	"data"
 	"os"
 	"fmt"
 	"schema/yang"
@@ -22,7 +22,7 @@ func main() {
 	}
 
 	app := &App{}
-	selection, err := app.Selector(browse.NewPath(""))
+	selection, err := app.Selector(data.NewPath(""))
 	if err != nil {
 		panic(err)
 	}
@@ -31,8 +31,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	config, err := browse.NewJsonReader(configFile).Selector(selection.State)
-	err = browse.Insert(config, selection)
+	config, err := data.NewJsonReader(configFile).Selector(selection.State)
+	err = data.Insert(config, selection)
 	if err != nil {
 		panic(err)
 	}
@@ -46,8 +46,8 @@ type App struct {
 	todos *Todos
 }
 
-func (app *App) Selector(path *browse.Path) (*browse.Selection, error) {
-	return browse.WalkPath(browse.NewSelection(app.Manage(), app.Schema()), path)
+func (app *App) Selector(path *data.Path) (*data.Selection, error) {
+	return data.WalkPath(data.NewSelection(app.Manage(), app.Schema()), path)
 }
 
 func (app *App) Schema() schema.MetaList {
@@ -61,9 +61,9 @@ func (app *App) Schema() schema.MetaList {
 	return app.schema
 }
 
-func (app *App) Manage() browse.Node {
-	s := &browse.MyNode{}
-	s.OnSelect = func(sel *browse.Selection, meta schema.MetaList, new bool) (browse.Node, error) {
+func (app *App) Manage() data.Node {
+	s := &data.MyNode{}
+	s.OnSelect = func(sel *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
 		switch meta.GetIdent() {
 		case "restconf":
 			if new {

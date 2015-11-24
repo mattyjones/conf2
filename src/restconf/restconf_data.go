@@ -2,7 +2,7 @@ package restconf
 
 import (
 	"schema"
-	"schema/browse"
+	"data"
 	"schema/yang"
 )
 
@@ -17,7 +17,7 @@ func NewData(restconf *Service) (rcb *Data, err error) {
 	if err == nil {
 		parent := schema.FindByPath(module, "modules").(*schema.List)
 		placeholder := schema.FindByPath(parent, "module")
-		targetParent := browse.GetSchemaSchema()
+		targetParent := data.GetSchemaSchema()
 		targetMaster := schema.FindByPath(targetParent, "module").(*schema.Container)
 		// shallow clone target otherwise we alter browser's schema
 		target := *targetMaster
@@ -31,39 +31,39 @@ func (rcb *Data) Schema() schema.MetaList {
 	return rcb.Meta
 }
 
-func (rcb *Data) Selector(path *browse.Path) (*browse.Selection, error) {
-	s := &browse.MyNode{}
-	s.OnSelect = func(state *browse.Selection, meta schema.MetaList, new bool) (browse.Node, error) {
+func (rcb *Data) Selector(path *data.Path) (*data.Selection, error) {
+	s := &data.MyNode{}
+	s.OnSelect = func(state *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
 		switch meta.GetIdent() {
 		case "modules":
 			return SelectModules(rcb.Service.registrations), nil
 		}
 		return nil, nil
 	}
-	return browse.WalkPath(browse.NewSelection(s, rcb.Meta), path)
+	return data.WalkPath(data.NewSelection(s, rcb.Meta), path)
 }
 
-func SelectManagement(service *Service) browse.Node {
-	s := &browse.MyNode{}
-	s.OnSelect = func(state *browse.Selection, meta schema.MetaList, new bool) (child browse.Node, err error) {
+func SelectManagement(service *Service) data.Node {
+	s := &data.MyNode{}
+	s.OnSelect = func(state *data.Selection, meta schema.MetaList, new bool) (child data.Node, err error) {
 		switch meta.GetIdent() {
 		case "modules":
 			return SelectModules(service.registrations), nil
 		}
 		return
 	}
-	s.OnWrite = func(sel *browse.Selection, meta schema.HasDataType, val *browse.Value) (err error) {
+	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, val *data.Value) (err error) {
 		switch meta.GetIdent() {
 		case "docRoot":
 			service.SetDocRoot(&schema.FileStreamSource{Root: val.Str})
 		default:
-			return browse.WriteField(meta, service, val)
+			return data.WriteField(meta, service, val)
 		}
 		return
 	}
-	s.OnEvent = func(sel *browse.Selection, e browse.Event) (err error) {
+	s.OnEvent = func(sel *data.Selection, e data.Event) (err error) {
 		switch e {
-		case browse.NEW:
+		case data.NEW:
 			go service.Listen()
 			var data *Data
 			if data, err = NewData(service); err != nil {
@@ -73,50 +73,50 @@ func SelectManagement(service *Service) browse.Node {
 		}
 		return
 	}
-	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
+	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
 		switch meta.GetIdent() {
 		default:
-			return browse.ReadField(meta, service)
+			return data.ReadField(meta, service)
 		}
 	}
 	return s
 }
 
-func SelectModule(name string, reg *registration) browse.Node {
-	s := &browse.MyNode{}
-	s.OnSelect = func(state *browse.Selection, meta schema.MetaList, new bool) (browse.Node, error) {
+func SelectModule(name string, reg *registration) data.Node {
+	s := &data.MyNode{}
+	s.OnSelect = func(state *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
 		switch meta.GetIdent() {
 		case "module":
 			// TODO: support browsing schema at any point, not assume module
-			data := reg.browser.Schema().(*schema.Module)
-			browser := browse.NewSchemaData(data, true)
-			return browser.SelectModule(data), nil
+			d := reg.browser.Schema().(*schema.Module)
+			browser := data.NewSchemaData(d, true)
+			return browser.SelectModule(d), nil
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
+	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
 		switch meta.GetIdent() {
 		case "name":
-			return &browse.Value{Str: name}, nil
+			return &data.Value{Str: name}, nil
 		}
 		return nil, nil
 	}
 	return s
 }
 
-func SelectModules(registrations map[string]*registration) (browse.Node) {
-	s := &browse.MyNode{}
+func SelectModules(registrations map[string]*registration) (data.Node) {
+	s := &data.MyNode{}
 	index := newRegIndex(registrations)
-	s.OnNext = func(state *browse.Selection, meta *schema.List, new bool, keys []*browse.Value, isFirst bool) (browse.Node, error) {
+	s.OnNext = func(state *data.Selection, meta *schema.List, new bool, keys []*data.Value, isFirst bool) (data.Node, error) {
 		if hasMore, err := index.Index.OnNext(state, meta, keys, isFirst); hasMore {
 			return SelectModule(index.Index.CurrentKey(), index.Selected), err
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
+	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
 		switch meta.GetIdent() {
 		case "name":
-			return &browse.Value{Str: index.Index.CurrentKey()}, nil
+			return &data.Value{Str: index.Index.CurrentKey()}, nil
 		}
 		return nil, nil
 	}
@@ -124,7 +124,7 @@ func SelectModules(registrations map[string]*registration) (browse.Node) {
 }
 
 type regIndex struct {
-	Index    browse.StringIndex
+	Index    data.StringIndex
 	Selected *registration
 	Data     map[string]*registration
 }

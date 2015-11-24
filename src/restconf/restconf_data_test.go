@@ -1,7 +1,7 @@
 package restconf
 
 import (
-	"schema/browse"
+	"data"
 	"testing"
 )
 
@@ -12,7 +12,7 @@ func TestRestconfBrowserMetaLoad(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	} else {
-		s, err := b.Selector(browse.NewPath("modules"))
+		s, err := b.Selector(data.NewPath("modules"))
 		if err != nil {
 			t.Error(err.Error())
 		} else if s == nil {

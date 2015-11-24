@@ -1,7 +1,7 @@
 package main
 import (
 	"time"
-	"schema/browse"
+	"data"
 	"schema"
 )
 
@@ -9,10 +9,10 @@ type Todos struct {
 	Tasks []*Task
 }
 
-func (todos *Todos) Manage() browse.Node {
-	s := &browse.MyNode{}
+func (todos *Todos) Manage() data.Node {
+	s := &data.MyNode{}
 	var index int
-	s.OnNext = func(sel *browse.Selection, meta *schema.List, new bool, key []*browse.Value, first bool) (browse.Node, error) {
+	s.OnNext = func(sel *data.Selection, meta *schema.List, new bool, key []*data.Value, first bool) (data.Node, error) {
 		var task *Task
 		if len(key) > 0 {
 			index = key[0].Int
@@ -34,7 +34,7 @@ func (todos *Todos) Manage() browse.Node {
 			if index < len(todos.Tasks) {
 				task = todos.Tasks[index]
 				keyMeta := meta.KeyMeta()[0]
-				sel.State.SetKey([]*browse.Value{&browse.Value{Type:keyMeta.GetDataType(), Int:index}})
+				sel.State.SetKey([]*data.Value{&data.Value{Type:keyMeta.GetDataType(), Int:index}})
 			}
 		}
 		if task != nil {
@@ -60,18 +60,18 @@ type Task struct {
 	timer *time.Timer
 }
 
-func (task *Task) Select(id int) browse.Node {
-	s := &browse.MyNode{}
-	s.OnRead = func(sel *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
+func (task *Task) Select(id int) data.Node {
+	s := &data.MyNode{}
+	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*data.Value, error) {
 		switch meta.GetIdent() {
 		case "id":
-			return  &browse.Value{Int:id}, nil
+			return  &data.Value{Int:id}, nil
 		case "dueDate":
-			return &browse.Value{Int64:int64(task.DueDate)}, nil
+			return &data.Value{Int64:int64(task.DueDate)}, nil
 		}
-		return browse.ReadField(meta, task)
+		return data.ReadField(meta, task)
 	}
-	s.OnWrite = func(sel *browse.Selection, meta schema.HasDataType, v *browse.Value) error {
+	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *data.Value) error {
 		switch meta.GetIdent() {
 		case "id":
 			// Not allowed
@@ -81,20 +81,20 @@ func (task *Task) Select(id int) browse.Node {
 				task.timer.Reset(task.DueDate)
 			}
 		default:
-			return browse.WriteField(meta, task, v)
+			return data.WriteField(meta, task, v)
 		}
 		return nil
 	}
-	s.OnEvent = func(sel *browse.Selection, e browse.Event) error {
+	s.OnEvent = func(sel *data.Selection, e data.Event) error {
 		switch e {
 // This is what i want to change timers after all fields have been updated
-//		case browse.UPDATE:
+//		case data.UPDATE:
 //
-		case browse.NEW:
+		case data.NEW:
 			if task.Status != StatusDone {
 				task.timer = time.NewTimer(task.DueDate)
 			}
-		case browse.DELETE:
+		case data.DELETE:
 			if task.timer != nil {
 				task.timer.Stop()
 			}

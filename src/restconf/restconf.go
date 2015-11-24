@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"schema"
-	"schema/browse"
+	"data"
 	"time"
 )
 
@@ -42,9 +42,9 @@ type Service struct {
 	Port          string
 }
 
-func (service *Service) Manage() browse.Node {
-	s := &browse.MyNode{}
-	s.OnRead = func(state *browse.Selection, meta schema.HasDataType) (*browse.Value, error) {
+func (service *Service) Manage() data.Node {
+	s := &data.MyNode{}
+	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
 		switch meta.GetIdent() {
 		case "registrations":
 			strlist := make([]string, len(service.registrations))
@@ -53,23 +53,23 @@ func (service *Service) Manage() browse.Node {
 				strlist[i] = name
 				i++
 			}
-			return &browse.Value{Strlist:strlist}, nil
+			return &data.Value{Strlist:strlist}, nil
 		default:
-			return browse.ReadField(meta, service)
+			return data.ReadField(meta, service)
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(sel *browse.Selection, meta schema.HasDataType, v *browse.Value) (err error) {
+	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *data.Value) (err error) {
 		switch meta.GetIdent() {
 		case "docRoot":
 			service.DocRoot = v.Str
 			service.SetDocRoot(&schema.FileStreamSource{Root:service.DocRoot})
 		}
-		return browse.WriteField(meta, service, v)
+		return data.WriteField(meta, service, v)
 	}
-	s.OnEvent = func(sel *browse.Selection, e browse.Event) (err error) {
+	s.OnEvent = func(sel *data.Selection, e data.Event) (err error) {
 		switch e {
-		case browse.NEW:
+		case data.NEW:
 			rcb, err := NewData(service)
 			if err != nil {
 				return err
@@ -86,63 +86,63 @@ func (service *Service) Manage() browse.Node {
 }
 
 type registration struct {
-	browser browse.Data
+	browser data.Data
 }
 
 func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handleError := func(err error) {
-		if httpErr, ok := err.(browse.HttpError); ok {
+		if httpErr, ok := err.(data.HttpError); ok {
 			http.Error(w, httpErr.Error(), httpErr.HttpCode())
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
 	var err error
-	var path *browse.Path
-	var payload *browse.Selection
-	if path, err = browse.ParsePath(r.URL.Path); err == nil {
-		var sel *browse.Selection
+	var path *data.Path
+	var payload *data.Selection
+	if path, err = data.ParsePath(r.URL.Path); err == nil {
+		var sel *data.Selection
 		if sel, err = reg.browser.Selector(path); err != nil {
 			handleError(err)
 			return
 		}
 		switch r.Method {
 		case "DELETE":
-			err = browse.Delete(sel)
+			err = data.Delete(sel)
 		case "GET":
 			w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
-			output := browse.NewJsonWriter(w).Selector(sel.State)
-			err = browse.ControlledInsert(sel, output, browse.LimitedWalk(r.URL.RawQuery))
+			output := data.NewJsonWriter(w).Selector(sel.State)
+			err = data.ControlledInsert(sel, output, data.LimitedWalk(r.URL.RawQuery))
 		case "PUT":
-			if payload, err = browse.NewJsonReader(r.Body).Selector(sel.State); err != nil {
+			if payload, err = data.NewJsonReader(r.Body).Selector(sel.State); err != nil {
 				handleError(err)
 				return
 			}
-			err = browse.Upsert(payload, sel)
+			err = data.Upsert(payload, sel)
 		case "POST":
 			if schema.IsAction(sel.State.Position()) {
 				rpc := sel.State.Position().(*schema.Rpc)
-				var rpcInput browse.Node
-				var rpcOutput *browse.Selection
-				if rpcInput, err = browse.NewJsonReader(r.Body).Node(); err != nil {
+				var rpcInput data.Node
+				var rpcOutput *data.Selection
+				if rpcInput, err = data.NewJsonReader(r.Body).Node(); err != nil {
 					handleError(err)
 					return
 				}
-				if rpcOutput, err = browse.Action(sel, browse.NewSelection(rpcInput, rpc.Input)); err != nil {
+				if rpcOutput, err = data.Action(sel, data.NewSelection(rpcInput, rpc.Input)); err != nil {
 					handleError(err)
 					return
 				}
 				if rpcOutput != nil {
 					w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
-					output := browse.NewJsonWriter(w).Selector(rpcOutput.State)
-					browse.Insert(rpcOutput, output)
+					output := data.NewJsonWriter(w).Selector(rpcOutput.State)
+					data.Insert(rpcOutput, output)
 				}
 			} else {
-				if payload, err = browse.NewJsonReader(r.Body).Selector(sel.State); err != nil {
+				if payload, err = data.NewJsonReader(r.Body).Selector(sel.State); err != nil {
 					handleError(err)
 					return
 				}
-				err = browse.Insert(payload, sel)
+				err = data.Insert(payload, sel)
 			}
 		default:
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -158,12 +158,12 @@ type docRootImpl struct {
 	docroot schema.StreamSource
 }
 
-func (service *Service) RegisterBrowser(browser browse.Data) error {
+func (service *Service) RegisterBrowser(browser data.Data) error {
 	ident := browser.Schema().GetIdent()
 	return service.RegisterBrowserWithName(browser, ident)
 }
 
-func (service *Service) RegisterBrowserWithName(browser browse.Data, ident string) error {
+func (service *Service) RegisterBrowserWithName(browser data.Data, ident string) error {
 	reg := &registration{browser}
 	service.registrations[ident] = reg
 	fullPath := fmt.Sprint(service.Path, ident, "/")
