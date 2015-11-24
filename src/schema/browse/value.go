@@ -245,6 +245,12 @@ func (v *Value) CoerseStrValue(s string) error {
 	switch v.Type.Format {
 	case schema.FMT_BOOLEAN:
 		v.Bool = s == "true"
+	case schema.FMT_INT64:
+		var err error
+		v.Int64, err = strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return err
+		}
 	case schema.FMT_INT32:
 		var err error
 		v.Int, err = strconv.Atoi(s)

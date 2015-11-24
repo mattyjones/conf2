@@ -6,6 +6,17 @@ import (
 )
 
 // Uses reflection to marshal data into go structs
+func MarshalTo(from *Selection, Obj interface{}) error {
+	n := MarshalContainer(Obj)
+	to := NewSelectionFromState(n, from.State)
+	return Upsert(from, to)
+}
+
+func MarshalFrom(Obj interface{}, to *Selection) error {
+	n := MarshalContainer(Obj)
+	from := NewSelectionFromState(n, to.State)
+	return Upsert(from, to)
+}
 
 func MarshalContainer(Obj interface{}) Node {
 	s := &MyNode{Label:"Marshal " + reflect.TypeOf(Obj).Name()}
