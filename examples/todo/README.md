@@ -5,3 +5,6 @@
 * [todos.go](todos.go) - Conf2 and application logic
 
 ## Setup
+
+    make
+    YANGPATH=etc ./bin/todo -config etc/config.json

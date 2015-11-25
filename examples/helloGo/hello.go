@@ -17,7 +17,7 @@ import (
 // This is YANG and usually stored in files but you can store your yang anywhere
 // you want including in your source or in a database.  See YANG RFC for full
 // options of definitions including typedefs, groupings, containers, lists
-// actions, leaf-lists, choice and others.
+// actions, leaf-lists, choices, enumerations and others.
 var helloApiDefinition = `
 /*
   module is a collection or definitions, much like a YANG container except its the

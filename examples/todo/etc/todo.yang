@@ -1,9 +1,11 @@
-module example-todo {
-    namespace "example-todo";
-    prefix "http://conf2.org/example-todo";
-    import conf2-management;
+module todo {
+    namespace "todo";
+    prefix "http://conf2.org/todo";
     revision 0;
 
+    /*
+      Storing TODOs in RESTCONF
+    */
     list todos {
         key "id";
         leaf id {
@@ -30,7 +32,24 @@ module example-todo {
         }
     }
 
+    /*
+      for simplicity, we copy definitions from conf2-management.yang, but it could
+      easily be imported.
+    */
     container restconf {
-        uses management;
+        leaf port {
+            type string;
+        }
+        leaf docRoot {
+            type string;
+        }
+        leaf path {
+            type string;
+            default "/restconf/";
+        }
+        leaf-list registrations {
+            type string;
+            config "false";
+        }
     }
 }

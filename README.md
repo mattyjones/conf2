@@ -6,14 +6,14 @@ Conf2 is an implementation for two emerging standards in the microservice manage
 
 Conf2 is designed as a library allowing you can make any running process a RESTCONF-capable without running any other services.
 
-Benefits of YANG and RESTCONF:
+## Benefits of YANG and RESTCONF:
 * Standards compliance means automatic infrastrucure integration with other standards based controller systems.
 * Receiving configuration through the network obviates file-based configuration tools such as Puppet or Chef
 * Exporting health and metrics data through the network obviates log scraping tools like Splunk
 * Sending alerts as they happen to subscribed systems obviates poll-based systems like watchdog or Nagios.
 * Exporting operational functions (e.g. cache-clearing or traffic routing) through the network obviates tools like Ansible.
 
-Benefits and features of Conf2:
+## Benefits and features of Conf2:
 * Written in the Go with C-compatible API enabling support for languages including Java, PHP, Python, Ruby, JavaScript, C, and C++
 * Experimental support for Java
 * No dependencies beyond Go Standard Library
@@ -24,6 +24,17 @@ Benefits and features of Conf2:
 * Ability to add custom formats beyond JSON or XML
 * Experimental support for distributed UI using Web Components (emerging W3C standard).
 
-Code Examples:
+## Setup
+Conf2 requires Go 1.5 for shared library support.
+
+    mkdir -p $GOPATH/src/github.com
+    cd $GOPATH/src/github.com
+    git clone https://github.com/dhubler/conf2.git
+    cd conf2
+    make build
+
+NOTE: I'm exploring package methods that will allow me to keep all Conf2 application and library files together, but I most likely will need to split Conf2 into 2 repositiories to play nice with `go get`
+
+## Code Examples:
 * [HelloGo](examples/helloGo/hello.go) - Basic Go application that says hello to you
 * [Todo](examples/todo) - Todo Go application
