@@ -1,3 +1,10 @@
+// This is a very simple example of using the Conf2 library to add RESTCONF
+// support to an app that can say hello to you.
+//
+// To run this example, use:
+//    GOPATH=$(readlink -f ../../) go run hello.go
+//
+
 package main
 
 import (
@@ -10,13 +17,18 @@ import (
 // This is YANG and usually stored in files but you can store your yang anywhere
 // you want including in your source or in a database.  See YANG RFC for full
 // options of definitions including typedefs, groupings, containers, lists
-// actions and leaf-lists.
+// actions, leaf-lists, choice and others.
 var helloApiDefinition = `
+/*
+  module is a collection or definitions, much like a YANG container except its the
+  top-most container
+*/
 module hello {
   prefix "hello";
   namespace "hello";
   revision 0;
 
+  /* a "leaf" is just a field */
   leaf message {
   	type string;
   }
@@ -27,12 +39,17 @@ module hello {
     type int32;
   }
 
+  /* An "rpc" is a function you want to expose */
   rpc say {
+
+    /* rpcs can have optional input defined */
     input {
       leaf name {
         type string;
       }
     }
+
+    /* rpcs can have optional output defined */
     output {
       leaf message {
         type string;
@@ -62,8 +79,7 @@ func main() {
 		panic(err.Error())
 	}
 
-	// You can register as many APIs as you want, the module name must be unique between all the
-	// modules though.
+	// You can register as many APIs as you want, The module name is the default RESTCONF base url
 	if err = service.RegisterBrowser(manage); err != nil {
 		panic(err.Error())
 	}
@@ -73,13 +89,13 @@ func main() {
 	service.Listen()
 }
 
-// Beginning of your existing application code void of any Conf2 code
+// Beginning of your existing application code and has no references to Conf2
 type MyApp struct {
 	Message string
 	Count int
 }
 
-// a random function we'll expose thru API using OnAction section
+// a random function we'll expose thru API using OnAction below
 func (app *MyApp) SayHello(name string) string {
 
 	// as a random metric, let's count how many times we've said hello
@@ -89,7 +105,7 @@ func (app *MyApp) SayHello(name string) string {
 }
 
 // Beginning of Conf2 code
-// This Go struct implements data.Data interface which entry point for APIs
+// This Go struct implements data.Data interface, the entry point for your API
 type ManageMyApp struct {
 	App *MyApp
 	Meta *schema.Module
@@ -97,6 +113,7 @@ type ManageMyApp struct {
 
 // This implements data.Data get's the initial node into your app
 func (manage *ManageMyApp) Selector(path *data.Path) (*data.Selection, error) {
+	// utility functions walk through your API to get to the data
 	return data.WalkPath(data.NewSelection(manage.Manage(), manage.Meta), path)
 }
 
@@ -123,8 +140,8 @@ func (manage *ManageMyApp) Manage() data.Node {
 	//    {"message":"hello","count":10}
 	//
 	n.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*data.Value, error) {
-		// Here we can use Go's reflection but if names are different, add a switch case
-		// statement here
+		// Here we can use Go's reflection but if reflection isn't valid for some or all fields,
+		// you can add a switch case to handle them separately
 		return data.ReadField(meta, manage.App)
 	}
 
