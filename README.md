@@ -25,5 +25,5 @@ Benefits and features of Conf2:
 * Experimental support for distributed UI using Web Components
 
 Code Examples:
-* [HelloGo](examples/helloGo/README.md) - Basic Go application with RESTCONF API
-* [Todo](examples/todo/README.md) - Todo Go application with RESTCONF API
+* [HelloGo](examples/helloGo/hello.go) - Basic Go application that says hello to you
+* [Todo](examples/todo) - Todo Go application

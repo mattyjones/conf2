@@ -158,6 +158,8 @@ func (manage *ManageMyApp) Manage() data.Node {
 		param := struct { Name string } {}
 		err = data.MarshalTo(input, &param)
 
+		// See how we can call functions of our app from our management data
+		// browser?
 		s := manage.App.SayHello(param.Name)
 
 		// Build the response, we choose reflection marshaller again just like input data
