@@ -1,1 +1,1 @@
-../../pkg/linux_amd64_shared/schema/c.h
+../../pkg/linux_amd64_shared/c.h

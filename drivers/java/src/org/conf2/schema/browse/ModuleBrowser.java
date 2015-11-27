@@ -3,6 +3,8 @@ package org.conf2.schema.browse;
 import org.conf2.schema.*;
 import org.conf2.schema.yang.YangModule;
 
+import java.util.Iterator;
+
 /**
  *
  */
@@ -14,501 +16,355 @@ public class ModuleBrowser implements Browser {
         this.module = module;
     }
 
-    public Module getModule() {
+    public MetaCollection getSchema() {
         return yang;
     }
 
     @Override
-    public Selection getRootSelector() {
-        Selection s = new Selection();
-        s.meta = yang;
-        s.Enter = () -> {
-            s.found = module != null;
-            return enterModule(module);
-        };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case CREATE_CHILD:
-                    module = new Module("unknown");
-                    break;
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, module, val);
-                    break;
+    public Selection getSelector(BrowsePath p) {
+        MyNode n = new MyNode();
+        n.Enter = (Selection s, MetaCollection meta, boolean create) -> {
+            if (create) {
+                module = new Module("unknown");
             }
+            if (module != null) {
+                return enterModule(module);
+            }
+            return null;
         };
-        return s;
+        n.Edit = (Selection s, MetaCollection meta, BrowseValue val) -> {
+            BrowseUtil.setterMethod(meta, module, val);
+        };
+        return Walk.Path(new Selection(n, module), p);
     }
 
-    Selection enterModule(final Module module) {
-        Selection s = new Selection();
-        s.Read = () -> BrowseUtil.getterMethod(s.position, module);
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
+    Node enterModule(final Module module) {
+        MyNode s = new MyNode();
+        s.Read = (Selection sel, Meta meta) ->
+                BrowseUtil.getterMethod(s.position, module);
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            String ident = meta.getIdent();
             if (ident.equals("revision")) {
-                s.found = (module.revision != null);
-                if (s.found) {
+                if (create) {
+                    module.revision = new Revision("unknown");
+                }
+                if (module.revision != null) {
                     return enterRevision(module.revision);
                 }
-            } else if (ident.equals("rpcs")) {
-                return enterRpcCollection(module.getRpcs());
-            } else if (ident.equals("notifications")) {
-                return enterNotifications(module.getNotifications());
-            } else if (ident.equals("groupings")) {
-                return enterGroupings(module.getGroupings());
-            } else if (ident.equals("typedefs")) {
-                return enterTypedefs(module.getTypedefs());
-            } else if (ident.equals("definitions")) {
-                return enterDefinitions(module);
+            } else {
+                return metaCollectionEnter(module, ident);
             }
             return null;
         };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            String ident = s.position.getIdent();
-            switch (op) {
-                case CREATE_LIST:
-                    // nothing to do
-                    break;
-                case CREATE_CHILD:
-                    if (ident.equals("revision")) {
-                        module.revision = new Revision("unknown");
-                    }
-                    break;
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, module, val);
-                    break;
-            }
-        };
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+            BrowseUtil.setterMethod(meta, module, val);
         return s;
     }
 
-    Selection enterDefinitions(MetaCollection defs) {
-        final Meta[] def = new Meta[1];
-        Selection s = new Selection();
-        s.Iterate = (BrowseValue[] keys, boolean isFirst) -> {
-            return false;
-        };
-        s.Enter = () -> {
-            if (def[0] == null) {
-                s.found = false;
-                //throw new DriverError("Definition not created yet");
-            } else if (def[0] instanceof Leaf) {
-                return enterLeaf((Leaf) def[0]);
-            } else if (def[0] instanceof LeafList) {
-                return enterLeafList((LeafList) def[0]);
-            } else if (def[0] instanceof MetaList) {
-                return enterList((MetaList) def[0]);
-            } else if (def[0] instanceof Container) {
-                return enterContainer((Container) def[0]);
-            } else if (def[0] instanceof Uses) {
-                return enterUses((Uses) def[0]);
-            } else if (def[0] instanceof Choice) {
-                return enterChoice((Choice) def[0]);
-            }
-            return null;
-        };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case CREATE_CHILD:
-                    String ident = s.position.getIdent();
-                    if ("leaf".equals(ident)) {
-                        def[0] = new Leaf("unknown");
-                    } else if ("leaf-list".equals(ident)) {
-                        def[0] = new LeafList("unknown");
-                    } else if ("container".equals(ident)) {
-                        def[0] = new Container("unknown");
-                    } else if ("list".equals(ident)) {
-                        def[0] = new MetaList("unknown");
-                    } else if ("uses".equals(ident)) {
-                        def[0] = new Uses("unknown");
-                    } else if ("choice".equals(ident)) {
-                        def[0] = new Choice("unknown");
-                    }
-                    break;
-                case POST_CREATE_CHILD:
-                    defs.addMeta(def[0]);
-                    break;
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, def[0], val);
-                    break;
-            }
-        };
-        return s;
-    }
-
-    Selection enterLeaf(Leaf leaf) {
-        Selection s = new Selection();
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
+    Node enterLeaf(Leaf leaf) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            String ident = meta.getIdent();
             if ("type".equals(ident)) {
-                s.found = (leaf.getDataType() != null);
-                if (s.found) {
+                if (create) {
+                    leaf.setDataType(new DataType("unknown"));
+                }
+                if (leaf.getDataType() != null) {
                     return enterDataType(leaf.getDataType());
                 }
+                return null;
             }
             return null;
         };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            String ident = s.position.getIdent();
-            switch (op) {
-                case CREATE_CHILD:
-                    if ("type".equals(ident)) {
-                        leaf.setDataType(new DataType("unknown"));
-                    }
-                    break;
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, leaf, val);
-                    break;
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                BrowseUtil.setterMethod(s.position, leaf, val);
+        return s;
+    }
+
+    Node enterDataType(DataType type) {
+        MyNode s = new MyNode();
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) -> {
+            String ident = meta.getIdent();
+            if ("ident".equals(ident)) {
+                type.setIdent(val.str);
+            } else {
+                BrowseUtil.setterField(s.position, type, val);
             }
         };
 
         return s;
     }
 
-    Selection enterDataType(DataType type) {
-        Selection s = new Selection();
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case UPDATE_VALUE:
-                    if ("ident".equals(s.position.getIdent())) {
-                        type.setIdent(val.str);
-                    } else {
-                        BrowseUtil.setterField(s.position, type, val);
-                    }
-                    break;
-            }
-        };
-
-        return s;
-    }
-
-    Selection enterLeafList(LeafList leafList) {
-        Selection s = new Selection();
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
+    Node enterLeafList(LeafList leafList) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            String ident = meta.getIdent();
             if ("type".equals(ident)) {
-                s.found = (leafList.getDataType() != null);
-                if (s.found) {
+                if (create) {
+                    leafList.setDataType(new DataType("unknown"));
+                }
+                if (leafList.getDataType() != null) {
                     return enterDataType(leafList.getDataType());
                 }
             }
             return null;
         };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            String ident = s.position.getIdent();
-            switch (op) {
-                case CREATE_CHILD:
-                    if ("type".equals(ident)) {
-                        leafList.setDataType(new DataType("unknown"));
-                    }
-                    break;
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, leafList, val);
-                    break;
-            }
-        };
-
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                BrowseUtil.setterMethod(s.position, leafList, val);
         return s;
     }
 
-    Selection enterUses(Uses uses) {
-        Selection s = new Selection();
-        s.Enter = () -> {
-            return null;
-        };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, uses, val);
-                    break;
-            }
-        };
-
+    Node enterUses(Uses uses) {
+        MyNode s = new MyNode();
+        // TODO s.Enter
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                BrowseUtil.setterMethod(s.position, uses, val);
         return s;
     }
 
-    Selection enterChoice(Choice choice) {
-        Selection s = new Selection();
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
+    Node enterChoice(Choice choice) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            String ident = meta.getIdent();
             if ("cases".equals(ident)) {
-                return enterChoiceCases(choice);
-            }
-
-            return null;
-        };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            String ident = s.position.getIdent();
-            switch (op) {
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, choice, val);
-                    break;
-            }
-        };
-
-        return s;
-    }
-
-    Selection enterChoiceCases(MetaCollection cases) {
-        final ChoiceCase[] choiceCase = new ChoiceCase[1];
-        Selection s = new Selection();
-        s.Iterate = (BrowseValue[] key, boolean isFirst) -> {
-            return false;
-        };
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
-            if ("definitions".equals(ident)) {
-                return enterDefinitions(choiceCase[0]);
+                return enterDefinitionCollection(choice);
             }
             return null;
         };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case CREATE_LIST_ITEM:
-                    choiceCase[0] = new ChoiceCase("unknown");
-                    break;
-                case POST_CREATE_LIST_ITEM:
-                    cases.addMeta(choiceCase[0]);
-                    break;
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, choiceCase[0], val);
-                    break;
-            }
-        };
-
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+            BrowseUtil.setterMethod(s.position, choice, val);
         return s;
     }
 
-    Selection enterNotifications(MetaCollection notifications) {
-        final Notification[] notification = new Notification[1];
-        Selection s = new Selection();
-        s.Iterate = (BrowseValue[] key, boolean isFirst) -> {
-            return false;
-        };
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
-            if (ident.equals("groupings")) {
-                return enterGroupings(notification[0].getGroupings());
-            } else if (ident.equals("typedefs")) {
-                return enterTypedefs(notification[0].getTypedefs());
-            } else if (ident.equals("definitions")) {
-                return enterDefinitions(notification[0]);
+    Node enterDefinition(MetaCollection c, Meta m) {
+        MyNode n = new MyNode();
+        final Meta[] ptr = new Meta[] { m };
+        n.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            String ident = meta.getIdent();
+            if (create) {
+                switch (ident) {
+                    case "leaf":
+                        ptr[0] = new Leaf("unknown");
+                        break;
+                    case "leaf-list":
+                        ptr[0] = new LeafList("unknown");
+                        break;
+                    case "uses":
+                        ptr[0] = new Uses("unknown");
+                        break;
+                    case "choice":
+                        ptr[0] = new Choice("unknown");
+                        break;
+                    case "action":
+                    case "rpc":
+                        ptr[0] = new Rpc("unknown");
+                        break;
+                    case "container":
+                        ptr[0] = new Container("unknown");
+                        break;
+                    case "grouping":
+                        ptr[0] = new Grouping("unknown");
+                        break;
+                    case "typedef":
+                        ptr[0] = new Typedef("unknown");
+                        break;
+                    default:
+                        throw new RuntimeException("unknown creation type " + ident);
+                }
             }
-            return null;
-        };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case CREATE_LIST_ITEM:
-                    notification[0] = new Notification("unknown");
-                    break;
-                case POST_CREATE_LIST_ITEM:
-                    notifications.addMeta(notification[0]);
-                    break;
-                case CREATE_CHILD:
-                    break;
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, notification[0], val);
-                    break;
-            }
-        };
-
-        return s;
-    }
-
-    Selection enterContainer(Container container) {
-        Selection s = new Selection();
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
-            if (ident.equals("groupings")) {
-                return enterGroupings(container.getGroupings());
-            } else if (ident.equals("typedefs")) {
-                return enterTypedefs(container.getTypedefs());
-            } else if (ident.equals("definitions")) {
-                return enterDefinitions(container);
-            }
-            return null;
-        };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, container, val);
-                    break;
-            }
-        };
-
-        return s;
-    }
-
-    Selection enterGroupings(MetaCollection groupings) {
-        Selection s = new Selection();
-        final Grouping[] grouping = new Grouping[1];
-        s.Iterate = (BrowseValue[] key, boolean isFirst) -> {
-            return false;
-        };
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
-            if (ident.equals("groupings")) {
-                return enterGroupings(grouping[0].getGroupings());
-            } else if (ident.equals("typedefs")) {
-                return enterTypedefs(grouping[0].getTypedefs());
-            } else if (ident.equals("definitions")) {
-                return enterDefinitions(grouping[0]);
-            }
-            return null;
-        };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case CREATE_LIST_ITEM:
-                    grouping[0] = new Grouping("unknown");
-                    break;
-                case POST_CREATE_LIST_ITEM:
-                    groupings.addMeta(grouping[0]);
-                    break;
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, grouping[0], val);
-                    break;
-            }
-        };
-
-        return s;
-    }
-
-    Selection enterTypedefs(MetaCollection typedefs) {
-        Selection s = new Selection();
-        final Typedef[] typedef = new Typedef[1];
-        s.Iterate = (BrowseValue[] key, boolean isFirst) -> {
-            return false;
-        };
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
-            if ("type".equals(ident)) {
-                s.found  = (typedef[0].getDataType() != null);
-                if (s.found) {
-                    return enterDataType(typedef[0].getDataType());
+            if (ptr[0] != null) {
+                switch (ident) {
+                    case "leaf":
+                        return enterLeaf((Leaf)ptr[0]);
+                    case "leaf-list":
+                        return enterLeafList((LeafList)ptr[0]);
+                    case "uses":
+                        return enterUses((Uses)ptr[0]);
+                    case "choice":
+                        return enterChoice((Choice)ptr[0]);
+                    case "action":
+                    case "rpc":
+                        return enterRpc((Rpc)ptr[0]);
+                    case "container":
+                        return enterContainer((Container) ptr[0]);
+                    case "grouping":
+                        return enterGrouping((Grouping)ptr[0]);
+                    case "typedef":
+                        return enterTypedef((Typedef)ptr[0]);
+                    default:
+                        throw new RuntimeException("unknown enter type " + ident);
                 }
             }
             return null;
         };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case CREATE_LIST_ITEM:
-                    typedef[0] = new Typedef("unknown");
-                    break;
-                case POST_CREATE_LIST_ITEM:
-                    typedefs.addMeta(typedef[0]);
-                    break;
-                case CREATE_CHILD:
-                    String ident = s.position.getIdent();
-                    if ("type".equals(ident)) {
-                        typedef[0].setDataType(new DataType("unknown"));
-                    }
-                    break;
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, typedef[0], val);
+        n.Event = (Selection sel, DataEvent e) -> {
+            switch (e) {
+                case NEW:
+                    c.addMeta(ptr[0]);
                     break;
             }
         };
-        return s;
+        n.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                BrowseUtil.setterMethod(meta, ptr[0], val);
+        return n;
     }
 
-    Selection enterList(MetaList list) {
-        Selection s = new Selection();
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
-            if (ident.equals("groupings")) {
-                return enterGroupings(list.getGroupings());
-            } else if (ident.equals("typedefs")) {
-                return enterTypedefs(list.getTypedefs());
-            } else if (ident.equals("definitions")) {
-                return enterDefinitions(list);
+    Node enterDefinitionCollection(MetaCollection c) {
+        MyNode s = new MyNode();
+        final Iterator<Meta>[] iPtr = new Iterator[1];
+        s.Iterate = (Selection sel, BrowseValue[] key, boolean create, boolean isFirst) -> {
+            if (create) {
+                return enterDefinition(c, null);
+            }
+            Meta m = null;
+            if (key.length > 0) {
+                MetaUtil.findByIdent(c, key[0].str);
+            } else {
+                if (isFirst) {
+                    iPtr[0] = new MetaCollectionIterator(c);
+                }
+                if (iPtr[0].hasNext()) {
+                    m = iPtr[0].next();
+                }
             }
             return null;
         };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, list, val);
-                    break;
-            }
-        };
-
         return s;
     }
 
-    Selection enterRpcCollection(MetaCollection rpcs) {
-        final Rpc[] rpc = new Rpc[1];
-        Selection s = new Selection();
-        s.Iterate = (BrowseValue[] key, boolean isFirst) -> {
-            return false;
+    Node enterChoiceCase(ChoiceCase ccase) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            return metaCollectionEnter(ccase, meta.getIdent());
         };
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                BrowseUtil.setterMethod(s.position, ccase, val);
+        return s;
+    }
+
+    Node enterNotification(Notification notification) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            String ident = meta.getIdent();
+            if (ident.equals("groupings")) {
+                return enterDefinitionCollection(notification.getGroupings());
+            } else if (ident.equals("typedefs")) {
+                return enterDefinitionCollection(notification.getTypedefs());
+            } else if (ident.equals("definitions")) {
+                return enterDefinitionCollection(notification);
+            }
+            return null;
+        };
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                BrowseUtil.setterMethod(s.position, notification, val);
+        return s;
+    }
+
+    Node enterContainer(Container container) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            return metaCollectionEnter(container, meta.getIdent());
+        };
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+            BrowseUtil.setterMethod(s.position, container, val);
+        return s;
+    }
+
+    Node metaCollectionEnter(MetaCollection c, String ident) {
+        if (ident.equals("groupings")) {
+            return enterDefinitionCollection(((HasGroupings)c).getGroupings());
+        } else if (ident.equals("typedefs")) {
+            return enterDefinitionCollection(((HasTypedefs)c).getTypedefs());
+        } else if (ident.equals("definitions")) {
+            return enterDefinitionCollection(c);
+        } else if (ident.equals("rpcs") || ident.equals("actions")) {
+            return enterDefinitionCollection(((HasActions)c).getRpcs());
+        } else if (ident.equals("notifications")) {
+            return enterDefinitionCollection(((HasNotifications)c).getNotifications());
+        }
+        return null;
+    }
+
+    Node enterGrouping(Grouping grouping) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            return metaCollectionEnter(grouping, meta.getIdent());
+        };
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                BrowseUtil.setterMethod(meta, grouping, val);
+        return s;
+    }
+
+    Node enterTypedef(Typedef typedef) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            String ident = meta.getIdent();
+            if ("type".equals(ident)) {
+                if (create) {
+                    typedef.setDataType(new DataType("unknown"));
+                }
+                if (typedef.getDataType() != null) {
+                    return enterDataType(typedef.getDataType());
+                }
+            }
+            return null;
+        };
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                BrowseUtil.setterMethod(meta, typedef, val);
+        return s;
+    }
+
+    Node enterList(MetaList list) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            return metaCollectionEnter(list, meta.getIdent());
+        };
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                    BrowseUtil.setterMethod(s.position, list, val);
+        return s;
+    }
+
+    Node enterRpc(Rpc rpc) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            String ident = meta.getIdent();
             if ("input".equals(ident)) {
-                s.found = (rpc[0].input != null);
-                if (s.found) {
-                    return enterRpcBase(rpc[0].input);
+                if (create) {
+                    rpc.input = new RpcInput();
+                }
+                if (rpc.input != null) {
+                    return enterRpcBase(rpc.input);
                 }
             } else if ("output".equals(ident)) {
-                s.found = (rpc[0].output != null);
-                if (s.found) {
-                    return enterRpcBase(rpc[0].output);
+                if (create) {
+                    rpc.output = new RpcOutput();
+                }
+                if (rpc.output != null) {
+                    return enterRpcBase(rpc.output);
                 }
             }
             return null;
         };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-            switch (op) {
-                case CREATE_LIST_ITEM:
-                    rpc[0] = new Rpc("unknown");
-                    break;
-                case POST_CREATE_LIST_ITEM:
-                    rpcs.addMeta(rpc[0]);
-                    break;
-                case CREATE_CHILD:
-                    String ident = s.position.getIdent();
-                    if ("input".equals(ident)) {
-                        rpc[0].input = new RpcInput();
-                    } else if ("output".equals(ident)) {
-                        rpc[0].output = new RpcOutput();
-                    }
-                    break;
-                case POST_CREATE_CHILD:
-                    break;
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, rpc[0], val);
-                    break;
-            }
-        };
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                BrowseUtil.setterMethod(s.position, rpc, val);
         return s;
     }
 
-    Selection enterRpcBase(RpcBase rpcBase) {
-        Selection s = new Selection();
-        s.Enter = () -> {
-            String ident = s.position.getIdent();
-            if (ident.equals("groupings")) {
-                return enterGroupings(rpcBase.getGroupings());
-            } else if (ident.equals("typedefs")) {
-                return enterTypedefs(rpcBase.getTypedefs());
-            } else if (ident.equals("definitions")) {
-                return enterDefinitions(rpcBase);
-            }
-            return null;
+    Node enterRpcBase(RpcBase rpcBase) {
+        MyNode s = new MyNode();
+        s.Enter = (Selection sel, MetaCollection meta, boolean create) -> {
+            return metaCollectionEnter(rpcBase, meta.getIdent());
         };
-        s.Edit = (EditOperation op, BrowseValue val) -> {
-System.out.println("ModuleBrowser.java: enterRpcBase op=" + op + " position=" + s.position.getIdent());
-            switch (op) {
-                case UPDATE_VALUE:
-                    BrowseUtil.setterMethod(s.position, rpcBase, val);
-                    break;
-            }
-        };
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) ->
+                BrowseUtil.setterMethod(s.position, rpcBase, val);
         return s;
     }
 
-    Selection enterRevision(Revision rev) {
-        Selection s = new Selection();
-        s.Read = () -> BrowseUtil.getterMethod(s.position, module);
-        s.Edit = (EditOperation op, BrowseValue val) -> {
+    Node enterRevision(Revision rev) {
+        MyNode s = new MyNode();
+        s.Read = (Selection sel, Meta meta) ->
+                BrowseUtil.getterMethod(s.position, module);
+        s.Edit = (Selection sel, MetaCollection meta, BrowseValue val) -> {
             String ident = s.position.getIdent();
             if (ident.equals("rev-date")) {
                 rev.setIdent(val.str);

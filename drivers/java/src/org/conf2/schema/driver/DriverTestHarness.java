@@ -1,12 +1,10 @@
 package org.conf2.schema.driver;
 
+import org.conf2.schema.MetaCollection;
 import org.conf2.schema.Module;
 import org.conf2.schema.SimpleStreamSource;
 import org.conf2.schema.StreamSource;
-import org.conf2.schema.browse.BrowseRead;
-import org.conf2.schema.browse.Browser;
-import org.conf2.schema.browse.ModuleBrowser;
-import org.conf2.schema.browse.Selection;
+import org.conf2.schema.browse.*;
 import org.conf2.schema.yang.ModuleLoader;
 
 import java.io.File;
@@ -19,8 +17,8 @@ public class DriverTestHarness implements Browser {
     private Module module;
     private ModuleLoader loader;
     private DriverHandle harnessHandle;
-    private Selection root;
-    private Selection[] testSelection = new Selection[1];
+    private MyNode root;
+    private Node[] testSelection = new Node[1];
 
     public DriverTestHarness(Driver d) {
         this.driver = d;
@@ -28,10 +26,8 @@ public class DriverTestHarness implements Browser {
         loadModule();
         long handle = newTestHarness(d.getHandle(module).getId(), this);
         harnessHandle = d.newHandle(handle, this);
-        root = new Selection();
-        root.meta = module;
-        root.Enter = () -> {
-            root.found = true;
+        root = new MyNode();
+        root.Enter = (Selection s, MetaCollection meta, boolean create) -> {
             return testSelection[0];
         };
     }
@@ -53,18 +49,18 @@ public class DriverTestHarness implements Browser {
         module = loader.loadModule(yangPathSource, "test/functional.yang");
     }
 
-    public boolean runTest(String testname, Selection s) {
+    public boolean runTest(String testname, Node s) {
         this.testSelection[0] = s;
         return runTest(harnessHandle.getId(), testname);
     }
 
     @Override
-    public Selection getRootSelector() {
-        return root;
+    public Selection getSelector(BrowsePath path) {
+        return new Selection(root, getSchema());
     }
 
     @Override
-    public Module getModule() {
+    public MetaCollection getSchema() {
         return module;
     }
 

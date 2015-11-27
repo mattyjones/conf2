@@ -3,7 +3,7 @@ package org.conf2.schema;
 /**
  *
  */
-public class Module extends CollectionBase implements HasGroupings, HasTypedefs, Describable {
+public class Module extends CollectionBase implements HasGroupings, HasTypedefs, HasActions, HasNotifications, Describable {
     private String namespace;
     private String prefix;
     public Revision revision;

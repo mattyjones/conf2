@@ -15,34 +15,36 @@ import java.nio.ByteBuffer;
 public class BrowserAdaptor {
     private final static BrowseValue[] NO_KEYS = new BrowseValue[0];
 
-    public static Selection getRootSelector(Browser browser) {
-        return browser.getRootSelector();
+    public static Selection getSelector(Browser browser, String path) {
+        BrowsePath p = new BrowsePath(path);
+        return browser.getSelector(p);
     }
 
-    public static Selection enter(Selection s, String ident) {
-        s.position = updatePosition(s.meta, ident);
-        Selection child = s.Enter.Enter();
-        if (child != null) {
-            child.meta = (MetaCollection) s.position;
-        }
+    public static Node enter(Selection s, String ident, boolean create) {
+        s.state.position = updatePosition(s.state.meta, ident);
+        Node child = s.node.Select(s, (MetaCollection) s.state.position, create);
+//        if (child != null) {
+//            child.state.meta = (MetaCollection) s.state.position;
+//        }
         return child;
     }
 
-    public static boolean iterate(Selection s, ByteBuffer encodedKeyValues, boolean first) {
+    public static Node iterate(Selection s, ByteBuffer encodedKeyValues, boolean create, boolean first) {
         BrowseValue[] key;
+        MetaList meta = (MetaList)s.state.meta;
         if (encodedKeyValues != null) {
             DataReader r = new DataReader(encodedKeyValues);
-            DataType[] keyTypes = ((MetaList)(s.meta)).getKeyDataTypes();
+            DataType[] keyTypes = meta.getKeyDataTypes();
             key = r.readValues(keyTypes);
         } else {
             key = NO_KEYS;
         }
-        return s.Iterate.Iterate(key, first);
+        return s.node.Next(s, meta, create, key, first);
     }
 
     public static ByteBuffer read(Selection s, String ident) {
-        s.position = updatePosition(s.meta, ident);
-        BrowseValue val = s.Read.Read();
+        s.state.position = updatePosition(s.state.meta, ident);
+        BrowseValue val = s.node.Read(s, s.state.position);
         ByteBuffer data = null;
         if (val != null) {
             DataWriter w = new DataWriter();
@@ -77,27 +79,24 @@ public class BrowserAdaptor {
         return position;
     }
 
-    public static void edit(Selection s, String ident, int opCode, ByteBuffer encodedValue) {
-        s.position = updatePosition(s.meta, ident);
-        EditOperation op = EditOperation.values()[opCode];
+    public static void edit(Selection s, String ident, ByteBuffer encodedValue) {
+        s.state.position = updatePosition(s.state.meta, ident);
         BrowseValue val = null;
         if (encodedValue != null) {
             DataReader r = new DataReader(encodedValue);
-            val = r.readValue(((HasDataType) s.position).getDataType());
+            val = r.readValue(((HasDataType) s.state.position).getDataType());
         }
-        s.Edit.Edit(op, val);
+        s.node.Write(s, s.state.position, val);
     }
 
-    public static void exit(Selection s, String ident) {
-        s.position = updatePosition(s.meta, ident);
-        if (s.Exit != null) {
-            s.Exit.Exit();
-        }
+    public static void event(Selection s, int eventId) {
+        DataEvent e = DataEvent.values()[eventId];
+        s.node.Event(s, e);
     }
 
     public static String choose(Selection s, String choiceIdent) {
-        Choice choice = (Choice) MetaUtil.findByIdent(s.meta, choiceIdent);
-        s.position = s.Choose.Choose(choice);
-        return s.position.getIdent();
+        Choice choice = (Choice) MetaUtil.findByIdent(s.state.meta, choiceIdent);
+        s.state.position = s.node.Choose(s, choice);
+        return s.state.position.getIdent();
     }
 }

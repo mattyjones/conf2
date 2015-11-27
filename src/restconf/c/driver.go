@@ -4,20 +4,16 @@ import "C"
 
 import (
 	"restconf"
-	schema_c "schema/c"
+	schema_c "c"
 	"schema"
 	"unsafe"
 	"fmt"
-	"schema/browse"
+	"data"
 )
 
 //export restconfc2_service_new
 func restconfc2_service_new() unsafe.Pointer {
-	service, err := restconf.NewService()
-	// TODO : Proper error handling
-	if err != nil {
-		return nil
-	}
+	service := restconf.NewService()
 	return schema_c.NewGoHandle(service).ID
 }
 
@@ -59,7 +55,7 @@ func restconfc2_register_browser(service_hnd_id unsafe.Pointer, browser_hnd_id u
 	if ! found {
 		panic(fmt.Sprint("Restconf service not found", browser_hnd_id))
 	}
-	browser := browser_hnd.Data.(browse.Data)
+	browser := browser_hnd.Data.(data.Data)
 
 	return service.RegisterBrowser(browser)
 }

@@ -3,7 +3,7 @@ package c
 import (
 	"C"
 	"unsafe"
-	"schema/browse"
+	"data"
 	"fmt"
 	"strings"
 	"bytes"
@@ -16,7 +16,7 @@ var readExpectations = map[string]string {
 }
 
 type testHarness struct {
-	browser browse.Data
+	browser data.Data
 	failed []string
 	passed []string
 }
@@ -27,7 +27,7 @@ func conf2_testharness_new(browser_hnd_id unsafe.Pointer) unsafe.Pointer {
 	if ! found {
 		panic(fmt.Sprint("Browser not found", browser_hnd_id))
 	}
-	browser := browser_hnd.Data.(browse.Data)
+	browser := browser_hnd.Data.(data.Data)
 	harness := &testHarness{browser:browser}
 	return NewGoHandle(harness).ID
 }
@@ -44,29 +44,27 @@ func harness_from_handle_id(harness_hnd_id unsafe.Pointer) *testHarness {
 func conf2_testharness_test_run(harness_hnd_id unsafe.Pointer, c_testname *C.char) (passed C.short) {
 	var err error
 	harness := harness_from_handle_id(harness_hnd_id)
-
 	testname := C.GoString(c_testname)
 	details := strings.Split(testname, " ")
-	var root browse.Node
-	var state *browse.Selection
-	if root, state, err = harness.browser.RootSelector(); err != nil {
+	var root *data.Selection
+	if root, err = harness.browser.Selector(data.NewPath("")); err != nil {
 		harness.failure(testname, err.Error())
 		return FALSE_SHORT
 	}
-	var s browse.Node
-	var path *browse.Path
-	if path, err = browse.ParsePath(details[1]); err != nil {
+	var s *data.Selection
+	var path *data.Path
+	if path, err = data.ParsePath(details[1]); err != nil {
 		harness.failure(testname, err.Error())
 		return FALSE_SHORT
 	}
-	if s, state, err = browse.WalkPath(state, root, path); err != nil {
+	if s, err = data.WalkPath(root, path); err != nil {
 		harness.failure(testname, err.Error())
 		return FALSE_SHORT
 	}
 	var actual string
 	switch details[0] {
 	case "read":
-		actual, err = tojson(state, s)
+		actual, err = tojson(s)
 		if err != nil {
 			harness.failure(testname, err.Error())
 		} else {
@@ -110,11 +108,10 @@ func (h *testHarness) failure(testname string, reason string) {
 	h.failed = append(h.failed, failure)
 }
 
-func tojson(state *browse.Selection, s browse.Node) (json string, err error) {
+func tojson(s *data.Selection) (json string, err error) {
 	var actual bytes.Buffer
-	w := browse.NewJsonWriter(&actual)
-	out, _ := w.GetSelector()
-	if err = browse.SelectionInsert(state, s, out, browse.WalkAll()); err != nil {
+	w := data.NewJsonWriter(&actual).Selector(s.State)
+	if err = data.Insert(s, w); err != nil {
 		return
 	}
 	json = string(actual.Bytes())

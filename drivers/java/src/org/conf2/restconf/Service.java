@@ -27,7 +27,7 @@ public class Service {
     }
 
     public void registerBrowser(Browser browser) {
-        long moduleHndId = driver.getHandle(browser.getModule()).getId();
+        long moduleHndId = driver.getHandle(browser.getSchema()).getId();
         registerBrowserWithService(service.getId(), moduleHndId, browser);
     }
 

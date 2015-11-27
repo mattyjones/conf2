@@ -48,12 +48,12 @@ enum conf2_format {
 // Each language (python, java, etc.) will implement at most one of each of these functions
 // pointers to convert data streams.  You will pass your function pointer when calling
 // conf2_browse_new_browser
-typedef void* (*conf2_browse_root_selector_impl)(void *browser_handle, void *browse_err);
-typedef void* (*conf2_browse_enter_impl)(void *selection_handle, char *ident, short *found, void *browse_err);
-typedef short (*conf2_browse_iterate_impl)(void *selection_handle, void *key_data, int key_data_len, short first, void *browse_err);
-typedef void *(*conf2_browse_read_impl)(void *selection_handle, char *ident, void **val_data, int* val_data_len, void *browse_err);
-typedef void (*conf2_browse_edit_impl)(void *selection_handle, char *ident, int op, void *val_data, int val_data_len, void *browse_err);
+typedef void* (*conf2_browse_selector_impl)(void *browser_handle, char *path, void *browse_err);
+typedef void* (*conf2_browse_enter_impl)(void *selection_handle, char *ident, short create, void *browse_err);
+typedef void* (*conf2_browse_iterate_impl)(void *selection_handle, short create, void *key_data, int key_data_len, short first, void *browse_err);
+typedef void* (*conf2_browse_read_impl)(void *selection_handle, char *ident, void **val_data, int* val_data_len, void *browse_err);
+typedef void (*conf2_browse_edit_impl)(void *selection_handle, char *ident, void *val_data, int val_data_len, void *browse_err);
 typedef char* (*conf2_browse_choose_impl)(void *selection_handle, char *ident, void *browse_err);
-typedef void (*conf2_browse_exit_impl)(void *selection_handle, char *ident, void *browse_err);
+typedef void (*conf2_browse_event_impl)(void *selection_handle, int eventId, void *browse_err);
 
 #endif
