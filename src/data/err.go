@@ -38,7 +38,11 @@ func NotImplemented(meta schema.Meta) error {
 		meta.GetParent().GetIdent(), meta.GetIdent())}
 }
 
-func NotFound(key string) error {
+func PathNotFound(path string) error {
+	return &browseError{Code: http.StatusNotFound, Msg: fmt.Sprintf("item identified with path \"%s\" not found", path)}
+}
+
+func ListItemNotFound(key string) error {
 	return &browseError{Code: http.StatusNotFound, Msg: fmt.Sprintf("item identified with key \"%s\" not found", key)}
 }
 

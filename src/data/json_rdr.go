@@ -18,38 +18,15 @@ func NewJsonReader(in io.Reader) *JsonReader {
 	return r
 }
 
-func (self *JsonReader) Node() (Node, error) {
-	values, err := self.decode()
-	if err != nil {
-		return nil, err
-	}
-
-	return self.Container(values), nil
-}
-
-func (self *JsonReader) Selector(state *WalkState) (*Selection, error) {
-	var n Node
-	values, err := self.decode()
-	if err != nil {
-		return nil, err
-	}
-	if schema.IsList(state.SelectedMeta()) {
-		if state.InsideList() {
-			n = self.Container(values)
-		} else {
-			ident := state.SelectedMeta().GetIdent()
-			foundValues, found := values[ident]
-			list, ok := foundValues.([]interface{})
-			if len(values) != 1 || !found || !ok {
-				msg := fmt.Sprintf("Expected { %s: [] }", ident)
-				return nil, errors.New(msg)
-			}
-			n = self.List(list)
+func (self *JsonReader) Node() (Node) {
+	var err error
+	if self.values == nil {
+		self.values, err = self.decode()
+		if err != nil {
+			return ErrorNode{Err:err}
 		}
-	} else {
-		n = self.Container(values)
 	}
-	return NewSelectionFromState(n, state), nil
+	return self.Container(self.values)
 }
 
 func (self *JsonReader) decode() (map[string]interface{}, error) {
@@ -62,9 +39,9 @@ func (self *JsonReader) decode() (map[string]interface{}, error) {
 	return self.values, nil
 }
 
-func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *Value, err error) {
+func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *schema.Value, err error) {
 	// TODO: Consider using CoerseValue
-	v = &Value{Type: meta.GetDataType()}
+	v = &schema.Value{Type: meta.GetDataType()}
 	switch v.Type.Format {
 	case schema.FMT_INT64:
 		v.Int64 = int64(data.(float64))
@@ -103,11 +80,11 @@ func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interfa
 	case schema.FMT_ENUMERATION:
 		v.SetEnumByLabel(data.(string))
 	case schema.FMT_ENUMERATION_LIST:
-		strlist := InterfaceToStrlist(data)
+		strlist := schema.InterfaceToStrlist(data)
 		if len(strlist) > 0 {
 			v.SetEnumListByLabels(strlist)
 		} else {
-			intlist := InterfaceToIntlist(data)
+			intlist := schema.InterfaceToIntlist(data)
 			v.SetEnumList(intlist)
 		}
 	default:
@@ -128,7 +105,7 @@ func asStringArray(data []interface{}) []string {
 func (self *JsonReader) List(list []interface{}) Node {
 	s := &MyNode{Label: "JSON Read List"}
 	var i int
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error) {
 		if new {
 			panic("Cannot write to JSON reader")
 		}
@@ -157,7 +134,7 @@ func (self *JsonReader) List(list []interface{}) Node {
 					// Key may legitimately not exist when inserting new data
 					if hasKey {
 						keyStrs := []string{keyData.(string)}
-						key, err = CoerseKeys(meta, keyStrs)
+						key, err = schema.CoerseKeys(meta, keyStrs)
 						sel.State.SetKey(key)
 					}
 				}
@@ -211,16 +188,26 @@ func (self *JsonReader) Container(container map[string]interface{}) Node {
 		}
 		return
 	}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (val *Value, err error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (val *schema.Value, err error) {
 		if value, found := container[meta.GetIdent()]; found {
 			return self.readLeafOrLeafList(meta, value)
 		}
 		return
 	}
+	s.OnNext = func(sel *Selection, meta *schema.List, create bool, key []*schema.Value, first bool) (Node, error) {
+		// divert to list handler
+		foundValues, found := container[meta.GetIdent()]
+		list, ok := foundValues.([]interface{})
+		if len(container) != 1 || !found || !ok {
+			msg := fmt.Sprintf("Expected { %s: [] }", meta.GetIdent())
+			return nil, errors.New(msg)
+		}
+		return self.List(list), nil
+	}
 	return s
 }
 
-func (self *JsonReader) jsonKeyMatches(keyFields []string, candidate map[string]interface{}, key []*Value) bool {
+func (self *JsonReader) jsonKeyMatches(keyFields []string, candidate map[string]interface{}, key []*schema.Value) bool {
 	for i, field := range keyFields {
 		if candidate[field] != key[i].String() {
 			return false

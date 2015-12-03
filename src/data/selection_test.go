@@ -31,14 +31,7 @@ module m {
 	}
 	store := NewBufferStore()
 	storeData := NewStoreData(m, store)
-	sel, _ := storeData.Selector(NewPath(""))
-	//out := NewJsonWriter(&null).Container()
-	var r Node
-	r, err = NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
-	if err != nil {
-		t.Fatal(err)
-	}
-	//sel := NewSelection(out, m)
+	sel := NewSelection(storeData.Node(), storeData.Schema())
 	var relPathFired bool
 	sel.OnPath(NEW, "m/message", func() error {
 		relPathFired = true
@@ -49,8 +42,8 @@ module m {
 		regexFired = true
 		return nil
 	})
-	in := NewSelectionFromState(r, sel.State)
-	err = Upsert(in, sel)
+	json := NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
+	err = NodeToSelection(json, sel).Upsert()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,9 +53,4 @@ module m {
 	if !regexFired {
 		t.Fatal("regex not fired")
 	}
-//
-//	sel, err = storeData.Selector(NewPath("message"))
-//	if err != nil {
-//		t.Fatal(err)
-//	}
 }

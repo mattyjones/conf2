@@ -58,12 +58,12 @@ func TestBucketWrite(t *testing.T) {
 	}
 	for _, test := range tests {
 		bd := &BucketData {Meta: m}
-		var in, sel *Selection
-		if sel, err = bd.Selector(NewPath("")); err != nil {
-			t.Fatal(err)
+		in := NewJsonReader(strings.NewReader(test.data)).Node()
+		edit, err2 := NodeToPath(in, bd, "")
+		if err2 != nil {
+			t.Error(err2)
 		}
-		in, err = NewJsonReader(strings.NewReader(test.data)).Selector(sel.State)
-		if err = Insert(in, sel); err != nil {
+		if err = edit.Insert(); err != nil {
 			t.Error(err)
 		}
 		actual := MapValue(bd.Root, test.path)
@@ -106,13 +106,9 @@ func TestBucketRead(t *testing.T) {
 
 	for _, test := range tests {
 		bd := &BucketData {Meta: m, Root : test.data}
-		var sel *Selection
-		if sel, err = bd.Selector(NewPath("")); err != nil {
-			t.Fatal(err)
-		}
 		var buff bytes.Buffer
-		out := NewJsonWriter(&buff).Selector(sel.State)
-		if err = Insert(sel, out); err != nil {
+		out := NewJsonWriter(&buff).Node()
+		if err = NodeToNode(bd.Node(), out, bd.Schema()).Insert(); err != nil {
 			t.Error(err)
 		}
 		actual := buff.String()

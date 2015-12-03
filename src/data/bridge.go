@@ -1,9 +1,7 @@
 package data
 
 import (
-	"fmt"
 	"schema"
-	"strings"
 )
 
 type Bridge struct {
@@ -22,9 +20,8 @@ func NewBridge(internal *Selection, external schema.MetaList) *Bridge {
 	return bridge
 }
 
-func (b *Bridge) Selector(externalPath *Path) (s *Selection, err error) {
-	root := b.selectBridge(b.internal, b.Mapping)
-	return WalkPath(NewSelection(root, b.external), externalPath)
+func (b *Bridge) Node() (Node) {
+	return b.selectBridge(b.internal, b.Mapping)
 }
 
 type BridgeMapping struct {
@@ -61,27 +58,37 @@ func (m *BridgeMapping) SelectMap(externalMeta schema.Meta, internalParentMeta s
 	return internalMeta, mapping
 }
 
-func (b *Bridge) internalPath(p *Path, meta schema.Meta) *Path {
-	mapping := b.Mapping
-	var found bool
-	internalPath := make([]string, len(p.Segments))
-	m := meta
-	for i, seg := range p.Segments {
-		mapping, found = mapping.Children[seg.Ident]
-		if !found {
-			panic("path unmappable")
-		}
-		internalPath[i] = mapping.InternalIdent
-		if len(seg.Keys) > 0 {
-			internalPath[i] = fmt.Sprint(internalPath[i], "=", seg.Keys[0])
-		}
-		m = schema.FindByIdent2(m.(schema.MetaList), seg.Ident)
-		if m == nil {
-			panic("Mapping invalid")
-		}
-	}
-	return NewPath(strings.Join(internalPath, "/"))
-}
+//func (b *Bridge) internalPath(externalPath *schema.Path, internalMeta schema.MetaList) *schema.Path {
+//	mapping := b.Mapping
+//	var found bool
+//	internalPath := &schema.Path{
+//		Info : externalPath.Info,
+//		Meta: internalMeta,
+//	}
+//	i := internalPath
+//	xNext := externalPath
+//	for xNext != nil {
+//		iNext := &schema.Path{
+//			Info : i.Info,
+//			Parent: i,
+//		}
+//		xIdent := xNext.Meta.GetIdent()
+//		mapping, found = mapping.Children[xIdent]
+//		if !found {
+//			panic(xIdent + " path unmapped")
+//		}
+//		iNext.Meta = schema.FindByIdentExpandChoices(i.Meta.(schema.MetaList), mapping.InternalIdent)
+//		if iNext.Meta == nil {
+//			panic(mapping.InternalIdent + " not found in schema")
+//		}
+//		// TODO : txlate keys
+//		i.Next.Key = xNext.Key
+//
+//		xNext = xNext.Next
+//		i = i.Next
+//	}
+//	return internalPath
+//}
 
 func (b *Bridge) updateInternalPosition(externalMeta schema.Meta, internalState *Selection, mapping *BridgeMapping) (*BridgeMapping, bool) {
 	var childMapping *BridgeMapping
@@ -107,20 +114,20 @@ func (b *Bridge) selectBridge(internal *Selection, mapping *BridgeMapping) Node 
 		}
 		return
 	}
-	s.OnWrite = func(state *Selection, externalMeta schema.HasDataType, val *Value) error {
+	s.OnWrite = func(state *Selection, externalMeta schema.HasDataType, val *schema.Value) error {
 		if _, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
 			return internal.Node.Write(internal, internal.State.Position().(schema.HasDataType), val)
 		}
 		return nil
 	}
-	s.OnRead = func(state *Selection, externalMeta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, externalMeta schema.HasDataType) (*schema.Value, error) {
 		if _, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
 			// TODO: translate val
 			return internal.Node.Read(internal, internal.State.Position().(schema.HasDataType))
 		}
 		return nil, nil
 	}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error) {
 		var internalNextNode Node
 		// TODO: translate keys?
 		internalNextNode, err = internal.Node.Next(internal, meta, new, key, first)

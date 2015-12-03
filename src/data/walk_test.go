@@ -28,15 +28,11 @@ func TestWalkJson(t *testing.T) {
 		}]
 	}
 }`
-	module := LoadSampleModule(t)
-	rdr, err := NewJsonReader(strings.NewReader(config)).Node()
-	if err != nil {
-		t.Fatal(err)
-	}
-	in := NewSelection(rdr, module)
+	m := LoadSampleModule(t)
+	rdr := NewJsonReader(strings.NewReader(config)).Node()
 	var actualBuff bytes.Buffer
-	out := NewSelection(NewJsonWriter(&actualBuff).Container(), module)
-	if err = Upsert(in, out); err != nil {
+	wtr := NewJsonWriter(&actualBuff).Node()
+	if err := NodeToNode(rdr, wtr, m).Upsert(); err != nil {
 		t.Error(err)
 	}
 	t.Log(string(actualBuff.Bytes()))
@@ -46,21 +42,11 @@ func TestWalkYang(t *testing.T) {
 	var err error
 	module := LoadSampleModule(t)
 	var actualBuff bytes.Buffer
-	out := NewSelection(NewJsonWriter(&actualBuff).Container(), module)
+	wtr := NewJsonWriter(&actualBuff).Node()
 	browser := NewSchemaData(module, true)
-	var in *Selection
-	in, err = browser.Selector(NewPath(""))
-	if err = Upsert(in, out); err != nil {
+	if err = NodeToNode(browser.Node(), wtr, browser.Schema()).Upsert(); err != nil {
 		t.Error(err)
 	} else {
 		t.Log(string(actualBuff.Bytes()))
 	}
-	//		actualBuff.Reset()
-	//
-	//		var p *Path
-	//		p, _ = NewPath("module/definitions=game?depth=2")
-	//		if err = InsertIntoPath(root, out, p); err != nil {
-	//			t.Error(err)
-	//		}
-	//		t.Log(string(actualBuff.Bytes()))
 }

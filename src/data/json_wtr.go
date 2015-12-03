@@ -8,12 +8,6 @@ import (
 )
 
 const QUOTE = '"'
-const COLON = ':'
-const OPEN_OBJ = '{'
-const CLOSE_OBJ = '}'
-const OPEN_ARRAY = '['
-const CLOSE_ARRAY = ']'
-const COMMA = ','
 
 type JsonWriter struct {
 	out                *bufio.Writer
@@ -30,11 +24,7 @@ func NewJsonWriter(out io.Writer) *JsonWriter {
 	}
 }
 
-func (json *JsonWriter) Selector(state *WalkState) (*Selection) {
-	return NewSelectionFromState(json.Container(), state)
-}
-
-func (json *JsonWriter) Container() Node {
+func (json *JsonWriter) Node() Node {
 	s := &MyNode{Label: "JSON Write"}
 	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error) {
 		if ! new {
@@ -42,50 +32,58 @@ func (json *JsonWriter) Container() Node {
 		}
 		if schema.IsList(meta) {
 			err = json.beginList(meta.GetIdent())
-			child = json.Container()
 		} else {
 			err = json.beginContainer(meta.GetIdent())
-			child = json.Container()
 		}
-		return
+		return s, nil
 	}
 	s.OnEvent = func(sel *Selection, e Event) (err error) {
 		switch e {
 		case BEGIN_EDIT:
-			_, err = json.out.WriteRune(OPEN_OBJ)
+			_, err = json.out.WriteRune('{')
 			json.startingInsideList = schema.IsList(sel.State.SelectedMeta())
 			json.firstWrite = true
 			return err
 		case END_EDIT:
-			if err = json.conditionallyCloseArrayOnLastWrite(); err == nil {
-				if _, err = json.out.WriteRune(CLOSE_OBJ); err == nil {
-					err = json.out.Flush()
-				}
+			if err = json.conditionallyCloseArrayOnLastWrite(); err != nil {
+				return err
 			}
+			if _, err = json.out.WriteRune('}'); err != nil {
+				return err
+			}
+			err = json.out.Flush()
 		case LEAVE:
 			if schema.IsList(sel.State.SelectedMeta()) {
-				return json.endList()
+				err = json.endList()
 			} else {
 				err = json.endContainer()
 			}
-		case NEXT:
-			err = json.endContainer()
+		case LEAVE_ITEM:
+			err = json.endArrayItem()
 		}
 		return
 	}
-	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *Value) (err error) {
+	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *schema.Value) (err error) {
 		err = json.writeValue(meta, v)
 		json.firstWrite = false
 		return
 	}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (next Node, err error) {
 		if ! new {
 			return nil, nil
 		}
-		if err = json.conditionallyOpenArrayOnFirstWrite(meta.GetIdent()); err == nil {
-			err = json.beginArrayItem()
+		if err = json.conditionallyOpenArrayOnFirstWrite(meta.GetIdent()); err != nil {
+			return nil, err
 		}
-		return json.Container(), nil
+//		if ! first {
+//			if err = json.writeDelim(); err != nil {
+//				return
+//			}
+//		}
+//		if err = json.beginObject(); err != nil {
+//			return
+//		}
+		return s, json.beginArrayItem()
 	}
 	return s
 }
@@ -109,14 +107,14 @@ func (json *JsonWriter) conditionallyCloseArrayOnLastWrite() error {
 
 func (json *JsonWriter) beginList(ident string) (err error) {
 	if err = json.writeIdent(ident); err == nil {
-		_, err = json.out.WriteRune(OPEN_ARRAY)
+		_, err = json.out.WriteRune('[')
 		json.firstInContainer = true
 	}
 	return
 }
 
 func (json *JsonWriter) endList() (err error) {
-	_, err = json.out.WriteRune(CLOSE_ARRAY)
+	_, err = json.out.WriteRune(']')
 	json.firstInContainer = false
 	return
 }
@@ -133,14 +131,14 @@ func (json *JsonWriter) beginContainer(ident string) (err error) {
 
 func (json *JsonWriter) endContainer() (err error) {
 	json.firstInContainer = false
-	_, err = json.out.WriteRune(CLOSE_OBJ)
+	_, err = json.out.WriteRune('}')
 	return
 }
 
-func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
+func (json *JsonWriter) writeValue(meta schema.Meta, v *schema.Value) (err error) {
 	json.writeIdent(meta.GetIdent())
 	if schema.IsListFormat(v.Type.Format) {
-		if _, err = json.out.WriteRune(OPEN_ARRAY); err != nil {
+		if _, err = json.out.WriteRune('['); err != nil {
 			return
 		}
 	}
@@ -156,7 +154,7 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 	case schema.FMT_BOOLEAN_LIST:
 		for i, b := range v.Boollist {
 			if i > 0 {
-				if _, err = json.out.WriteRune(COMMA); err != nil {
+				if _, err = json.out.WriteRune(','); err != nil {
 					return
 				}
 			}
@@ -164,11 +162,11 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 				return
 			}
 		}
-		_, err = json.out.WriteRune(CLOSE_ARRAY)
+		_, err = json.out.WriteRune(']')
 	case schema.FMT_INT32_LIST:
 		for i, n := range v.Intlist {
 			if i > 0 {
-				if _, err = json.out.WriteRune(COMMA); err != nil {
+				if _, err = json.out.WriteRune(','); err != nil {
 					return
 				}
 			}
@@ -179,7 +177,7 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 	case schema.FMT_INT64_LIST:
 		for i, n := range v.Int64list {
 			if i > 0 {
-				if _, err = json.out.WriteRune(COMMA); err != nil {
+				if _, err = json.out.WriteRune(','); err != nil {
 					return
 				}
 			}
@@ -190,7 +188,7 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 	case schema.FMT_STRING_LIST, schema.FMT_ENUMERATION_LIST:
 		for i, s := range v.Strlist {
 			if i > 0 {
-				if _, err = json.out.WriteRune(COMMA); err != nil {
+				if _, err = json.out.WriteRune(','); err != nil {
 					return
 				}
 			}
@@ -200,7 +198,7 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 		}
 	}
 	if schema.IsListFormat(v.Type.Format) {
-		if _, err = json.out.WriteRune(CLOSE_ARRAY); err != nil {
+		if _, err = json.out.WriteRune(']'); err != nil {
 			return
 		}
 	}
@@ -246,13 +244,13 @@ func (json *JsonWriter) beginArrayItem() (err error) {
 
 func (json *JsonWriter) endArrayItem() (err error) {
 	json.firstInContainer = false
-	_, err = json.out.WriteRune(CLOSE_OBJ)
+	_, err = json.out.WriteRune('}')
 	return
 }
 
 func (json *JsonWriter) beginObject() (err error) {
 	if err == nil {
-		_, err = json.out.WriteRune(OPEN_OBJ)
+		_, err = json.out.WriteRune('{')
 		json.firstInContainer = true
 	}
 	return
@@ -271,7 +269,7 @@ func (json *JsonWriter) writeIdent(ident string) (err error) {
 	if _, err = json.out.WriteRune(QUOTE); err != nil {
 		return
 	}
-	_, err = json.out.WriteRune(COLON)
+	_, err = json.out.WriteRune(':')
 	return
 }
 
@@ -279,7 +277,7 @@ func (json *JsonWriter) writeDelim() (err error) {
 	if json.firstInContainer {
 		json.firstInContainer = false
 	} else {
-		_, err = json.out.WriteRune(COMMA)
+		_, err = json.out.WriteRune(',')
 	}
 	return
 }

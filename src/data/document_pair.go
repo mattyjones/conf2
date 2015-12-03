@@ -4,9 +4,8 @@ import (
 	"schema"
 )
 
-// Details on config nodes v.s. state data
-// Section 7.21.1 of RFC6020
-// =========================
+// Details on config nodes v.s. operational nodes in Section 7.21.1 of RFC6020
+// ============================================================================
 //   If "config" is not specified, the default is the same as the parent
 //   schema node's "config" value.  If the parent node is a "case" node,
 //   the value is the same as the "case" node's parent "choice" node.
@@ -28,28 +27,11 @@ func NewDocumentPair(operational Data, config Data) (pair *DocumentPair, err err
 		config: config,
 	}
 	// Here we initialize the operational browser with the current configuration
-	err = SyncData(config, operational, NewPath(""), UPSERT)
-	return
-}
+	var edit *Editor
+	if edit, err = PathToPath(config, operational, ""); err == nil {
+		err = edit.Upsert()
+	}
 
-func NewSelectionPair(oper *Selection, config *Selection) (s *Selection, err error) {
-	pair := &selectionPair{
-		operEvents : &EventsImpl{Parent:oper.Events},
-	}
-	var configNode Node
-	if config != nil {
-		pair.configEvents = &EventsImpl{Parent:config.Events}
-		configNode = config.Node
-	}
-	combo := pair.selectPair(oper.State, oper.Node, configNode)
-	s = &Selection{
-		Events: &EventMulticast{
-			A: pair.configEvents,
-			B: pair.operEvents,
-		},
-		State: oper.State,
-		Node: combo,
-	}
 	return
 }
 
@@ -58,44 +40,66 @@ type selectionPair struct {
 	operEvents Events
 }
 
-func (self *DocumentPair) Selector(path *Path) (s *Selection, err error) {
-	var configSel, operSel *Selection
-	if operSel, err = self.oper.Selector(path); err != nil {
-		return
+func (self *DocumentPair) Node() (Node) {
+	pair := &selectionPair{
+		configEvents : &EventsImpl{},
+		operEvents : &EventsImpl{},
 	}
-	if operSel == nil {
-		return nil, nil
-	}
-	if configSel, err = self.config.Selector(path); err != nil {
-		return
-	}
-	return NewSelectionPair(operSel, configSel)
+	return pair.selectPair(self.oper.Node(), self.config.Node())
 }
 
 func (self *DocumentPair) Schema() schema.MetaList {
 	return self.oper.Schema()
 }
 
-func (self *selectionPair) selectPair(state *WalkState, operNode Node, configNode Node) Node {
-	oper := &Selection{
-		Events: self.operEvents,
-		Node: operNode,
-	}
+func (self *selectionPair) selectPair(operNode Node, configNode Node) Node {
+	var oper *Selection
 	var config *Selection
 	IsContainerConfig := configNode != nil
-	if IsContainerConfig {
-		config = &Selection{
-			Events: self.configEvents,
-			Node: configNode,
-		}
-	}
 	s := &MyNode{}
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (Node, error) {
+	onInit := func(sel *Selection) (err error) {
+		if IsContainerConfig && config == nil {
+			config = &Selection{
+				Events: self.configEvents,
+				Node: configNode,
+			}
+		}
+		if oper == nil {
+			oper = &Selection{
+				Events: self.operEvents,
+				Node: operNode,
+			}
+		}
 		if config != nil {
 			config.State = sel.State
 		}
 		oper.State = sel.State
+		return
+	}
+	s.OnEvent = func(sel *Selection, e Event) error {
 		var err error
+		if err = onInit(sel); err != nil {
+			return err
+		}
+		if err = operNode.Event(oper, e); err != nil {
+			return err
+		}
+		self.operEvents.Fire(sel.State.path, e)
+		if IsContainerConfig && sel.IsConfig() {
+			if err = configNode.Event(config, e); err != nil {
+				return err
+			}
+			if err = self.configEvents.Fire(sel.State.path, e); err != nil {
+				return err
+			}
+		}
+		return err
+	}
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (Node, error) {
+		var err error
+		if err = onInit(sel); err != nil {
+			return nil, err
+		}
 		var operNext, configNext Node
 		if operNext, err = operNode.Next(oper, meta, new, key, first); err != nil {
 			return nil, err
@@ -109,13 +113,12 @@ func (self *selectionPair) selectPair(state *WalkState, operNode Node, configNod
 				return nil, err
 			}
 		}
-		return self.selectPair(sel.State, operNext, configNext), nil
+		return self.selectPair(operNext, configNext), nil
 	}
-	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *Value) (err error) {
-		if config != nil {
-			config.State = sel.State
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *schema.Value) (err error) {
+		if err = onInit(sel); err != nil {
+			return err
 		}
-		oper.State = sel.State
 		err = operNode.Write(oper, meta, val)
 		if err == nil && sel.IsConfig() {
 			err = configNode.Write(config, meta, val)
@@ -124,11 +127,10 @@ func (self *selectionPair) selectPair(state *WalkState, operNode Node, configNod
 		}
 		return err
 	}
-	s.OnRead = func(sel *Selection, meta schema.HasDataType) (v *Value, err error) {
-		if config != nil {
-			config.State = sel.State
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (v *schema.Value, err error) {
+		if err = onInit(sel); err != nil {
+			return nil, err
 		}
-		oper.State = sel.State
 		if IsContainerConfig && sel.IsConfig() {
 			v, err = configNode.Read(config, meta)
 		}
@@ -138,11 +140,10 @@ func (self *selectionPair) selectPair(state *WalkState, operNode Node, configNod
 		return
 	}
 	s.OnSelect = func(sel *Selection, meta schema.MetaList, createOk bool) (Node, error) {
-		if config != nil {
-			config.State = sel.State
-		}
-		oper.State = sel.State
 		var err error
+		if err = onInit(sel); err != nil {
+			return nil, err
+		}
 		var configChild, operChild Node
 		if operChild, err = operNode.Select(oper, meta, createOk); err != nil {
 			return nil, err
@@ -156,27 +157,13 @@ func (self *selectionPair) selectPair(state *WalkState, operNode Node, configNod
 				return nil, err
 			}
 		}
-		return self.selectPair(sel.State, operChild, configChild), nil
+		return self.selectPair(operChild, configChild), nil
 	}
 	s.OnChoose = func(sel *Selection, choice *schema.Choice) (m schema.Meta, err error) {
-		if config != nil {
-			config.State = sel.State
+		if err = onInit(sel); err != nil {
+			return nil, err
 		}
-		oper.State = sel.State
 		return operNode.Choose(sel, choice)
-	}
-	s.OnEvent = func(sel *Selection, e Event) (err error) {
-		if config != nil {
-			config.State = sel.State
-		}
-		oper.State = sel.State
-		if err = operNode.Event(oper, e); err != nil {
-			return err
-		}
-		if IsContainerConfig && sel.IsConfig() {
-			err = configNode.Event(config, e)
-		}
-		return
 	}
 	// at this time, config has no generic ability to handle actions, so forward to operational.
 	s.OnAction = operNode.Action

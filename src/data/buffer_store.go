@@ -9,13 +9,13 @@ import (
 // Store key values in memory.  Useful for testing or moving temporary data
 
 type BufferStore struct {
-	Values  map[string]*Value
+	Values  map[string]*schema.Value
 	Actions map[string]ActionFunc
 }
 
 func NewBufferStore() *BufferStore {
 	return &BufferStore{
-		Values:  make(map[string]*Value, 10),
+		Values:  make(map[string]*schema.Value, 10),
 		Actions: make(map[string]ActionFunc, 10),
 	}
 }
@@ -56,7 +56,7 @@ func (kvs *BufferStore) Action(key string) (ActionFunc, error) {
 	return kvs.Actions[key], nil
 }
 
-func (kvs *BufferStore) Value(key string, dataType *schema.DataType) *Value {
+func (kvs *BufferStore) Value(key string, dataType *schema.DataType) *schema.Value {
 	if v, found := kvs.Values[key]; found {
 		v.Type = dataType
 		return v
@@ -64,7 +64,7 @@ func (kvs *BufferStore) Value(key string, dataType *schema.DataType) *Value {
 	return nil
 }
 
-func (kvs *BufferStore) SetValue(key string, v *Value) error {
+func (kvs *BufferStore) SetValue(key string, v *schema.Value) error {
 	kvs.Values[key] = v
 	return nil
 }

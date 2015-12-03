@@ -7,6 +7,7 @@ import (
 	"schema/yang"
 	"strings"
 	"testing"
+	"conf2"
 )
 
 func TestAction(t *testing.T) {
@@ -37,33 +38,21 @@ module m {
 	// lazy trick, we stick all data, input, output into one bucket
 	store := NewBufferStore()
 	b := NewStoreData(m, store)
-	var yourName *Value
-	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input *Selection) (output *Selection, err error) {
-		readInput := NewSelection(b.Container(""), meta.Input)
-		if err = Insert(input, readInput); err != nil {
+	var yourName *schema.Value
+	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input Node) (output Node, err error) {
+		if err = NodeToNode(input, b.Container(""), meta.Input).Insert(); err != nil {
+conf2.Debug.Printf("here")
 			return nil, err
 		}
 		yourName = store.Values["name"]
-		store.Values["salutation"] = &Value{Str: fmt.Sprint("Hello ", yourName)}
-		return NewSelection(b.Container(""), meta.Output), nil
+		store.Values["salutation"] = &schema.Value{Str: fmt.Sprint("Hello ", yourName)}
+		return b.Container(""), nil
 	}
-	var actionSel, rpcOut *Selection
-	if actionSel, err = b.Selector(NewPath("sayHello")); err != nil {
-		t.Error(err)
-	}
-	rpc := actionSel.State.Position().(*schema.Rpc)
-	var readJson Node
-	if readJson, err = NewJsonReader(strings.NewReader(`{"name":"joe"}`)).Node(); err != nil {
-		t.Fatal(err)
-	}
-	in := NewSelection(readJson, rpc.Input)
-	if rpcOut, err = Action(actionSel, in); err != nil {
-		t.Error(err)
-	}
+	in := NewJsonReader(strings.NewReader(`{"name":"joe"}`)).Node()
 	var actual bytes.Buffer
-	out := NewJsonWriter(&actual).Selector(rpcOut.State)
-	if err = Insert(rpcOut, out); err != nil {
-		t.Error(err)
+	out := NewJsonWriter(&actual).Node()
+	if err = PathAction(b, "sayHello", in, out); err != nil {
+		t.Fatal(err)
 	}
 	if yourName.Str != "joe" {
 		t.Error("Your name ", yourName)

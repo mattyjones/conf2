@@ -112,7 +112,7 @@ type ManageMyApp struct {
 }
 
 // This implements data.Data get's the initial node into your app
-func (manage *ManageMyApp) Selector(path *data.Path) (*data.Selection, error) {
+func (manage *ManageMyApp) Selector(path *schema.PathSlice) (*data.Selection, error) {
 	// utility functions walk through your API to get to the data
 	return data.WalkPath(data.NewSelection(manage.Manage(), manage.Meta), path)
 }
@@ -139,7 +139,7 @@ func (manage *ManageMyApp) Manage() data.Node {
 	//   Example Response:
 	//    {"message":"hello","count":10}
 	//
-	n.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*data.Value, error) {
+	n.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
 		// Here we can use Go's reflection but if reflection isn't valid for some or all fields,
 		// you can add a switch case to handle them separately
 		return data.ReadField(meta, manage.App)
@@ -152,7 +152,7 @@ func (manage *ManageMyApp) Manage() data.Node {
 	//   Example Payload:
 	//     {"message":"hello"}
 	//
-	n.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *data.Value) error {
+	n.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *schema.Value) error {
 		// Here we can use Go's reflection but if names are different, add a switch case
 		// statement here
 		return data.WriteField(meta, manage.App, v)
@@ -168,12 +168,12 @@ func (manage *ManageMyApp) Manage() data.Node {
 	//   Example Response:
 	//     {"message":"hello joe"}
 	//
-	n.OnAction = func(sel *data.Selection, rpc *schema.Rpc, input *data.Selection) (output *data.Selection, err error) {
+	n.OnAction = func(sel *data.Selection, rpc *schema.Rpc, input data.Node) (output data.Node, err error) {
 
 		// You can use a variety of methods to unmarshal the input including sticking into go map
 		// using the Bucket struct
 		param := struct { Name string } {}
-		err = data.MarshalTo(input, &param)
+		err = data.NodeToNode(input, data.MarshalContainer(input), rpc.Input).Insert()
 
 		// See how we can call functions of our app from our management data
 		// browser?
@@ -181,7 +181,7 @@ func (manage *ManageMyApp) Manage() data.Node {
 
 		// Build the response, we choose reflection marshaller again just like input data
 		response := struct { Message string } { s }
-		return data.NewSelection(data.MarshalContainer(&response), rpc.Output), nil
+		return data.MarshalContainer(&response), nil
 	}
 
 	return n

@@ -4,36 +4,44 @@ import (
 )
 
 type WalkState struct {
-	path       schema.MetaPath
-	key        []*Value
+	path       *schema.Path
+	position   schema.Meta
+	key			[]*schema.Value
 	insideList bool
 }
 
 func (state *WalkState) SelectedMeta() schema.MetaList {
-	return state.path.Parent()
+	return state.path.Meta()
 }
 
 func (state *WalkState) Position() schema.Meta {
-	return state.path.Meta
+	return state.position
 }
 
 func (state *WalkState) SetPosition(position schema.Meta) {
-	state.path.Meta = position
+	state.position = position
 }
 
-func (state *WalkState) Path() *schema.MetaPath {
-	return &state.path
+func (state *WalkState) Path() *schema.Path {
+	return state.path
+}
+
+func (state *WalkState) String() string {
+	if state.position == nil {
+		return state.path.String()
+	}
+	return state.path.String() + "." + state.position.GetIdent()
 }
 
 func (state *WalkState) InsideList() bool {
 	return state.insideList
 }
 
-func (state *WalkState) Key() []*Value {
+func (state *WalkState) Key() []*schema.Value {
 	return state.key
 }
 
-func (state *WalkState) SetKey(key []*Value) {
+func (state *WalkState) SetKey(key []*schema.Value) {
 	state.key = key
 }
 

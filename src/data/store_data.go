@@ -23,16 +23,12 @@ func (kv *StoreData) Schema() schema.MetaList {
 	return kv.schema
 }
 
-func (kv *StoreData) Selector(path *Path) (selection *Selection, err error) {
+func (kv *StoreData) Node() (Node) {
+	var err error
 	if err = kv.store.Load(); err != nil {
-		return nil, err
+		return ErrorNode{Err:err}
 	}
-	root := kv.Container("")
-	selection = NewSelection(root, kv.schema)
-	if len(path.Segments) > 0 {
-		return WalkPath(selection, path)
-	}
-	return
+	return kv.Container("")
 }
 
 func (kv *StoreData) OnEvent(sel *Selection, e Event) error {
@@ -44,10 +40,10 @@ func (kv *StoreData) OnEvent(sel *Selection, e Event) error {
 }
 
 func (kv *StoreData) List(parentPath string) Node {
-	s := &MyNode{}
+	s := &MyNode{Label:"StoreData List"}
 	var keyList []string
 	var i int
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error) {
 		if new {
 			childPath := kv.listPath(parentPath, sel.State.Key())
 			return kv.Container(childPath), nil
@@ -69,8 +65,8 @@ func (kv *StoreData) List(parentPath string) Node {
 				i++
 			}
 			if hasMore := i < len(keyList); hasMore {
-				var key []*Value
-				if key, err = CoerseKeys(meta, []string{keyList[i]}); err != nil {
+				var key []*schema.Value
+				if key, err = schema.CoerseKeys(meta, []string{keyList[i]}); err != nil {
 					return nil, err
 				}
 				sel.State.SetKey(key)
@@ -87,7 +83,7 @@ func (kv *StoreData) List(parentPath string) Node {
 		}
 		return kv.OnEvent(sel, e)
 	}
-	s.OnAction = func(sel *Selection, rpc *schema.Rpc, input *Selection) (output *Selection, err error) {
+	s.OnAction = func(sel *Selection, rpc *schema.Rpc, input Node) (output Node, err error) {
 		path := kv.listPath(parentPath, sel.State.Key())
 		var action ActionFunc
 		if action, err = kv.store.Action(path); err != nil {
@@ -105,18 +101,18 @@ func (kv *StoreData) containerPath(parentPath string, meta schema.Meta) string {
 	return fmt.Sprint(parentPath, "/", meta.GetIdent())
 }
 
-func (kv *StoreData) listPath(parentPath string, key []*Value) string {
+func (kv *StoreData) listPath(parentPath string, key []*schema.Value) string {
 	// TODO: support compound keys
 	return fmt.Sprint(parentPath, "=", key[0].String())
 }
 
-func (kv *StoreData) listPathWithNewKey(parentPath string, key []*Value) string {
+func (kv *StoreData) listPathWithNewKey(parentPath string, key []*schema.Value) string {
 	eq := strings.LastIndex(parentPath, "=")
 	return kv.listPath(parentPath[:eq], key)
 }
 
 func (kv *StoreData) Container(copy string) Node {
-	s := &MyNode{}
+	s := &MyNode{Label:"StoreData Container"}
 	//path := storePath{parent:parentPath}
 	s.OnChoose = func(sel *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		// go thru each case and if there are any properties in the data that are not
@@ -146,7 +142,7 @@ func (kv *StoreData) Container(copy string) Node {
 		msg := fmt.Sprintf("No discriminating data for choice schema %s ", sel.String())
 		return nil, errors.New(msg)
 	}
-	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*schema.Value, error) {
 		return kv.store.Value(kv.containerPath(copy, meta), meta.GetDataType()), nil
 	}
 	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error) {
@@ -169,7 +165,7 @@ func (kv *StoreData) Container(copy string) Node {
 		}
 		return
 	}
-	s.OnWrite = func(sel *Selection, meta schema.HasDataType, v *Value) (err error) {
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType, v *schema.Value) (err error) {
 		propPath := kv.containerPath(copy, meta)
 		if err = kv.store.SetValue(propPath, v); err != nil {
 			return err
@@ -177,7 +173,7 @@ func (kv *StoreData) Container(copy string) Node {
 		if schema.IsKeyLeaf(sel.State.SelectedMeta(), meta) {
 			oldPath := copy
 			// TODO: Support compound keys
-			newKey := []*Value{v}
+			newKey := []*schema.Value{v}
 			newPath := kv.listPathWithNewKey(copy, newKey)
 			kv.store.RenameKey(oldPath, newPath)
 		}
@@ -190,7 +186,7 @@ func (kv *StoreData) Container(copy string) Node {
 		}
 		return kv.OnEvent(sel, e)
     }
-	s.OnAction = func(sel *Selection, rpc *schema.Rpc, input *Selection) (output *Selection, err error) {
+	s.OnAction = func(sel *Selection, rpc *schema.Rpc, input Node) (output Node, err error) {
 		path := kv.containerPath(copy, rpc)
 		var action ActionFunc
 		if action, err = kv.store.Action(path); err != nil {

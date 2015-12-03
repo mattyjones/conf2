@@ -40,63 +40,58 @@ module json-test {
 		}
 	}
 }`
-	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr), nil); err != nil {
-		t.Error("bad module", err)
+	m, err := yang.LoadModuleFromByteArray([]byte(moduleStr), nil)
+	if err != nil {
+		t.Fatal("bad module", err)
+	}
+	b := NewSchemaData(m, false)
+	var actual bytes.Buffer
+	json := NewJsonWriter(&actual).Node()
+	if err = NodeToNode(b.Node(), json, b.Schema()).Insert(); err != nil {
+		t.Error(err)
 	} else {
-		var actual bytes.Buffer
-		var in *Selection
-		b := NewSchemaData(module, false)
-		in, err = b.Selector(NewPath(""))
-		json := NewJsonWriter(&actual).Selector(in.State)
-		if err = Insert(in, json); err != nil {
-			t.Error("failed to transmit json", err)
-		} else {
-			t.Log("Round Trip:", string(actual.Bytes()))
-		}
+		t.Log("Round Trip:", string(actual.Bytes()))
 	}
 }
 
 func TestYangWrite(t *testing.T) {
 	simple, err := yang.LoadModuleFromByteArray([]byte(yang.TestDataSimpleYang), nil)
 	if err != nil {
+		t.Fatal(err)
+	}
+	from := NewSchemaData(simple, false)
+	to := NewSchemaData(nil, false)
+	edit, err2 := PathToPath(from, to, "")
+	if err2 != nil {
+		t.Fatal(err2)
+	}
+	err = edit.Upsert()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// dump original and clone to see if anything is missing
+	var expected string
+	var actual string
+	expected, err = DumpModule(from)
+	if err != nil {
 		t.Error(err)
-	} else {
-		var in, out *Selection
-		from := NewSchemaData(simple, false)
-		in, err = from.Selector(NewPath(""))
-		to := NewSchemaData(nil, false)
-		out, err = from.Selector(NewPath(""))
-		err = Upsert(in, out)
-		if err != nil {
-			t.Error(err)
-		} else {
-			// dump original and clone to see if anything is missing
-			var expected string
-			var actual string
-			expected, err = DumpModule(from)
-			if err != nil {
-				t.Error(err)
-			}
-			actual, err = DumpModule(to)
-			if err != nil {
-				t.Error(err)
-			}
-			if actual != expected {
-				t.Log("Different")
-				//				t.Log(expected)
-				//				t.Log("Actual")
-				//				t.Log(actual)
-				//				t.Fail()
-			}
-		}
+	}
+	actual, err = DumpModule(to)
+	if err != nil {
+		t.Error(err)
+	}
+	if actual != expected {
+		t.Log("Different")
+		//				t.Log(expected)
+		//				t.Log("Actual")
+		//				t.Log(actual)
+		//				t.Fail()
 	}
 }
 
 func DumpModule(b *SchemaData) (string, error) {
 	var buff bytes.Buffer
-	in, _ := b.Selector(NewPath(""))
-	dumper := NewSelectionFromState(NewDumper(&buff).Node(), in.State)
-	err := Insert(in, dumper)
+	err := NodeToNode(b.Node(), NewDumper(&buff).Node(), b.Schema()).Insert()
 	if err != nil {
 		return "", err
 	}

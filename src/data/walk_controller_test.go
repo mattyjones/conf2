@@ -48,17 +48,17 @@ func TestPathIntoListItemContainer(t *testing.T) {
 	if b, err = LoadPathTestData(); err != nil {
 		t.Fatal(err)
 	}
-	var target *Selection
-	if target, err = b.Selector(NewPath("fruits=apple/origin")); err != nil {
-		t.Fatal(err)
-	} else if target == nil {
-		t.Fatal("Could not find target")
+	tests := []string {
+		"fruits=apple/origin",
+		"fruits=apple/boat",
 	}
-
-	if target, err = b.Selector(NewPath("fruits=apple/boat")); err != nil {
-		t.Fatal(err)
-	} else if target == nil {
-		t.Fatal("Could not find target")
+	for _, test := range tests {
+		target, err := WalkDataPath(b, test)
+		if err != nil {
+			t.Fatal(err)
+		} else if target == nil {
+			t.Fatal("Could not find target " + test)
+		}
 	}
 }
 

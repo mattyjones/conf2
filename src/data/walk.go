@@ -4,17 +4,24 @@ import (
 	"schema"
 )
 
-func WalkPath(selection *Selection, path *Path) (*Selection, error) {
+func WalkPath(selection *Selection, path *schema.PathSlice) (*Selection, error) {
+	if path.Empty() {
+		return selection, nil
+	}
 	finder := NewFindTarget(path)
-	err := walk(selection, finder)
+	err := Walk(selection, finder)
 	return finder.Target, err
 }
 
-func Walk(selection *Selection, controller WalkController) (err error) {
-	return walk(selection, controller)
+func WalkDataPath(data Data, path string) (*Selection, error) {
+	p, err := schema.ParsePath(path, data.Schema())
+	if err != nil {
+		return nil, err
+	}
+	return WalkPath(NewSelection(data.Node(), data.Schema()), p)
 }
 
-func walk(selection *Selection, controller WalkController) (err error) {
+func Walk(selection *Selection, controller WalkController) (err error) {
 	state := selection.State
 	if schema.IsList(state.SelectedMeta()) && !state.InsideList() {
 		var next *Selection
@@ -22,10 +29,10 @@ func walk(selection *Selection, controller WalkController) (err error) {
 			return
 		}
 		for next != nil {
-			if err = walk(next, controller); err != nil {
+			if err = Walk(next, controller); err != nil {
 				return
 			}
-			if err = selection.Fire(NEXT); err != nil {
+			if err = selection.Fire(LEAVE_ITEM); err != nil {
 				return err
 			}
 			if next, err = controller.ListIterator(selection, false); err != nil {
@@ -34,7 +41,10 @@ func walk(selection *Selection, controller WalkController) (err error) {
 		}
 	} else {
 		var child Node
-		i := controller.ContainerIterator(selection)
+		i, cerr := controller.ContainerIterator(selection)
+		if cerr != nil {
+			return cerr
+		}
 		for i.HasNextMeta() {
 			state.SetPosition(i.NextMeta())
 			if choice, isChoice := state.Position().(*schema.Choice); isChoice {
@@ -64,7 +74,8 @@ func walk(selection *Selection, controller WalkController) (err error) {
 					}
 					defer schema.CloseResource(child)
 					childSel := selection.Select(child)
-					if err = walk(childSel, controller); err != nil {
+
+					if err = Walk(childSel, controller); err != nil {
 						return
 					}
 					if err = childSel.Fire(LEAVE); err != nil {

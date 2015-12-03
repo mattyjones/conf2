@@ -44,7 +44,7 @@ type Service struct {
 
 func (service *Service) Manage() data.Node {
 	s := &data.MyNode{}
-	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
+	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
 		switch meta.GetIdent() {
 		case "registrations":
 			strlist := make([]string, len(service.registrations))
@@ -53,13 +53,13 @@ func (service *Service) Manage() data.Node {
 				strlist[i] = name
 				i++
 			}
-			return &data.Value{Strlist:strlist}, nil
+			return &schema.Value{Strlist:strlist}, nil
 		default:
 			return data.ReadField(meta, service)
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *data.Value) (err error) {
+	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *schema.Value) (err error) {
 		switch meta.GetIdent() {
 		case "docRoot":
 			service.DocRoot = v.Str
@@ -98,11 +98,17 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var err error
-	var path *data.Path
-	var payload *data.Selection
-	if path, err = data.ParsePath(r.URL.Path); err == nil {
+	var path *schema.PathSlice
+	var payload data.Node
+	if path, err = schema.ParsePath(r.URL.Path, reg.browser.Schema()); err == nil {
+		root := data.NewSelection(reg.browser.Node(), reg.browser.Schema())
 		var sel *data.Selection
-		if sel, err = reg.browser.Selector(path); err != nil {
+		sel, err := data.WalkPath(root, path)
+		if sel == nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+		if err != nil {
 			handleError(err)
 			return
 		}
@@ -111,38 +117,24 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			err = data.Delete(sel)
 		case "GET":
 			w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
-			output := data.NewJsonWriter(w).Selector(sel.State)
-			err = data.ControlledInsert(sel, output, data.LimitedWalk(r.URL.RawQuery))
+			output := data.NewJsonWriter(w).Node()
+			err = data.SelectionToNode(sel, output).ControlledInsert(data.LimitedWalk(path.Params()))
 		case "PUT":
-			if payload, err = data.NewJsonReader(r.Body).Selector(sel.State); err != nil {
-				handleError(err)
-				return
-			}
-			err = data.Upsert(payload, sel)
+			payload = data.NewJsonReader(r.Body).Node()
+			err = data.NodeToSelection(payload, sel).Upsert()
 		case "POST":
 			if schema.IsAction(sel.State.Position()) {
 				rpc := sel.State.Position().(*schema.Rpc)
-				var rpcInput data.Node
-				var rpcOutput *data.Selection
-				if rpcInput, err = data.NewJsonReader(r.Body).Node(); err != nil {
-					handleError(err)
-					return
-				}
-				if rpcOutput, err = data.Action(sel, data.NewSelection(rpcInput, rpc.Input)); err != nil {
-					handleError(err)
-					return
-				}
-				if rpcOutput != nil {
+				input := data.NewJsonReader(r.Body).Node()
+				var output data.Node
+				if rpc.Output != nil {
 					w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
-					output := data.NewJsonWriter(w).Selector(rpcOutput.State)
-					data.Insert(rpcOutput, output)
+					output = data.NewJsonWriter(w).Node()
 				}
+				err = data.SelectionAction(sel, input, output)
 			} else {
-				if payload, err = data.NewJsonReader(r.Body).Selector(sel.State); err != nil {
-					handleError(err)
-					return
-				}
-				err = data.Insert(payload, sel)
+				payload = data.NewJsonReader(r.Body).Node()
+				err = data.NodeToSelection(payload, sel).Insert()
 			}
 		default:
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)

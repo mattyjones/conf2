@@ -31,15 +31,8 @@ module m {
 	}
 	var obj TestMessage
 	c := MarshalContainer(&obj)
-	var r Node
-	r, err = NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
-	if err != nil {
-		t.Fatal(err)
-	}
-	sel := NewSelection(c, m)
-	in := NewSelection(r, m)
-	err = Upsert(in, sel)
-	if err != nil {
+	r := NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
+	if err = NodeToNode(r, c, m).Upsert(); err != nil {
 		t.Fatal(err)
 	}
 	if obj.Message.Hello != "bob" {

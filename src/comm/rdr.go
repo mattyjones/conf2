@@ -3,7 +3,6 @@ package comm
 import (
 	"errors"
 	"schema"
-	"data"
 )
 
 type Reader struct {
@@ -19,13 +18,13 @@ func NewReader(data []byte) *Reader {
 	return &Reader{data: data}
 }
 
-func (c *Reader) ReadValue(typ *schema.DataType) (v *data.Value, err error) {
+func (c *Reader) ReadValue(typ *schema.DataType) (v *schema.Value, err error) {
 	var formatCode int
 	if formatCode, err = c.ReadInt(); err != nil {
 		return
 	}
 	format := schema.DataFormat(formatCode)
-	v = &data.Value{Type: typ}
+	v = &schema.Value{Type: typ}
 	switch format {
 	case schema.FMT_INT32:
 		v.Int, err = c.ReadInt()

@@ -4,6 +4,7 @@ import (
 	"schema/yang"
 	"strings"
 	"testing"
+	"schema"
 )
 
 func TestJsonWalk(t *testing.T) {
@@ -36,28 +37,26 @@ module json-test {
 {"name":"hockey", "favorite": {"common-name" : "bruins", "location" : "Boston"}}
 ]}`
 
-		tests := []struct {
-			path         string
-			expectedMeta string
-		}{
-			{"hobbies", "json-test/hobbies"},
-			{"hobbies=birding", "json-test/hobbies=birding"},
-			{"hobbies=birding/favorite", "json-test/hobbies=birding/favorite"},
+		tests := []string {
+			"hobbies",
+			"hobbies=birding",
+			"hobbies=birding/favorite",
 		}
 		var in, selection *Selection
 		var rdr Node
 		for _, test := range tests {
-			if rdr, err = NewJsonReader(strings.NewReader(json)).Node(); err != nil {
-				t.Fatal(err)
-			}
+			rdr = NewJsonReader(strings.NewReader(json)).Node()
 			in = NewSelection(rdr, module)
-			selection, err = WalkPath(in, NewPath(test.path))
+			selection, err = WalkPath(in, schema.NewPathSlice(test, module))
 			if err != nil {
 				t.Error("failed to transmit json", err)
 			} else if selection == nil {
-				t.Error(test.path, "- Target not found, state nil")
-			} else if selection.State.Path().Position() != test.expectedMeta {
-				t.Error(test.path, "-", test.expectedMeta, "!=", selection.String())
+				t.Error(test, "- Target not found, state nil")
+			} else {
+				actual := selection.State.Path().String()
+				if actual != "json-test/" + test {
+					t.Error("json-test/" + test, "!=", actual)
+				}
 			}
 		}
 	}

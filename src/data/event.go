@@ -3,6 +3,7 @@ import (
 	"regexp"
 	"conf2"
 	"fmt"
+	"schema"
 )
 
 type Event int
@@ -13,7 +14,7 @@ const (
 	END_EDIT
 	UNDO_EDIT
 	LEAVE
-	NEXT
+	LEAVE_ITEM
 	DELETE
 	UNSELECT
 )
@@ -24,7 +25,7 @@ var eventNames = []string {
 	"END_EDIT",
 	"UNDO_EDIT",
 	"LEAVE",
-	"NEXT",
+	"LEAVE_ITEM",
 	"DELETE",
 	"UNSELECT",
 }
@@ -32,7 +33,7 @@ var eventNames = []string {
 type Events interface {
 	AddListener(*Listener)
 	RemoveListener(*Listener)
-	Fire(path string, e Event) error
+	Fire(path *schema.Path, e Event) error
 }
 
 type EventsImpl struct {
@@ -79,16 +80,17 @@ func (impl *EventsImpl) RemoveListener(l *Listener) {
 	}
 }
 
-func (impl *EventsImpl) Fire(path string, e Event) (err error) {
+func (impl *EventsImpl) Fire(path *schema.Path, e Event) (err error) {
 	if len(impl.listeners) > 0 {
+		pathStr := path.String()
 		for _, l := range impl.listeners {
 			if l.event == e {
 				if len(l.path) > 0 {
-					if l.path != path {
+					if l.path != pathStr {
 						continue
 					}
 				} else if l.regex != nil {
-					if ! l.regex.MatchString(path) {
+					if ! l.regex.MatchString(pathStr) {
 						continue
 					}
 				}

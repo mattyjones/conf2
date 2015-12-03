@@ -1,6 +1,6 @@
 package schema
 
-// Tri-state boolean - true, false, and not-defined
+// Tri-state boolean - true, false, and undeclared
 type Flag int
 
 const (
@@ -30,16 +30,22 @@ type Details struct {
 	MandatoryFlag Flag
 }
 
-func (d *Details) Config(p *MetaPath) bool {
+func (d *Details) Config(p *Path) bool {
 	switch d.ConfigFlag {
 	case SET_TRUE:
 		return true
 	case SET_FALSE:
 		return false
 	}
-	if p.ParentPath != nil {
-		if hasDetails, ok := p.Parent().(HasDetails); ok {
-			return hasDetails.Details().Config(p.ParentPath)
+
+	// if details are on leaf, then p is parent container, otherwise
+	// p is what we're supposed to check config for
+	if p != nil {
+		if hasDetails, ok := p.meta.(HasDetails); ok {
+			if parentDetails := hasDetails.Details(); parentDetails == d {
+				return hasDetails.Details().Config(p.parent)
+			}
+			return hasDetails.Details().Config(p)
 		}
 	}
 	return true

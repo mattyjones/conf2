@@ -27,7 +27,7 @@ module m {
 	}
 }
 	`
-	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr), nil); err != nil {
+	if m, err := yang.LoadModuleFromByteArray([]byte(moduleStr), nil); err != nil {
 		t.Error("bad module", err)
 	} else {
 		root := map[string]interface{}{
@@ -41,12 +41,9 @@ module m {
 				},
 			},
 		}
-		b := BucketData{Meta: module, Root: root}
-		var in *Selection
-		in, err = b.Selector(NewPath(""))
+		b := BucketData{Meta: m, Root: root}
 		var json bytes.Buffer
-		w := NewJsonWriter(&json).Selector(in.State)
-		if err = Upsert(in, w); err != nil {
+		if err = NodeToNode(b.Node(), NewJsonWriter(&json).Node(), m).Upsert(); err != nil {
 			t.Fatal(err)
 		}
 		actual := string(json.Bytes())

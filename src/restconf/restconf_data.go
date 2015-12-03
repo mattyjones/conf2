@@ -14,16 +14,17 @@ type Data struct {
 func NewData(restconf *Service) (rcb *Data, err error) {
 	var module *schema.Module
 	module, err = yang.LoadModule(yang.YangPath(), "restconf.yang")
-	if err == nil {
-		parent := schema.FindByPath(module, "modules").(*schema.List)
-		placeholder := schema.FindByPath(parent, "module")
-		targetParent := data.GetSchemaSchema()
-		targetMaster := schema.FindByPath(targetParent, "module").(*schema.Container)
-		// shallow clone target otherwise we alter browser's schema
-		target := *targetMaster
-		parent.ReplaceMeta(placeholder, &target)
-		rcb = &Data{Meta: module, Service: restconf}
+	if err != nil {
+		return nil, err
 	}
+	parent := schema.FindByPath(module, "modules").(*schema.List)
+	placeholder := schema.FindByPath(parent, "module")
+	targetParent := data.GetSchemaSchema()
+	targetMaster := schema.FindByPath(targetParent, "module").(*schema.Container)
+	// shallow clone target otherwise we alter browser's schema
+	target := *targetMaster
+	parent.ReplaceMeta(placeholder, &target)
+	rcb = &Data{Meta: module, Service: restconf}
 	return
 }
 
@@ -31,28 +32,20 @@ func (rcb *Data) Schema() schema.MetaList {
 	return rcb.Meta
 }
 
-func (rcb *Data) Selector(path *data.Path) (*data.Selection, error) {
-	s := &data.MyNode{}
-	s.OnSelect = func(state *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
-		switch meta.GetIdent() {
-		case "modules":
-			return SelectModules(rcb.Service.registrations), nil
-		}
-		return nil, nil
-	}
-	return data.WalkPath(data.NewSelection(s, rcb.Meta), path)
+func (rcb *Data) Node() data.Node {
+	return SelectManagement(rcb.Service)
 }
 
 func SelectManagement(service *Service) data.Node {
 	s := &data.MyNode{}
-	s.OnSelect = func(state *data.Selection, meta schema.MetaList, new bool) (child data.Node, err error) {
+	s.OnSelect = func(sel *data.Selection, meta schema.MetaList, new bool) (child data.Node, err error) {
 		switch meta.GetIdent() {
 		case "modules":
 			return SelectModules(service.registrations), nil
 		}
 		return
 	}
-	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, val *data.Value) (err error) {
+	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, val *schema.Value) (err error) {
 		switch meta.GetIdent() {
 		case "docRoot":
 			service.SetDocRoot(&schema.FileStreamSource{Root: val.Str})
@@ -73,7 +66,7 @@ func SelectManagement(service *Service) data.Node {
 		}
 		return
 	}
-	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
+	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
 		switch meta.GetIdent() {
 		default:
 			return data.ReadField(meta, service)
@@ -84,7 +77,7 @@ func SelectManagement(service *Service) data.Node {
 
 func SelectModule(name string, reg *registration) data.Node {
 	s := &data.MyNode{}
-	s.OnSelect = func(state *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
+	s.OnSelect = func(sel *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
 		switch meta.GetIdent() {
 		case "module":
 			// TODO: support browsing schema at any point, not assume module
@@ -94,10 +87,10 @@ func SelectModule(name string, reg *registration) data.Node {
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
+	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
 		switch meta.GetIdent() {
 		case "name":
-			return &data.Value{Str: name}, nil
+			return &schema.Value{Str: name}, nil
 		}
 		return nil, nil
 	}
@@ -107,16 +100,16 @@ func SelectModule(name string, reg *registration) data.Node {
 func SelectModules(registrations map[string]*registration) (data.Node) {
 	s := &data.MyNode{}
 	index := newRegIndex(registrations)
-	s.OnNext = func(state *data.Selection, meta *schema.List, new bool, keys []*data.Value, isFirst bool) (data.Node, error) {
-		if hasMore, err := index.Index.OnNext(state, meta, keys, isFirst); hasMore {
+	s.OnNext = func(sel *data.Selection, meta *schema.List, new bool, keys []*schema.Value, isFirst bool) (data.Node, error) {
+		if hasMore, err := index.Index.OnNext(sel, meta, keys, isFirst); hasMore {
 			return SelectModule(index.Index.CurrentKey(), index.Selected), err
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
+	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
 		switch meta.GetIdent() {
 		case "name":
-			return &data.Value{Str: index.Index.CurrentKey()}, nil
+			return &schema.Value{Str: index.Index.CurrentKey()}, nil
 		}
 		return nil, nil
 	}

@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"errors"
 	"schema"
-	"data"
 )
 
 type Writer struct {
@@ -29,7 +28,7 @@ func (c *Writer) Data() (message []byte) {
 	return
 }
 
-func (c *Writer) WriteValues(vals []*data.Value) (err error) {
+func (c *Writer) WriteValues(vals []*schema.Value) (err error) {
 	c.WriteInt(len(vals))
 	for _, val := range vals {
 		if err = c.WriteValue(val); err != nil {
@@ -59,7 +58,7 @@ func (c *Writer) WriteValues(vals []*data.Value) (err error) {
 //  If format code implies non-list variable, then each data type is formatted independantly
 //  and detailed in each put method
 //
-func (c *Writer) WriteValue(val *data.Value) (err error) {
+func (c *Writer) WriteValue(val *schema.Value) (err error) {
 	c.WriteInt(int(val.Type.Format))
 	// Implied Fix-Length data types
 	switch val.Type.Format {

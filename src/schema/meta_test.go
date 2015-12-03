@@ -11,16 +11,18 @@ func TestLeafListFormatSetting(t *testing.T) {
 }
 
 func TestMetaIsConfig(t *testing.T) {
+	m := &Module{Ident: "m"}
+	c := &Container{Ident: "c"}
+	m.AddMeta(c)
 	l := &List{Ident: "l"}
-	m := &Leaf{Ident: "leaf"}
-	path := &MetaPath{Meta: m}
-	path.ParentPath = &MetaPath{Meta: l}
-	if !m.Details().Config(path) {
+	c.AddMeta(l)
+	path := NewPathSlice("c", m)
+	if ! l.Details().Config(path.Tail) {
 		t.Error("Should be config")
 	}
-	l.details.ConfigFlag = SET_FALSE
-	if m.Details().Config(path) {
-		t.Error("Should not be config")
+	c.details.ConfigFlag = SET_FALSE
+	if l.Details().Config(path.Tail) {
+		t.Errorf(" %s should not be config", path.Tail.String())
 	}
 }
 

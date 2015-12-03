@@ -47,32 +47,30 @@ module m {
 		t.Fatal(err)
 	}
 	node := &MyNode{}
-	node.OnNext = func(*Selection, *schema.List, bool, []*Value, bool) (Node, error) {
+	node.OnNext = func(*Selection, *schema.List, bool, []*schema.Value, bool) (Node, error) {
 		return node, nil
 	}
 	node.OnSelect = func(*Selection, schema.MetaList, bool) (Node, error) {
 		return node, nil
 	}
-	root := NewSelection(node, module)
 	var selection *Selection
-	tests := []struct {
-		path     string
-		expected string
-	}{
+	tests := [][]string {
 		{"", "m"},
-		{"a", "m/a"},
-		{"b", "m/b"},
-		{"b=x", "m/b=x"},
-		{"a/aa=key/aab", "m/a/aa=key/aab"},
+		{"a","m/a"},
+		{"b","m/b"},
+		{"b=x","m/b=x"},
+		{"a/aa=key/aab","m/a/aa=key/aab"},
 	}
 	for _, test := range tests {
-		selection, err = WalkPath(root, NewPath(test.path))
+		t.Log(test[0])
+		root := NewSelection(node, module)
+		selection, err = WalkPath(root, schema.NewPathSlice(test[0], module))
 		if selection == nil {
-			t.Errorf("Target for %s not found", test.path)
+			t.Errorf("Target for %s not found", test[0])
 		} else {
-			actual := selection.String()
-			if test.expected != actual {
-				t.Errorf("Wrong state path for %s\nExpected:%s\n  Actual:%s", test.path, test.expected, actual)
+			actual := selection.State.path.String()
+			if test[1] != actual {
+				t.Errorf("Wrong state path\nExpected:%s\n  Actual:%s", test[1], actual)
 			}
 		}
 	}
@@ -126,21 +124,18 @@ module json-test {
 		var in *Selection
 		var rdr Node
 		for i, test := range tests {
-			inIo := strings.NewReader(json)
-			if rdr, err = NewJsonReader(inIo).Node(); err != nil {
-				t.Fatal(err)
-			}
+			rdr = NewJsonReader(strings.NewReader(json)).Node()
 			in = NewSelection(rdr, module)
 			if err != nil {
 				t.Error(err)
 			}
-			p := NewPath(test.path)
+			p := schema.NewPathSlice(test.path, module)
 			if in, err = WalkPath(in, p); err != nil {
 				t.Error(err)
 			}
 			var actualBuff bytes.Buffer
-			out := NewJsonWriter(&actualBuff).Selector(in.State)
-			err = ControlledUpsert(in, out, LimitedWalk(p.Query))
+			out := NewJsonWriter(&actualBuff).Node()
+			err = SelectionToNode(in, out).ControlledUpsert(LimitedWalk(p.Head.Params()))
 			if err != nil {
 				t.Error(err)
 			} else {

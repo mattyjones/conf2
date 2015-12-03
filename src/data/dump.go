@@ -50,11 +50,11 @@ func (d *Dumper) enter(level int) Node {
 		}
 		return d.enter(level + 1), nil
 	}
-	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *Value) (err error) {
+	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *schema.Value) (err error) {
 		d.dumpValue(v, level)
 		return
 	}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (next Node, err error) {
 		if ! new {
 			return nil, nil
 		}
@@ -65,7 +65,7 @@ func (d *Dumper) enter(level int) Node {
 	return s
 }
 
-func (d *Dumper) dumpValue(v *Value, level int) {
+func (d *Dumper) dumpValue(v *schema.Value, level int) {
 	if v == nil {
 		return
 	}

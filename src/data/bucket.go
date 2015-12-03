@@ -11,15 +11,14 @@ type BucketData struct {
 	Root      map[string]interface{}
 }
 
-func (bb *BucketData) Selector(path *Path) (*Selection, error) {
+func (bb *BucketData) Node() (Node) {
 	if bb.Root == nil {
 		bb.Root = make(map[string]interface{})
 	}
 	b := &Bucket{
 		KeyMap : DefaultKeyMapper,
 	}
-	root := b.Container(bb.Root)
-	return WalkPath(NewSelection(root, bb.Meta), path)
+	return b.Container(bb.Root)
 }
 
 func (bb *BucketData) Schema() schema.MetaList {
@@ -65,18 +64,18 @@ func (b *Bucket) Container(container map[string]interface{}) (Node) {
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *Value) error {
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *schema.Value) error {
 		return b.UpdateLeaf(sel, container, meta.(schema.HasDataType), val)
 	}
-	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*schema.Value, error) {
 		return b.ReadLeaf(sel, container, meta)
 	}
 	return s
 }
 
-func (b *Bucket) ReadKey(sel *Selection, container map[string]interface{}, meta *schema.List) (key []*Value, err error) {
+func (b *Bucket) ReadKey(sel *Selection, container map[string]interface{}, meta *schema.List) (key []*schema.Value, err error) {
 	keyMeta := meta.KeyMeta()
-	key = make([]*Value, len(keyMeta))
+	key = make([]*schema.Value, len(keyMeta))
 	for i, m := range keyMeta {
 		if key[i], err = b.ReadLeaf(sel, container, m); err != nil {
 			return nil, err
@@ -90,7 +89,7 @@ func (b *Bucket) List(parent map[string]interface{}, initialList []map[string]in
 	list := initialList
 	s := &MyNode{}
 	var selected map[string]interface{}
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, isFirst bool) (Node, error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, isFirst bool) (Node, error) {
 		selected = nil
 		if new {
 			selection := make(map[string]interface{})
@@ -132,21 +131,21 @@ func (b *Bucket) List(parent map[string]interface{}, initialList []map[string]in
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *Value) error {
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *schema.Value) error {
 		return b.UpdateLeaf(sel, selected, meta.(schema.HasDataType), val)
 	}
-	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*schema.Value, error) {
 		return b.ReadLeaf(sel, selected, meta)
 	}
 
 	return s
 }
 
-func (b *Bucket) ReadLeaf(sel *Selection, container map[string]interface{}, m schema.HasDataType) (*Value, error) {
-	return SetValue(m.GetDataType(), container[b.KeyMap(sel, m.GetIdent())])
+func (b *Bucket) ReadLeaf(sel *Selection, container map[string]interface{}, m schema.HasDataType) (*schema.Value, error) {
+	return schema.SetValue(m.GetDataType(), container[b.KeyMap(sel, m.GetIdent())])
 }
 
-func (b *Bucket) UpdateLeaf(sel *Selection, container map[string]interface{}, m schema.HasDataType, v *Value) error {
+func (b *Bucket) UpdateLeaf(sel *Selection, container map[string]interface{}, m schema.HasDataType, v *schema.Value) error {
 	container[b.KeyMap(sel, m.GetIdent())] = v.Value()
 	return nil
 }

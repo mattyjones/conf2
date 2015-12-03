@@ -29,7 +29,7 @@ func (bb *BridgeData) AddBridge(name string, bridge *Bridge) {
 	bb.Bridges[name] = bridge
 }
 
-func (bb *BridgeData) Selector(path *Path) (*Selection, error) {
+func (bb *BridgeData) Node() (Node) {
 	s := &MyNode{}
 	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (Node, error) {
 		switch meta.GetIdent() {
@@ -38,13 +38,13 @@ func (bb *BridgeData) Selector(path *Path) (*Selection, error) {
 		}
 		return nil, nil
 	}
-	return WalkPath(NewSelection(s, bb.Meta), path)
+	return s
 }
 
 func (bb *BridgeData) SelectBridges(bridges map[string]*Bridge) (Node, error) {
 	s := &MyNode{}
 	index := newBridgeIndex(bridges)
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error) {
 		if new {
 			return nil, nil
 		}
@@ -67,10 +67,10 @@ func (bb *BridgeData) SelectBridges(bridges map[string]*Bridge) (Node, error) {
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*schema.Value, error) {
 		switch meta.GetIdent() {
 		case "name":
-			return &Value{Str: index.Index.CurrentKey()}, nil
+			return &schema.Value{Str: index.Index.CurrentKey()}, nil
 		}
 		return ReadField(meta, index.Selected)
 	}
@@ -81,7 +81,7 @@ func (bb *BridgeData) SelectBridges(bridges map[string]*Bridge) (Node, error) {
 func (bb *BridgeData) selectMapping(mapping *BridgeMapping, external schema.MetaList, internal schema.MetaList) (Node, error) {
 	s := &MyNode{}
 	index := newMappingIndex(mapping.Children)
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error) {
 		if new {
 			index.Selected = NewBridgeMapping("")
 			return s, nil
@@ -109,14 +109,14 @@ func (bb *BridgeData) selectMapping(mapping *BridgeMapping, external schema.Meta
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*schema.Value, error) {
 		switch meta.GetIdent() {
 		case "externalIdent":
-			return &Value{Str: index.Index.CurrentKey()}, nil
+			return &schema.Value{Str: index.Index.CurrentKey()}, nil
 		}
 		return ReadField(meta, index.Selected)
 	}
-	s.OnWrite = func(state *Selection, meta schema.HasDataType, val *Value) error {
+	s.OnWrite = func(state *Selection, meta schema.HasDataType, val *schema.Value) error {
 		switch meta.GetIdent() {
 		case "externalIdent":
 			mapping.Children[val.Str] = index.Selected
@@ -143,9 +143,9 @@ func (bb *BridgeData) findMetaList(parent schema.MetaList, ident string) (child 
 
 func (bb *BridgeData) selectFieldOptions(field schema.MetaList) (Node, error) {
 	s := &MyNode{}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*schema.Value, error) {
 		i := schema.NewMetaListIterator(field, true)
-		v := &Value{}
+		v := &schema.Value{}
 		v.Strlist = make([]string, 0, 10)
 		ident := meta.GetIdent()
 		for i.HasNextMeta() {

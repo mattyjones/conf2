@@ -25,9 +25,10 @@ func NewSelection(node Node, meta schema.MetaList) *Selection {
 	sel := &Selection{
 		Node: node,
 		Events: &EventsImpl{},
-		State: &WalkState{},
+		State: &WalkState{
+			path : schema.NewRootPath(meta, nil),
+		},
 	}
-	sel.State.path.ParentPath = &schema.MetaPath{Meta: meta}
 	return sel
 }
 
@@ -35,36 +36,37 @@ func (sel *Selection) Select(node Node) *Selection {
 	child := &Selection{
 		Events: sel.Events,
 		Node: node,
-		State: &WalkState{},
+		State: &WalkState{
+			path : schema.NewContainerPath(sel.State.path, sel.State.Position().(schema.MetaList)),
+		},
 	}
-	child.State.path.ParentPath = &sel.State.path
 	return child
 }
 
-func (sel *Selection) SelectListItem(node Node, key []*Value) *Selection {
+func (sel *Selection) SelectListItem(node Node, key []*schema.Value) *Selection {
 	next := *sel
 	// important flag, otherwise we recurse indefinitely
 	next.State.insideList = true
 	next.Node = node
 	if len(key) > 0 {
-		// TODO: Support compound keys
-		next.State.path.Key = key[0].String()
-		next.State.key = key
+		next.State.SetKey(key)
+		next.State.path = next.State.path.SetKey(key)
 	}
 	return &next
 }
 
-func (sel *Selection) String() string {
-	if sel.Node != nil {
-		nodeStr := sel.Node.String()
-		if len(nodeStr) > 0 {
-			return nodeStr + " " + sel.State.path.Position()
-		}
+func (sel *Selection) String() (s string) {
+	if sel.Node == nil {
+		return ""
 	}
-	return sel.State.path.Position()
+	s = sel.Node.String()
+	if len(s) > 0 {
+		s = s + " " + sel.State.Position().GetIdent()
+	}
+	return
 }
 
-func (sel *Selection) RequireKey(key []*Value, err error) {
+func (sel *Selection) RequireKey(key []*schema.Value, err error) {
 	key = sel.State.Key()
 	if key == nil {
 		err = errors.New(fmt.Sprint("Cannot select list without key ", sel.String()))
@@ -77,19 +79,18 @@ func (sel *Selection) Fire(e Event) (err error) {
 	if err != nil {
 		return err
 	}
-	path := sel.State.Path().Path()
-	return sel.Events.Fire(path, e)
+	return sel.Events.Fire(sel.State.path, e)
 }
 
 func (sel *Selection) IsConfig() bool {
-	if hasDetails, ok := sel.State.Path().Meta.(schema.HasDetails); ok {
-		return hasDetails.Details().Config(sel.State.Path())
+	if hasDetails, ok := sel.State.Position().(schema.HasDetails); ok {
+		return hasDetails.Details().Config(sel.State.path)
 	}
 	return true
 }
 
 func (sel *Selection) On(e Event, listener ListenFunc) *Listener {
-	return sel.OnPath(e, sel.State.Path().Path(), listener)
+	return sel.OnPath(e, sel.State.Path().String(), listener)
 }
 
 func (sel *Selection) OnPath(e Event, path string, handler ListenFunc) *Listener {
@@ -99,7 +100,7 @@ func (sel *Selection) OnPath(e Event, path string, handler ListenFunc) *Listener
 }
 
 func (sel *Selection) OnChild(e Event, meta schema.MetaList, listener ListenFunc)  *Listener {
-	fullPath := sel.State.Path().Path() + "/" + meta.GetIdent()
+	fullPath := sel.State.path.String() + "/" + meta.GetIdent()
 	return sel.OnPath(e, fullPath, listener)
 }
 
@@ -107,14 +108,4 @@ func (sel *Selection) OnRegex(e Event, regex *regexp.Regexp, handler ListenFunc)
 	listener := &Listener{event: e, regex: regex, handler: handler}
 	sel.Events.AddListener(listener)
 	return listener
-}
-
-func (sel *Selection) Level() int {
-	level := -1
-	p := sel.State.Path()
-	for p.ParentPath != nil {
-		level++
-		p = p.ParentPath
-	}
-	return level
 }

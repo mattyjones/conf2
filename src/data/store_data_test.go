@@ -18,7 +18,7 @@ func TestKeyListBuilderInBufferStore(t *testing.T) {
 		{"a/c", "y|z"},
 	}
 	store := NewBufferStore()
-	v := &Value{}
+	v := &schema.Value{}
 	store.Values["a/a/c"] = v
 	store.Values["a/b=x/c"] = v
 	store.Values["a/c=y/c"] = v
@@ -84,16 +84,12 @@ func TestStoreBrowserKeyValueRead(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreData(m, store)
-	store.Values["a/aa/aaa"] = &Value{Str: "hi"}
-	store.Values["b=x/ba"] = &Value{Str: "x"}
+	store.Values["a/aa/aaa"] = &schema.Value{Str: "hi"}
+	store.Values["b=x/ba"] = &schema.Value{Str: "x"}
 	var actualBytes bytes.Buffer
-	json := NewSelection(NewJsonWriter(&actualBytes).Container(), m)
-	in, err := kv.Selector(NewPath(""))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = Insert(in, json); err != nil {
-		t.Fatal(err)
+	json := NewJsonWriter(&actualBytes).Node()
+	if err := NodeToNode(kv.Node(), json, kv.Schema()).Insert(); err != nil {
+		t.Error(err)
 	}
 	actual := string(actualBytes.Bytes())
 	expected := `{"a":{"aa":{"aaa":"hi"}},"b":[{"ba":"x"}]}`
@@ -106,13 +102,9 @@ func TestStoreBrowserValueEdit(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreData(m, store)
-	out, err := kv.Selector(NewPath(""))
 	inputJson := `{"a":{"aa":{"aaa":"hi"}},"b":[{"ba":"x"}]}`
-	json, err := NewJsonReader(strings.NewReader(inputJson)).Selector(out.State)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = Insert(json, out); err != nil {
+	json := NewJsonReader(strings.NewReader(inputJson)).Node()
+	if err := NodeToNode(json, kv.Node(), kv.Schema()).Insert(); err != nil {
 		t.Fatal(err)
 	}
 	if len(store.Values) != 2 {
@@ -142,17 +134,15 @@ func TestStoreBrowserKeyValueEdit(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreData(m, store)
-	store.Values["b=x/ba"] = &Value{Str: "z"}
+	store.Values["b=x/ba"] = &schema.Value{Str: "z"}
 
 	// change key
-	inputJson2 := `{"ba":"y"}`
-	selection, err := kv.Selector(NewPath("b=x"))
+	json := NewJsonReader(strings.NewReader(`{"ba":"y"}`)).Node()
+	edit, err := NodeToPath(json, kv, "b=x")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var in *Selection
-	in, err = NewJsonReader(strings.NewReader(inputJson2)).Selector(selection.State)
-	if err = Update(in, selection); err != nil {
+	if err = edit.Update(); err != nil {
 		t.Fatal(err)
 	}
 	if v, newKeyExists := store.Values["b=y/ba"]; !newKeyExists {
@@ -169,29 +159,27 @@ func TestStoreBrowserReadListList(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreData(m, store)
-	store.Values["b=x/ba"] = &Value{Str: "x"}
-	store.Values["b=x/bc=y/bca"] = &Value{Str: "y"}
+	store.Values["b=x/ba"] = &schema.Value{Str: "x"}
+	store.Values["b=x/bc=y/bca"] = &schema.Value{Str: "y"}
 	var actual bytes.Buffer
-	in, err := kv.Selector(NewPath(""))
-	if err != nil {
-		t.Fatal(err)
+	out := NewJsonWriter(&actual).Node()
+	if err := NodeToNode(kv.Node(), out, kv.Schema()).Upsert(); err != nil {
+		t.Error(err)
 	}
-	out := NewJsonWriter(&actual).Selector(in.State)
-	Upsert(in, out)
 	t.Log(actual.String())
 }
 
 func TestStoreRemoveAll(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
-	store.Values["b=x/ba"] = &Value{Str: "x"}
-	store.Values["b=x/bc=y/bca"] = &Value{Str: "y"}
+	store.Values["b=x/ba"] = &schema.Value{Str: "x"}
+	store.Values["b=x/bc=y/bca"] = &schema.Value{Str: "y"}
 	kv := NewStoreData(m, store)
-	in, err := kv.Selector(NewPath("b=x/bc"))
+	sel, err := WalkDataPath(kv, "b=x/bc")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = Delete(in); err != nil {
+	if err = Delete(sel); err != nil {
 		t.Error(err)
 	}
 	if len(store.Values) != 1 {

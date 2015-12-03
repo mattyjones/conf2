@@ -3,22 +3,17 @@ package data
 import (
 	"schema"
 	"strconv"
-	"strings"
 )
 
 type ControlledWalk struct {
 	MaxDepth   int
 	finalDepth int
-	InitialKey []*Value
+	InitialKey []*schema.Value
 }
 
-//func NewFullWalkFromPath(p *Path) *FullWalk {
-//	return LimitedWalk(p.Query)
-//}
-
-func LimitedWalk(query string) *ControlledWalk {
+func LimitedWalk(params map[string][]string) *ControlledWalk {
 	c := FullWalk()
-	c.parseQuery(query)
+	c.parseQuery(params)
 	return c
 }
 
@@ -26,18 +21,10 @@ func FullWalk() *ControlledWalk {
 	return &ControlledWalk{MaxDepth: 32}
 }
 
-func (p *ControlledWalk) parseQuery(q string) (err error) {
-	if len(q) == 0 {
-		return nil
-	}
-	params := strings.Split(q, "&")
-	for _, param := range params {
-		nameValue := strings.Split(param, "=")
-		switch nameValue[0] {
-		case "depth":
-			if p.MaxDepth, err = strconv.Atoi(nameValue[1]); err != nil {
-				return
-			}
+func (p *ControlledWalk) parseQuery(params map[string][]string) (err error) {
+	if depth, found := params["depth"]; found {
+		if p.MaxDepth, err = strconv.Atoi(depth[0]); err != nil {
+			return
 		}
 	}
 	return
@@ -48,10 +35,11 @@ func (p *ControlledWalk) CloseSelection(s *Selection) error {
 }
 
 func (e *ControlledWalk) maxedLevel(selection *Selection) bool {
+	level := selection.State.path.Len()
 	if e.finalDepth == 0 {
-		e.finalDepth = selection.Level() + e.MaxDepth
+		e.finalDepth = level + e.MaxDepth
 	}
-	return selection.Level() >= e.finalDepth
+	return level >= e.finalDepth
 }
 
 func (n *ControlledWalk) VisitAction(state *Selection) error {
@@ -64,7 +52,7 @@ func (e *ControlledWalk) ListIterator(selection *Selection, first bool) (next *S
 	}
 	listMeta := selection.State.SelectedMeta().(*schema.List)
 	var listNode Node
-	listNode, err = selection.Node.Next(selection, listMeta, false, NO_KEYS, first)
+	listNode, err = selection.Node.Next(selection, listMeta, false, schema.NO_KEYS, first)
 	if listNode == nil || err != nil {
 		return nil, err
 	}
@@ -72,9 +60,9 @@ func (e *ControlledWalk) ListIterator(selection *Selection, first bool) (next *S
 	return
 }
 
-func (e *ControlledWalk) ContainerIterator(selection *Selection) schema.MetaIterator {
+func (e *ControlledWalk) ContainerIterator(selection *Selection) (schema.MetaIterator, error) {
 	if e.maxedLevel(selection) {
-		return schema.EmptyInterator(0)
+		return schema.EmptyInterator(0), nil
 	}
-	return schema.NewMetaListIterator(selection.State.SelectedMeta(), true)
+	return schema.NewMetaListIterator(selection.State.SelectedMeta(), true), nil
 }

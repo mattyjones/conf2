@@ -6,17 +6,17 @@ import (
 )
 
 // Uses reflection to marshal data into go structs
-func MarshalTo(from *Selection, Obj interface{}) error {
-	n := MarshalContainer(Obj)
-	to := NewSelectionFromState(n, from.State)
-	return Upsert(from, to)
-}
-
-func MarshalFrom(Obj interface{}, to *Selection) error {
-	n := MarshalContainer(Obj)
-	from := NewSelectionFromState(n, to.State)
-	return Upsert(from, to)
-}
+//func MarshalTo(from *Selection, Obj interface{}) error {
+//	n := MarshalContainer(Obj)
+//	to := NewSelectionFromState(n, from.State)
+//	return Upsert(from, to)
+//}
+//
+//func MarshalFrom(Obj interface{}, to *Selection) error {
+//	n := MarshalContainer(Obj)
+//	from := NewSelectionFromState(n, to.State)
+//	return Upsert(from, to)
+//}
 
 func MarshalContainer(Obj interface{}) Node {
 	s := &MyNode{Label:"Marshal " + reflect.TypeOf(Obj).Name()}
@@ -35,10 +35,10 @@ func MarshalContainer(Obj interface{}) Node {
 		}
 		return nil, nil
 	}
-	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*Value, error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*schema.Value, error) {
 		return ReadField(meta, Obj)
 	}
-	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *Value) error {
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *schema.Value) error {
 		return WriteField(meta, Obj, val)
 	}
 	return s

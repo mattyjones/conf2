@@ -30,26 +30,21 @@ module food {
 
 func TestEditListItem(t *testing.T) {
 	var err error
+	var edit *Editor
 	var bd *BucketData
 	if bd, err = LoadEditTestData(); err != nil {
 		t.Fatal(err)
 	}
-	json := NewJsonReader(strings.NewReader(`{"origin":{"country":"Canada"}}`))
-	var selection *Selection
-	if selection, err = bd.Selector(NewPath("fruits=apple")); err != nil {
-		t.Fatal(err)
-	}
-	var in *Selection
-	if in, err = json.Selector(selection.State); err != nil {
-		t.Fatal(err)
-	}
+	json := NewJsonReader(strings.NewReader(`{"origin":{"country":"Canada"}}`)).Node()
 
 	// UPDATE
 	// Here we're testing editing a specific list item. With FindTarget walk controller
 	// needs to leave walkstate in a position for WalkTarget controller to make the edit
 	// on the right item.
 	log.Println("Testing edit\n")
-	err = Update(in, selection)
+	if edit, err = NodeToPath(json, bd, "fruits=apple"); err == nil {
+		err = edit.Update()
+	}
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -61,18 +56,10 @@ func TestEditListItem(t *testing.T) {
 
 	// INSERT
 	log.Println("Testing insert\n")
-	json = NewJsonReader(strings.NewReader(`{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`))
-	if selection, err = bd.Selector(NewPath("fruits")); err != nil {
-		t.Fatal(err)
+	json = NewJsonReader(strings.NewReader(`{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`)).Node()
+	if edit, err = NodeToPath(json, bd, "fruits"); err == nil {
+		err = edit.Insert()
 	}
-	var jsonNode *Selection
-	if jsonNode, err = json.Selector(selection.State); err != nil {
-		t.Fatal(err)
-	}
-	if err = Insert(jsonNode, selection); err != nil {
-		t.Error(err)
-	}
-
 	actual, found := bd.Root["fruits"]
 	if !found {
 		t.Error("fruits not found")

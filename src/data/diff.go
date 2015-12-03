@@ -22,8 +22,8 @@ func Diff(a Node, b Node) Node {
 		}
 		return Diff(aNode, bNode), nil
 	}
-	n.OnRead = func(state *Selection, meta schema.HasDataType) (changedValue *Value, err error) {
-		var aVal, bVal *Value
+	n.OnRead = func(state *Selection, meta schema.HasDataType) (changedValue *schema.Value, err error) {
+		var aVal, bVal *schema.Value
 		if aVal, err = a.Read(state, meta); err != nil {
 			return nil, err
 		}
