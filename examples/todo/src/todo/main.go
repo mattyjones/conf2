@@ -1,3 +1,6 @@
+// Initialize and start our TODO micro-service application using the Conf2 system
+// to load configuration and start management port 
+
 package main
 
 import (
@@ -10,6 +13,9 @@ import (
 	"restconf"
 )
 
+
+// We load from a local config file for simplicity, but same exact data can come
+// over network on management port in any accepted format.
 var configFileName = flag.String("config", "", "Configuration file")
 
 func main() {
@@ -21,33 +27,38 @@ func main() {
 		os.Exit(-1)
 	}
 
+	// Most applications have a common app service from which you can access
+	// all other services and data structures
 	app := &App{}
-	selection, err := app.Selector(data.NewPath(""))
-	if err != nil {
-		panic(err)
-	}
-
 	configFile, err := os.Open(*configFileName)
 	if err != nil {
 		panic(err)
 	}
-	config, err := data.NewJsonReader(configFile).Selector(selection.State)
-	err = data.Insert(config, selection)
+
+	// Read json, but you can implement reader in any format you want
+	// your reader will be passed schema to validate data.
+	config, err := data.NewJsonReader(configFile).Node()
+
+	// load the config into empty app system.  Well designed api will not
+	// distinguish config loading from management calls post operation	
+	err = data.NodeToNode(config, app.Manage(), app.Schema()).Upsert()
+
 	if err != nil {
 		panic(err)
 	}
-
+	// start any main thread to keep app from exiting
 	app.Start()
 }
 
+// Here we mix calls into Conf2 with your application.  You may to separate 
 type App struct {
 	schema *schema.Module
 	management *restconf.Service
 	todos *Todos
 }
 
-func (app *App) Selector(path *data.Path) (*data.Selection, error) {
-	return data.WalkPath(data.NewSelection(app.Manage(), app.Schema()), path)
+func (app *App) Node() (data.Node) {
+	return app.Manage()
 }
 
 func (app *App) Schema() schema.MetaList {
