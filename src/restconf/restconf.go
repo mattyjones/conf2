@@ -101,6 +101,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var path *schema.PathSlice
 	var payload data.Node
 	if path, err = schema.ParsePath(r.URL.Path, reg.browser.Schema()); err == nil {
+		path.SetParams(map[string][]string(r.URL.Query()))
 		root := data.NewSelection(reg.browser.Node(), reg.browser.Schema())
 		var sel *data.Selection
 		sel, err := data.WalkPath(root, path)

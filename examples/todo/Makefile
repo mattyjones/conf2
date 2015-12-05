@@ -1,5 +1,5 @@
 install :
-	GOPATH=$(abspath .):$(abspath .)/../.. \
+	GOPATH=$(abspath .):$(abspath ../..) \
 	  go install todo
 
 clean :

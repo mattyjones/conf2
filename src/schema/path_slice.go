@@ -19,6 +19,15 @@ func (slice *PathSlice) Params() map[string][]string {
 	return nil
 }
 
+func (slice *PathSlice) SetParams(params map[string][]string) {
+	if slice.Head.params == nil {
+		slice.Head.params = params
+	}
+	for k, v := range params {
+		slice.Head.params[k] = v
+	}
+}
+
 func NewPathSlice(path string, meta MetaList) (p *PathSlice) {
 	var err error
 	if p, err = ParsePath(path, meta); err != nil {

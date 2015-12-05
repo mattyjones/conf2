@@ -13,7 +13,7 @@ type Todos struct {
 func (todos *Todos) Manage() data.Node {
 	s := &data.MyNode{}
 	var index int
-	s.OnNext = func(sel *data.Selection, meta *schema.List, new bool, key []*data.Value, first bool) (data.Node, error) {
+	s.OnNext = func(sel *data.Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (data.Node, error) {
 		var task *Task
 		if len(key) > 0 {
 			index = key[0].Int
@@ -35,7 +35,7 @@ func (todos *Todos) Manage() data.Node {
 			if index < len(todos.Tasks) {
 				task = todos.Tasks[index]
 				keyMeta := meta.KeyMeta()[0]
-				sel.State.SetKey([]*data.Value{&data.Value{Type:keyMeta.GetDataType(), Int:index}})
+				sel.State.SetKey([]*schema.Value{&schema.Value{Type:keyMeta.GetDataType(), Int:index}})
 			}
 		}
 		if task != nil {
@@ -63,16 +63,16 @@ type Task struct {
 
 func (task *Task) Select(id int) data.Node {
 	s := &data.MyNode{}
-	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*data.Value, error) {
+	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
 		switch meta.GetIdent() {
 		case "id":
-			return  &data.Value{Int:id}, nil
+			return  &schema.Value{Int:id}, nil
 		case "dueDate":
-			return &data.Value{Int64:int64(task.DueDate)}, nil
+			return &schema.Value{Int64:int64(task.DueDate)}, nil
 		}
 		return data.ReadField(meta, task)
 	}
-	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *data.Value) error {
+	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *schema.Value) error {
 		switch meta.GetIdent() {
 		case "id":
 			// Not allowed

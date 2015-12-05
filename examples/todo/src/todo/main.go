@@ -32,12 +32,12 @@ func main() {
 	app := &App{}
 	configFile, err := os.Open(*configFileName)
 	if err != nil {
-		panic(err)
+		panic("Error loading config " + err.Error())
 	}
 
 	// Read json, but you can implement reader in any format you want
 	// your reader will be passed schema to validate data.
-	config, err := data.NewJsonReader(configFile).Node()
+	config := data.NewJsonReader(configFile).Node()
 
 	// load the config into empty app system.  Well designed api will not
 	// distinguish config loading from management calls post operation	
@@ -64,9 +64,9 @@ func (app *App) Node() (data.Node) {
 func (app *App) Schema() schema.MetaList {
 	if app.schema == nil {
 		var err error
-		app.schema, err = yang.LoadModule(yang.YangPath(), "example-todo.yang")
+		app.schema, err = yang.LoadModule(yang.YangPath(), "todo.yang")
 		if err != nil {
-			panic(err.Error())
+			panic("Error loading TODO YANG " + err.Error())
 		}
 	}
 	return app.schema

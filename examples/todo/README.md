@@ -7,4 +7,4 @@
 ## Setup
 
     make
-    YANGPATH=etc ./bin/todo -config etc/config.json
+    YANGPATH=etc:../../etc/yang ./bin/todo -config etc/config.json

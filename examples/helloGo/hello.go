@@ -112,9 +112,8 @@ type ManageMyApp struct {
 }
 
 // This implements data.Data get's the initial node into your app
-func (manage *ManageMyApp) Selector(path *schema.PathSlice) (*data.Selection, error) {
-	// utility functions walk through your API to get to the data
-	return data.WalkPath(data.NewSelection(manage.Manage(), manage.Meta), path)
+func (manage *ManageMyApp) Node() (data.Node) {
+	return manage.Manage()
 }
 
 // This implements gets your app's meta data loaded from your yang definition
