@@ -58,11 +58,6 @@ func SelectManagement(service *Service) data.Node {
 		switch e {
 		case data.NEW:
 			go service.Listen()
-			var data *Data
-			if data, err = NewData(service); err != nil {
-				return err
-			}
-			err = service.RegisterBrowser(data)
 		}
 		return
 	}

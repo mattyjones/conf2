@@ -167,6 +167,7 @@ func (service *Service) RegisterBrowserWithName(browser data.Data, ident string)
 
 func (service *Service) SetDocRoot(docroot schema.StreamSource) {
 	service.docrootSource = &docRootImpl{docroot: docroot}
+conf2.Debug.Printf("Setting docroot")
 	service.mux.Handle("/ui/", http.StripPrefix("/ui/", service.docrootSource))
 }
 
