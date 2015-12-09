@@ -2,6 +2,7 @@ package data
 
 import (
 	"schema"
+	"conf2"
 )
 
 // Details on config nodes v.s. operational nodes in Section 7.21.1 of RFC6020
@@ -112,6 +113,12 @@ func (self *selectionPair) selectPair(operNode Node, configNode Node) Node {
 			if err != nil {
 				return nil, err
 			}
+			if configNext == nil && ! new {
+				configNext, err = configNode.Next(config, meta, true, sel.State.Key(), true)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 		return self.selectPair(operNext, configNext), nil
 	}
@@ -139,13 +146,13 @@ func (self *selectionPair) selectPair(operNode Node, configNode Node) Node {
 		}
 		return
 	}
-	s.OnSelect = func(sel *Selection, meta schema.MetaList, createOk bool) (Node, error) {
+	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (Node, error) {
 		var err error
 		if err = onInit(sel); err != nil {
 			return nil, err
 		}
 		var configChild, operChild Node
-		if operChild, err = operNode.Select(oper, meta, createOk); err != nil {
+		if operChild, err = operNode.Select(oper, meta, new); err != nil {
 			return nil, err
 		}
 		if operChild == nil {
@@ -153,8 +160,14 @@ func (self *selectionPair) selectPair(operNode Node, configNode Node) Node {
 		}
 
 		if IsContainerConfig && sel.IsConfig() {
-			if configChild, err = configNode.Select(config, meta, createOk); err != nil {
+			if configChild, err = configNode.Select(config, meta, new); err != nil {
 				return nil, err
+			}
+			if configChild == nil && ! new {
+conf2.Debug.Printf("OnSelect Creating config child")
+				if configChild, err = configNode.Select(config, meta, true); err != nil {
+					return nil, err
+				}
 			}
 		}
 		return self.selectPair(operChild, configChild), nil
