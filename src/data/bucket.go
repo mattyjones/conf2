@@ -59,7 +59,11 @@ func (b *Bucket) Container(container map[string]interface{}) (Node) {
 			if schema.IsList(meta) {
 				return b.List(container, data.([]map[string]interface{})), nil
 			} else {
-				return b.Container(data.(map[string]interface{})), nil
+				// TODO: Silently ignoring unexpected format. We should be *less*
+				// tolerant and fail here otherwise we silently ignore bad data.
+				if c, valid := data.(map[string]interface{}); valid {
+					return b.Container(c), nil
+				}
 			}
 		}
 		return nil, nil

@@ -75,14 +75,6 @@ func (json *JsonWriter) Node() Node {
 		if err = json.conditionallyOpenArrayOnFirstWrite(meta.GetIdent()); err != nil {
 			return nil, err
 		}
-//		if ! first {
-//			if err = json.writeDelim(); err != nil {
-//				return
-//			}
-//		}
-//		if err = json.beginObject(); err != nil {
-//			return
-//		}
 		return s, json.beginArrayItem()
 	}
 	return s
@@ -149,6 +141,8 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *schema.Value) (err error
 		err = json.writeInt64(v.Int64)
 	case schema.FMT_INT32:
 		err = json.writeInt(v.Int)
+	case schema.FMT_DECIMAL64:
+		err = json.writeFloat(v.Float)
 	case schema.FMT_STRING, schema.FMT_ENUMERATION:
 		err = json.writeString(v.Str)
 	case schema.FMT_BOOLEAN_LIST:
@@ -211,6 +205,11 @@ func (json *JsonWriter) writeBool(b bool) error {
 	} else {
 		return json.writeString("false")
 	}
+}
+
+func (json *JsonWriter) writeFloat(f float64) (err error) {
+	_, err = json.out.WriteString(strconv.FormatFloat(f, 'f', -1, 64))
+	return
 }
 
 func (json *JsonWriter) writeInt(i int) (err error) {

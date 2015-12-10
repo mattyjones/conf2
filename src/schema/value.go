@@ -13,7 +13,7 @@ type Value struct {
 	Int64	  int64
 	Int64list []int64
 	Str      string
-	Float    float32
+	Float    float64
 	Intlist  []int
 	Strlist  []string
 	Boollist []bool
@@ -154,6 +154,8 @@ func SetValue(typ *DataType, val interface{}) (*Value, error) {
 		default:
 			v.Int = int(reflectVal.Int())
 		}
+	case FMT_DECIMAL64:
+		v.Float = reflectVal.Float()
 	case FMT_INT64:
 		v.Int64 = reflectVal.Int()
 	case FMT_INT64_LIST:
