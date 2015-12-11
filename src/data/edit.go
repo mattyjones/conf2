@@ -2,7 +2,6 @@ package data
 
 import (
 	"fmt"
-	"net/http"
 	"schema"
 	"conf2"
 )
@@ -167,10 +166,10 @@ func (e *Editor) Edit(strategy Strategy, controller WalkController) (err error) 
 
 func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy, path string) (Node, error) {
 	if toNode == nil {
-		return nil, &browseError{Msg: "Unable to get target node " + path, Code:http.StatusNotFound}
+		return nil, conf2.NewErrC("Unable to get target node " + path, conf2.NotFound)
 	}
 	if fromNode == nil {
-		return nil, &browseError{Msg: "Unable to get source node" + path, Code:http.StatusNotFound}
+		return nil, conf2.NewErrC("Unable to get source node" + path, conf2.NotFound)
 	}
 	to := &Selection{
 		Events: e.to.Events,
@@ -206,7 +205,7 @@ func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy, p
 		case UPDATE:
 			if toNextNode == nil {
 				msg := fmt.Sprint("No item found with given key in list ", sel.String())
-				return nil, &browseError{Code: http.StatusNotFound, Msg: msg}
+				return nil, conf2.NewErrC(msg, conf2.NotFound)
 			}
 		case UPSERT:
 			if toNextNode == nil {
@@ -218,14 +217,14 @@ func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy, p
 		case INSERT:
 			if toNextNode != nil {
 				msg := fmt.Sprint("Duplicate item found with same key in list ", sel.String())
-				return nil, &browseError{Code: http.StatusConflict, Msg: msg}
+				return nil, conf2.NewErrC(msg, conf2.Conflict)
 			}
 			if toNextNode, err = toNode.Next(to, meta, true, nextKey, true); err != nil {
 				return nil, err
 			}
 			created = true
 		default:
-			return nil, &browseError{Msg: "Stratgey not implmented"}
+			return nil, conf2.NewErrC("Stratgey not implmented", conf2.NotImplemented)
 		}
 		return e.container(fromNextNode, toNextNode, created, UPSERT, sel.State.String())
 	}
@@ -239,10 +238,10 @@ func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy, p
 
 func (e *Editor) container(fromNode Node, toNode Node, new bool, strategy Strategy, path string) (Node, error) {
 	if toNode == nil {
-		return nil, &browseError{Msg: "Unable to get target container selection " + path, Code:http.StatusNotFound}
+		return nil, conf2.NewErrC("Unable to get target container selection " + path, conf2.NotFound)
 	}
 	if fromNode == nil {
-		return nil, &browseError{Msg: "Unable to get source node" + path, Code:http.StatusNotFound}
+		return nil, conf2.NewErrC("Unable to get source node" + path, conf2.NotFound)
 	}
 	to := &Selection{
 		Events: e.to.Events,
@@ -278,8 +277,7 @@ func (e *Editor) container(fromNode Node, toNode Node, new bool, strategy Strate
 		switch strategy {
 		case INSERT:
 			if toChild != nil {
-				msg := fmt.Sprint("Found existing container ", sel.String())
-				return nil, &browseError{Code: http.StatusConflict, Msg: msg}
+				return nil, conf2.NewErrC("Found existing container " + sel.String(), conf2.Conflict)
 			}
 			if toChild, err = toNode.Select(to, meta, true); err != nil {
 				return nil, err
@@ -294,8 +292,7 @@ func (e *Editor) container(fromNode Node, toNode Node, new bool, strategy Strate
 			}
 		case UPDATE:
 			if toChild == nil {
-				msg := fmt.Sprint("Container not found in list ", sel.String())
-				return nil, &browseError{Code: http.StatusNotFound, Msg: msg}
+				return nil, conf2.NewErrC("Container not found in list " + sel.String(), conf2.NotFound)
 			}
 		default:
 			return nil, &browseError{Msg: "Stratgey not implmented"}

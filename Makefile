@@ -32,6 +32,7 @@ libconf2j_LDFLAGS = \
 GO_ARCH = linux_amd64
 
 PKGS = \
+	conf2 \
 	schema \
 	schema/yang \
 	data \

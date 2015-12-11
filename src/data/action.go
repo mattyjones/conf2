@@ -21,5 +21,8 @@ func SelectionAction(sel *Selection, input Node, output Node) (error) {
 	if rerr != nil {
 		return rerr
 	}
-	return NodeToNode(rpcOutput, output, rpc.Output).Insert()
+	if rpc.Output != nil && output != nil {
+		return NodeToNode(rpcOutput, output, rpc.Output).Insert()
+	}
+	return nil
 }
