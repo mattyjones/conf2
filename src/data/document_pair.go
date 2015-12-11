@@ -2,7 +2,6 @@ package data
 
 import (
 	"schema"
-	"conf2"
 )
 
 // Details on config nodes v.s. operational nodes in Section 7.21.1 of RFC6020
@@ -164,7 +163,6 @@ func (self *selectionPair) selectPair(operNode Node, configNode Node) Node {
 				return nil, err
 			}
 			if configChild == nil && ! new {
-conf2.Debug.Printf("OnSelect Creating config child")
 				if configChild, err = configNode.Select(config, meta, true); err != nil {
 					return nil, err
 				}

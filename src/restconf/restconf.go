@@ -104,7 +104,7 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		path.SetParams(map[string][]string(r.URL.Query()))
 		root := data.NewSelection(reg.browser.Node(), reg.browser.Schema())
 		var sel *data.Selection
-		sel, err := data.WalkPath(root, path)
+		sel, err = data.WalkPath(root, path)
 		if sel == nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return

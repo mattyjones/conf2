@@ -138,9 +138,9 @@ func Delete(sel *Selection) (err error) {
 func (e *Editor) Edit(strategy Strategy, controller WalkController) (err error) {
 	var n Node
 	if schema.IsList(e.from.State.SelectedMeta()) && !e.from.State.InsideList() {
-		n, err = e.list(e.from.Node, e.to.Node, false, strategy)
+		n, err = e.list(e.from.Node, e.to.Node, false, strategy, "")
 	} else {
-		n, err = e.container(e.from.Node, e.to.Node, false, strategy)
+		n, err = e.container(e.from.Node, e.to.Node, false, strategy, "")
 	}
 	s := &Selection{
 		Events: &EventMulticast{
@@ -165,12 +165,12 @@ func (e *Editor) Edit(strategy Strategy, controller WalkController) (err error) 
 	return
 }
 
-func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy) (Node, error) {
+func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy, path string) (Node, error) {
 	if toNode == nil {
-		return nil, &browseError{Msg: fmt.Sprint("Unable to get target node")}
+		return nil, &browseError{Msg: "Unable to get target node " + path, Code:http.StatusNotFound}
 	}
 	if fromNode == nil {
-		return nil, &browseError{Msg: fmt.Sprint("Unable to get source node")}
+		return nil, &browseError{Msg: "Unable to get source node" + path, Code:http.StatusNotFound}
 	}
 	to := &Selection{
 		Events: e.to.Events,
@@ -227,7 +227,7 @@ func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy) (
 		default:
 			return nil, &browseError{Msg: "Stratgey not implmented"}
 		}
-		return e.container(fromNextNode, toNextNode, created, UPSERT)
+		return e.container(fromNextNode, toNextNode, created, UPSERT, sel.State.String())
 	}
 	s.OnEvent = func(sel *Selection, event Event) (err error) {
 		to.State = sel.State
@@ -237,14 +237,13 @@ func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy) (
 	return s, nil
 }
 
-func (e *Editor) container(fromNode Node, toNode Node, new bool, strategy Strategy) (Node, error) {
+func (e *Editor) container(fromNode Node, toNode Node, new bool, strategy Strategy, path string) (Node, error) {
 	if toNode == nil {
-		return nil, &browseError{Msg: fmt.Sprint("Unable to get target container selection")}
+		return nil, &browseError{Msg: "Unable to get target container selection " + path, Code:http.StatusNotFound}
 	}
 	if fromNode == nil {
-		return nil, &browseError{Msg: fmt.Sprint("Unable to get source node")}
+		return nil, &browseError{Msg: "Unable to get source node" + path, Code:http.StatusNotFound}
 	}
-//conf2.Debug.Printf("container %s, new %v, pathPtr=%p", state.Path().Path(), new, state.Path())
 	to := &Selection{
 		Events: e.to.Events,
 		Node: toNode,
@@ -308,9 +307,9 @@ func (e *Editor) container(fromNode Node, toNode Node, new bool, strategy Strate
 		// we always switch to upsert strategy because if there were any conflicts, it would have been
 		// discovered in top-most level.
 		if isList {
-			return e.list(fromChild, toChild, created, UPSERT)
+			return e.list(fromChild, toChild, created, UPSERT, sel.State.String())
 		}
-		return e.container(fromChild, toChild, created, UPSERT)
+		return e.container(fromChild, toChild, created, UPSERT, sel.State.String())
 	}
 	s.OnEvent = func(sel *Selection, event Event) (err error) {
 		to.State = sel.State
