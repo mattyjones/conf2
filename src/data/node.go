@@ -168,17 +168,6 @@ func (e ErrorNode) Find(*Selection, *schema.Path) (error) {
 	return e.Err
 }
 
-func (my *MyNode) Mixin(delegate Node) {
-	my.OnAction = delegate.Action
-	my.OnSelect = delegate.Select
-	my.OnNext = delegate.Next
-	my.OnRead = delegate.Read
-	my.OnWrite = delegate.Write
-	my.OnChoose = delegate.Choose
-	my.OnEvent = delegate.Event
-	my.OnFind = delegate.Find
-}
-
 type NextFunc func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error)
 type SelectFunc func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error)
 type ReadFunc func(sel *Selection, meta schema.HasDataType) (*schema.Value, error)

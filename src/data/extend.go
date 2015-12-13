@@ -37,11 +37,7 @@ func (e *Extend) Select(sel *Selection, meta schema.MetaList, new bool) (Node, e
 		return child, err
 	}
 	if e.OnExtend != nil {
-		child, err = e.OnExtend(e.Node, child)
-	} else {
-		extendedChild := *e
-		extendedChild.Node = child
-		child = &extendedChild
+		child, err = e.OnExtend(e, child)
 	}
 	return child, err
 }
@@ -58,13 +54,15 @@ func (e *Extend) Next(sel *Selection, meta *schema.List, new bool, key []*schema
 		return child, err
 	}
 	if e.OnExtend != nil {
-		child, err = e.OnExtend(e.Node, child)
-	} else {
-		extendedChild := *e
-		extendedChild.Node = child
-		child = &extendedChild
+		child, err = e.OnExtend(e, child)
 	}
 	return child, err
+}
+
+func (e *Extend) Extend(n Node) Node {
+	extendedChild := *e
+	extendedChild.Node = n
+	return &extendedChild
 }
 
 func (e *Extend) Read(sel *Selection, meta schema.HasDataType) (*schema.Value, error) {
@@ -123,4 +121,4 @@ type ExtendChooseFunc func(parent Node, sel *Selection, choice *schema.Choice) (
 type ExtendActionFunc func(parent Node, sel *Selection, rpc *schema.Rpc, input Node) (output Node, err error)
 type ExtendFindFunc func(parent Node, sel *Selection, path *schema.Path) error
 type ExtendEventFunc func(parent Node, sel *Selection, e Event) error
-type ExtendFunc func(parent Node, child Node) (Node, error)
+type ExtendFunc func(e *Extend, child Node) (Node, error)

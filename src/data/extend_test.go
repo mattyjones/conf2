@@ -7,7 +7,7 @@ import (
 func TestExtend(t *testing.T) {
 	child := &MyNode{Label: "Bloop"}
 	n := &MyNode{
-		Label: "N",
+		Label: "Blop",
 		OnRead: func(*Selection, schema.HasDataType) (*schema.Value, error) {
 			return &schema.Value{Str:"Hello"}, nil
 		},
@@ -27,8 +27,11 @@ func TestExtend(t *testing.T) {
 	if actualValue.Str != "Hello World" {
 		t.Error(actualValue.Str)
 	}
+	if x.String() != "(Blop) <- Bleep" {
+		t.Error(x.String())
+	}
 	actualChild, _ := x.Select(nil, nil, false)
-	if actualChild.String() != "(Bloop) <- Bleep" {
+	if actualChild.String() != "Bloop" {
 		t.Error(actualChild.String())
 	}
 }
