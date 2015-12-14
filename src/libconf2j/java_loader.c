@@ -24,7 +24,8 @@ JNIEXPORT jlong JNICALL Java_org_conf2_schema_yang_ModuleLoader_loadModule
         &conf2j_browse_edit,
         &conf2j_browse_choose,
         &conf2j_browse_event,
-        &conf2j_browse_selector,
+        &conf2j_browse_find,
+        &conf2j_browse_select_root,
         module_browser_hnd_id,
         go_stream_source_hnd_id,
         (char *)resourceStr);

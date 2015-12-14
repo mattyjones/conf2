@@ -4,8 +4,8 @@
 typedef struct { void *data; } GoSlice;
 
 // Bridge functions to call C function pointer in a given language data browsers
-void *conf2_browse_selector(conf2_browse_selector_impl impl_func, void *browser_handle, char *path, void *browse_err) {
-    return (*impl_func)(browser_handle, path, browse_err);
+void *conf2_browse_select_root(conf2_browse_select_root_impl impl_func, void *browser_handle, void *browse_err) {
+    return (*impl_func)(browser_handle, browse_err);
 }
 
 void *conf2_browse_enter(conf2_browse_enter_impl impl_func, void *selection_handle, char *ident, short create, void *browse_err) {
@@ -30,4 +30,8 @@ char *conf2_browse_choose(conf2_browse_choose_impl impl_func, void *selection_ha
 
 void conf2_browse_event(conf2_browse_event_impl impl_func, void *selection_handle, int eventId, void *browse_err) {
     return (*impl_func)(selection_handle, eventId, browse_err);
+}
+
+void conf2_browse_find(conf2_browse_find_impl impl_func, void *selection_handle, char *path, void *browse_err) {
+    return (*impl_func)(selection_handle, path, browse_err);
 }

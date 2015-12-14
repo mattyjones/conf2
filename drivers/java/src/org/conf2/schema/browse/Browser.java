@@ -4,6 +4,6 @@ import org.conf2.schema.MetaCollection;
 import org.conf2.schema.Module;
 
 public interface Browser {
-    public Selection getSelector(BrowsePath path);
+    public Node getNode();
     public MetaCollection getSchema();
 }

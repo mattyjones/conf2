@@ -5,8 +5,6 @@ import org.conf2.schema.browse.*;
 import org.conf2.schema.comm.DataReader;
 import org.conf2.schema.comm.DataWriter;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -15,21 +13,20 @@ import java.nio.ByteBuffer;
 public class BrowserAdaptor {
     private final static BrowseValue[] NO_KEYS = new BrowseValue[0];
 
-    public static Selection getSelector(Browser browser, String path) {
-        BrowsePath p = new BrowsePath(path);
-        return browser.getSelector(p);
+    public static Selection getSelectRoot(Browser browser) {
+        return new Selection(browser.getNode(), browser.getSchema());
     }
 
-    public static Node enter(Selection s, String ident, boolean create) {
+    public static Selection enter(Selection s, String ident, boolean create) {
         s.state.position = updatePosition(s.state.meta, ident);
         Node child = s.node.Select(s, (MetaCollection) s.state.position, create);
-//        if (child != null) {
-//            child.state.meta = (MetaCollection) s.state.position;
-//        }
-        return child;
+        if (child != null) {
+            return s.selectContainer(child);
+        }
+        return null;
     }
 
-    public static Node iterate(Selection s, ByteBuffer encodedKeyValues, boolean create, boolean first) {
+    public static Selection iterate(Selection s, ByteBuffer encodedKeyValues, boolean create, boolean first) {
         BrowseValue[] key;
         MetaList meta = (MetaList)s.state.meta;
         if (encodedKeyValues != null) {
@@ -39,7 +36,11 @@ public class BrowserAdaptor {
         } else {
             key = NO_KEYS;
         }
-        return s.node.Next(s, meta, create, key, first);
+        Node child = s.node.Next(s, meta, create, key, first);
+        if (child != null) {
+            return s.selectListItem(child, s.state.key);
+        }
+        return null;
     }
 
     public static ByteBuffer read(Selection s, String ident) {
@@ -92,6 +93,11 @@ public class BrowserAdaptor {
     public static void event(Selection s, int eventId) {
         DataEvent e = DataEvent.values()[eventId];
         s.node.Event(s, e);
+    }
+
+    public static void find(Selection s, String path) {
+        BrowsePath p = new BrowsePath(path);
+        s.node.Find(s, p);
     }
 
     public static String choose(Selection s, String choiceIdent) {

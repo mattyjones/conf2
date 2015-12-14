@@ -21,7 +21,7 @@ public class ModuleBrowser implements Browser {
     }
 
     @Override
-    public Selection getSelector(BrowsePath p) {
+    public Node getNode() {
         MyNode n = new MyNode();
         n.Enter = (Selection s, MetaCollection meta, boolean create) -> {
             if (create) {
@@ -35,7 +35,7 @@ public class ModuleBrowser implements Browser {
         n.Edit = (Selection s, MetaCollection meta, BrowseValue val) -> {
             BrowseUtil.setterMethod(meta, module, val);
         };
-        return Walk.Path(new Selection(n, module), p);
+        return n;
     }
 
     Node enterModule(final Module module) {

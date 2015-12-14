@@ -10,6 +10,7 @@ public class WalkState {
     public MetaCollection meta;
     public Meta position;
     public Node node;
+    public BrowseValue[] key;
     public boolean insideList;
     public boolean found;
 }

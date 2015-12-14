@@ -9,21 +9,20 @@ conf2j_method conf2j_static_adapter_method(JNIEnv *env, GoInterface *err, char *
   return conf2j_static_method(env, err, "org/conf2/schema/driver/BrowserAdaptor", method_name, signature);
 }
 
-void* conf2j_browse_selector(void *browser_handle, char *path, void *browse_err) {
+void* conf2j_browse_select_root(void *browser_handle, void *browse_err) {
   GoInterface *err = (GoInterface *) browse_err;
   JNIEnv* env = getCurrentJniEnv();
 
   // get java browser instance
   jobject j_browser = browser_handle;
-  jobject j_path = (*env)->NewStringUTF(env, path);
 
   conf2j_method selector = conf2j_static_adapter_method(env, err, "getSelector",
-    "(Lorg/conf2/schema/browse/Browser;Ljava/lang/String;)Lorg/conf2/schema/browse/Selection;");
+    "(Lorg/conf2/schema/browse/Browser;)Lorg/conf2/schema/browse/Selection;");
   if (selector.methodId == NULL) {
     return NULL;
   }
 
-  jobject j_selector = (*env)->CallStaticObjectMethod(env, selector.cls, selector.methodId, j_browser, j_path);
+  jobject j_selector = (*env)->CallStaticObjectMethod(env, selector.cls, selector.methodId, j_browser);
   jobject j_g_selector = (*env)->NewGlobalRef(env, j_selector);
   void *selector_hnd_id = conf2_handle_new(j_g_selector, &conf2j_release_global_ref);
   return selector_hnd_id;
@@ -181,6 +180,23 @@ void conf2j_browse_event(void *selection_handle, int eventId, void *browse_err) 
     }
 }
 
+void conf2j_browse_find(void *selection_handle, char *path, void *browse_err) {
+    GoInterface *err = (GoInterface *) browse_err;
+    JNIEnv* env = getCurrentJniEnv();
+    jobject j_selection = selection_handle;
+    jobject j_path = (*env)->NewStringUTF(env, path);
+
+    conf2j_method event = conf2j_static_adapter_method(env, err, "find", "(Lorg/conf2/schema/browse/Selection;java/lang/String;)V");
+    if (event.methodId == 0) {
+      return;
+    }
+
+    (*env)->CallStaticVoidMethod(env, event.cls, event.methodId, j_selection, j_path);
+    if (checkDriverError(env, err)) {
+      return;
+    }
+}
+
 void *conf2j_browse_new(JNIEnv *env, jlong module_hnd_id, jobject j_browser) {
   jobject j_g_browser = (*env)->NewGlobalRef(env, j_browser);
   void *browser_hnd_id = conf2_handle_new(j_g_browser, &conf2j_release_global_ref);
@@ -191,7 +207,8 @@ void *conf2j_browse_new(JNIEnv *env, jlong module_hnd_id, jobject j_browser) {
         &conf2j_browse_edit,
         &conf2j_browse_choose,
         &conf2j_browse_event,
-        &conf2j_browse_selector,
+        &conf2j_browse_find,
+        &conf2j_browse_select_root,
         (void *)module_hnd_id,
         browser_hnd_id);
 }

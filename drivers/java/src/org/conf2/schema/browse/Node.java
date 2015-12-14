@@ -14,5 +14,6 @@ public interface Node {
     Node Next(Selection sel, MetaList meta, boolean create, BrowseValue[] key, boolean isFirst);
     void Write(Selection sel, Meta meta, BrowseValue v);
     void Event(Selection sel, DataEvent e);
+    void Find(Selection sel, BrowsePath path);
     Meta Choose(Selection sel, Choice choice);
 }

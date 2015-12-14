@@ -5,7 +5,6 @@ import (
 	"unsafe"
 	"data"
 	"fmt"
-	"strings"
 	"bytes"
 )
 
@@ -42,46 +41,47 @@ func harness_from_handle_id(harness_hnd_id unsafe.Pointer) *testHarness {
 
 //export conf2_testharness_test_run
 func conf2_testharness_test_run(harness_hnd_id unsafe.Pointer, c_testname *C.char) (passed C.short) {
-	var err error
-	harness := harness_from_handle_id(harness_hnd_id)
-	testname := C.GoString(c_testname)
-	details := strings.Split(testname, " ")
-	var root *data.Selection
-	if root, err = harness.browser.Selector(data.NewPath("")); err != nil {
-		harness.failure(testname, err.Error())
-		return FALSE_SHORT
-	}
-	var s *data.Selection
-	var path *data.Path
-	if path, err = data.ParsePath(details[1]); err != nil {
-		harness.failure(testname, err.Error())
-		return FALSE_SHORT
-	}
-	if s, err = data.WalkPath(root, path); err != nil {
-		harness.failure(testname, err.Error())
-		return FALSE_SHORT
-	}
-	var actual string
-	switch details[0] {
-	case "read":
-		actual, err = tojson(s)
-		if err != nil {
-			harness.failure(testname, err.Error())
-		} else {
-			expected := readExpectations[testname]
-			if expected != actual {
-				failure := fmt.Sprintf("Expected\"%s\" Actual \"%s\"", expected, actual)
-				harness.failure(testname, failure)
-				return FALSE_SHORT
-			}
-		}
-	default:
-		harness.failure(testname, "Not a valid test")
-		return FALSE_SHORT
-	}
-
-	harness.passed = append(harness.passed, testname)
-	return TRUE_SHORT
+	return FALSE_SHORT
+//	var err error
+//	harness := harness_from_handle_id(harness_hnd_id)
+//	testname := C.GoString(c_testname)
+//	details := strings.Split(testname, " ")
+//	var root *data.Selection
+//	root = harness.browser.Node(); err != nil {
+//		harness.failure(testname, err.Error())
+//		return FALSE_SHORT
+//	}
+//	var s *data.Selection
+//	var path *data.Path
+//	if path, err = data.ParsePath(details[1]); err != nil {
+//		harness.failure(testname, err.Error())
+//		return FALSE_SHORT
+//	}
+//	if s, err = data.WalkPath(root, path); err != nil {
+//		harness.failure(testname, err.Error())
+//		return FALSE_SHORT
+//	}
+//	var actual string
+//	switch details[0] {
+//	case "read":
+//		actual, err = tojson(s)
+//		if err != nil {
+//			harness.failure(testname, err.Error())
+//		} else {
+//			expected := readExpectations[testname]
+//			if expected != actual {
+//				failure := fmt.Sprintf("Expected\"%s\" Actual \"%s\"", expected, actual)
+//				harness.failure(testname, failure)
+//				return FALSE_SHORT
+//			}
+//		}
+//	default:
+//		harness.failure(testname, "Not a valid test")
+//		return FALSE_SHORT
+//	}
+//
+//	harness.passed = append(harness.passed, testname)
+//	return TRUE_SHORT
 }
 
 //export conf2_testharness_report
@@ -108,12 +108,12 @@ func (h *testHarness) failure(testname string, reason string) {
 	h.failed = append(h.failed, failure)
 }
 
-func tojson(s *data.Selection) (json string, err error) {
-	var actual bytes.Buffer
-	w := data.NewJsonWriter(&actual).Selector(s.State)
-	if err = data.Insert(s, w); err != nil {
-		return
-	}
-	json = string(actual.Bytes())
-	return
-}
+//func tojson(s *data.Selection) (json string, err error) {
+//	var actual bytes.Buffer
+//	w := data.NewJsonWriter(&actual).Selector(s.State)
+//	if err = data.Insert(s, w); err != nil {
+//		return
+//	}
+//	json = string(actual.Bytes())
+//	return
+//}

@@ -1,13 +1,14 @@
 package c
 
 // #include "conf2/browse.h"
-// extern void *conf2_browse_selector(conf2_browse_selector_impl impl_func, void *browser_handle, char *path, void *browse_err);
+// extern void *conf2_browse_select_root(conf2_browse_select_root_impl impl_func, void *browser_handle, void *browse_err);
 // extern void *conf2_browse_enter(conf2_browse_enter_impl impl_func, void *selection_handle, char *ident, short create, void *browse_err);
 // extern void *conf2_browse_iterate(conf2_browse_iterate_impl impl_func, void *selection_handle, short create, void *key_data, int key_data_len, short first, void *browse_err);
 // extern void *conf2_browse_read(conf2_browse_read_impl impl_func, void *selection_handle, char *ident, void **val_data_ptr, int* val_data_len_ptr, void *browse_err);
 // extern void conf2_browse_edit(conf2_browse_edit_impl impl_func, void *selection_handle, char *ident, void *val_data, int val_data_len, void *browse_err);
 // extern char *conf2_browse_choose(conf2_browse_choose_impl impl_func, void *selection_handle, char *ident, void *browse_err);
 // extern void conf2_browse_event(conf2_browse_event_impl impl_func, void *selection_handle, int event_id, void *browse_err);
+// extern void conf2_browse_find(conf2_browse_event_impl impl_func, void *selection_handle, char *path, void *browse_err);
 import "C"
 
 import (
@@ -17,18 +18,20 @@ import (
 	"schema/yang"
 	"comm"
 	"fmt"
+	"conf2"
 )
 
 type apiBrowser struct {
-	module *schema.Module
-	enter_impl C.conf2_browse_enter_impl
-	iterate_impl C.conf2_browse_iterate_impl
-	read_impl C.conf2_browse_read_impl
-	edit_impl C.conf2_browse_edit_impl
-	choose_impl C.conf2_browse_choose_impl
-	event_impl C.conf2_browse_event_impl
-	selector_impl C.conf2_browse_selector_impl
-	browser_hnd *ApiHandle
+	module         *schema.Module
+	enter_impl     C.conf2_browse_enter_impl
+	iterate_impl   C.conf2_browse_iterate_impl
+	read_impl      C.conf2_browse_read_impl
+	edit_impl      C.conf2_browse_edit_impl
+	choose_impl    C.conf2_browse_choose_impl
+	event_impl     C.conf2_browse_event_impl
+	select_root_impl C.conf2_browse_select_root_impl
+	find_impl      C.conf2_browse_find_impl
+	browser_hnd    *ApiHandle
 }
 
 //export conf2_load_module
@@ -39,7 +42,8 @@ func conf2_load_module(
 		edit_impl C.conf2_browse_edit_impl,
 		choose_impl C.conf2_browse_choose_impl,
 		event_impl C.conf2_browse_event_impl,
-		selector_impl C.conf2_browse_selector_impl,
+		find_impl C.conf2_browse_find_impl,
+		select_root_impl C.conf2_browse_select_root_impl,
 		browser_hnd_id unsafe.Pointer,
         stream_source_hnd_id unsafe.Pointer,
         resourceId *C.char,
@@ -73,33 +77,19 @@ func conf2_load_module(
 		edit_impl:edit_impl,
 		choose_impl:choose_impl,
 		event_impl:event_impl,
+		find_impl: find_impl,
+		select_root_impl: select_root_impl,
 		module: module,
-		selector_impl: selector_impl,
 		browser_hnd: browser_hnd,
 	}
-
-	var to, from *data.Selection
-	rootPath := data.NewPath("")
-	to, err = apiModuleBrowser.Selector(rootPath)
-	defer schema.CloseResource(to)
-	if err == nil {
-		from, err = module_browser.Selector(rootPath)
-		defer schema.CloseResource(from)
-		if err == nil {
-			err = data.Insert(from, to)
-			if err == nil {
-				moduleHnd := NewGoHandle(module)
-				return moduleHnd.ID
-			}
-		}
-	}
-	if (err != nil) {
-		fmt.Println("Error sending module", err.Error())
+	err = data.NodeToNode(module_browser.Node(), apiModuleBrowser.Node(), module).Insert()
+	if err != nil {
+		// TODO: Need to pass back error
+		conf2.Err.Printf("Error loading module %s", err.Error())
 		return nil
 	}
-
-	// TODO: Find a way to return an error and not just nil
-	return nil
+	moduleHnd := NewGoHandle(module)
+	return moduleHnd.ID
 }
 
 //export conf2_new_browser
@@ -110,7 +100,8 @@ func conf2_new_browser(
 	edit_impl C.conf2_browse_edit_impl,
 	choose_impl C.conf2_browse_choose_impl,
 	event_impl C.conf2_browse_event_impl,
-    selector_impl C.conf2_browse_selector_impl,
+    find_impl C.conf2_browse_find_impl,
+    select_root_impl C.conf2_browse_select_root_impl,
 	module_hnd_id unsafe.Pointer,
 	browser_hnd_id unsafe.Pointer) unsafe.Pointer {
 
@@ -122,10 +113,8 @@ func conf2_new_browser(
 	module := module_hnd.Data.(*schema.Module)
 	browser_hnd, found_browser := ApiHandles()[browser_hnd_id]
 	if ! found_browser {
-
 		return nil
 	}
-
 	browser := &apiBrowser{
 		enter_impl:enter_impl,
 		iterate_impl:iterate_impl,
@@ -133,28 +122,27 @@ func conf2_new_browser(
 		edit_impl:edit_impl,
 		choose_impl:choose_impl,
 		event_impl:event_impl,
+		find_impl: find_impl,
+		select_root_impl: select_root_impl,
 		module: module,
-		selector_impl: selector_impl,
 		browser_hnd: browser_hnd,
 	}
 	return NewGoHandle(browser).ID
 }
 
-func (cb *apiBrowser) Selector(path *data.Path) (sel *data.Selection, err error) {
+func (cb *apiBrowser) Node() (node data.Node) {
+	var err error
 	errPtr := unsafe.Pointer(&err)
-	selector := &apiSelector{browser:cb}
-	cstr_path := C.CString(path.URL)
-	root_selection_hnd_id := C.conf2_browse_selector(cb.selector_impl, cb.browser_hnd.ID, cstr_path, errPtr)
-	root_selection_hnd, found := ApiHandles()[root_selection_hnd_id]
-	if ! found {
-		panic(fmt.Sprint("Root selector handle not found", root_selection_hnd_id))
+	bridge := &apiNodeBridge{browser:cb}
+	selection_hnd_id := C.conf2_browse_select_root(cb.select_root_impl, cb.browser_hnd.ID, errPtr)
+	if err != nil {
+		panic(err.Error())
 	}
-	var n data.Node
-	n, err = selector.selection(root_selection_hnd)
-
-	// TODO: Need to pass path and allow driver to walk and return state, otherwise destination
-	// cannot fast-forward based on path
-	return data.WalkPath(data.NewSelection(n, cb.module), path)
+	selection_hnd, found := ApiHandles()[selection_hnd_id]
+	if ! found {
+		panic(fmt.Sprint("Root node handle not found", selection_hnd_id))
+	}
+	return bridge.node(selection_hnd)
 }
 
 func (cb *apiBrowser) Module() *schema.Module {
@@ -165,35 +153,38 @@ func (cb *apiBrowser) Close() error {
 	return cb.browser_hnd.Close()
 }
 
-type apiSelector struct {
+type apiNodeBridge struct {
 	browser *apiBrowser
 }
 
-func (cb *apiSelector) selection(selectionHnd *ApiHandle) (data.Node, error) {
+func (bridge *apiNodeBridge) node(selectionHnd *ApiHandle) (data.Node) {
 	s := &data.MyNode{}
 	s.OnSelect = func(state *data.Selection, meta schema.MetaList, new bool) (child data.Node, err error) {
-		return cb.enter(meta, selectionHnd, new)
+		return bridge.enter(meta, selectionHnd, new)
 	}
-	s.OnNext = func(state *data.Selection, meta *schema.List, new bool, keys []*data.Value, first bool) (data.Node, error) {
-		return cb.iterate(s, selectionHnd, new, keys, first)
+	s.OnNext = func(state *data.Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (data.Node, error) {
+		return bridge.iterate(s, selectionHnd, new, keys, first)
 	}
-	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
-		return cb.read(meta, selectionHnd)
+	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
+		return bridge.read(meta, selectionHnd)
 	}
-	s.OnWrite = func(state *data.Selection, meta schema.HasDataType, val *data.Value) error {
-		return cb.edit(meta, selectionHnd, val)
+	s.OnWrite = func(state *data.Selection, meta schema.HasDataType, val *schema.Value) error {
+		return bridge.edit(meta, selectionHnd, val)
 	}
 	s.OnEvent = func(state *data.Selection, e data.Event) error {
-		return cb.event(selectionHnd, e)
+		return bridge.event(selectionHnd, e)
 	}
 	s.OnChoose = func(state *data.Selection, m *schema.Choice) (schema.Meta, error) {
-		return cb.choose(state.State.Position(), selectionHnd, m)
+		return bridge.choose(state.State.Position(), selectionHnd, m)
+	}
+	s.OnFind = func(sel *data.Selection, path *schema.Path) error {
+		return bridge.find(selectionHnd, path)
 	}
 	s.Resource = selectionHnd
-	return s, nil
+	return s
 }
 
-func (cb *apiSelector) iterate(s data.Node, selectionHnd *ApiHandle, new bool, key []*data.Value, first bool) (data.Node, error) {
+func (cb *apiNodeBridge) iterate(s data.Node, nodeHnd *ApiHandle, new bool, key []*schema.Value, first bool) (data.Node, error) {
 	var err error
 	errPtr := unsafe.Pointer(&err)
 	var c_encoded_key unsafe.Pointer
@@ -218,7 +209,7 @@ func (cb *apiSelector) iterate(s data.Node, selectionHnd *ApiHandle, new bool, k
 		c_create = C.short(0)
 	}
 
-	child_hnd_id := C.conf2_browse_iterate(cb.browser.iterate_impl, selectionHnd.ID, c_create, c_encoded_key, encoded_key_len, c_first, errPtr)
+	child_hnd_id := C.conf2_browse_iterate(cb.browser.iterate_impl, nodeHnd.ID, c_create, c_encoded_key, encoded_key_len, c_first, errPtr)
 	if child_hnd_id == nil || err != nil {
 		return nil, err
 	}
@@ -226,10 +217,10 @@ func (cb *apiSelector) iterate(s data.Node, selectionHnd *ApiHandle, new bool, k
 	if ! found {
 		panic(fmt.Sprint("Enter selector handle not found", child_hnd_id))
 	}
-	return cb.selection(child_hnd)
+	return cb.node(child_hnd), nil
 }
 
-func (cb *apiSelector) enter(meta schema.MetaList, selectionHnd *ApiHandle, new bool) (child data.Node, err error) {
+func (cb *apiNodeBridge) enter(meta schema.MetaList, nodeHnd *ApiHandle, new bool) (child data.Node, err error) {
 	errPtr := unsafe.Pointer(&err)
 	ident := encodeIdent(meta)
 	var c_create C.short
@@ -238,7 +229,7 @@ func (cb *apiSelector) enter(meta schema.MetaList, selectionHnd *ApiHandle, new 
 	} else {
 		c_create = C.short(0)
 	}
-	child_hnd_id := C.conf2_browse_enter(cb.browser.enter_impl, selectionHnd.ID, ident, c_create, errPtr)
+	child_hnd_id := C.conf2_browse_enter(cb.browser.enter_impl, nodeHnd.ID, ident, c_create, errPtr)
 	if child_hnd_id == nil || err != nil {
 		return nil, err
 	}
@@ -246,7 +237,7 @@ func (cb *apiSelector) enter(meta schema.MetaList, selectionHnd *ApiHandle, new 
 	if ! found {
 		panic(fmt.Sprint("Enter selector handle not found", child_hnd_id))
 	}
-	return cb.selection(child_hnd)
+	return cb.node(child_hnd), nil
 }
 
 func encodeIdent(position schema.Meta) *C.char {
@@ -257,12 +248,12 @@ func encodeIdent(position schema.Meta) *C.char {
 	return C.CString(position.GetIdent())
 }
 
-func (cb *apiSelector) read(meta schema.HasDataType, selectionHnd *ApiHandle) (val *data.Value, err error) {
+func (cb *apiNodeBridge) read(meta schema.HasDataType, nodeHnd *ApiHandle) (val *schema.Value, err error) {
 	errPtr := unsafe.Pointer(&err)
 	ident := encodeIdent(meta)
 	var data_ptr unsafe.Pointer
 	var data_len C.int
-	value_hnd_id := C.conf2_browse_read(cb.browser.read_impl, selectionHnd.ID, ident, &data_ptr, &data_len, errPtr)
+	value_hnd_id := C.conf2_browse_read(cb.browser.read_impl, nodeHnd.ID, ident, &data_ptr, &data_len, errPtr)
 	if data_ptr != nil && data_len > 0 {
 		data := C.GoBytes(data_ptr, data_len)
 		r := comm.NewReader(data)
@@ -278,7 +269,7 @@ func (cb *apiSelector) read(meta schema.HasDataType, selectionHnd *ApiHandle) (v
 	return val, err
 }
 
-func (cb *apiSelector) edit(meta schema.HasDataType, selectionHnd *ApiHandle, val *data.Value) (err error) {
+func (cb *apiNodeBridge) edit(meta schema.HasDataType, nodeHnd *ApiHandle, val *schema.Value) (err error) {
 	errPtr := unsafe.Pointer(&err)
 	var handle *GoHandle
 	ident := encodeIdent(meta)
@@ -293,7 +284,7 @@ func (cb *apiSelector) edit(meta schema.HasDataType, selectionHnd *ApiHandle, va
 		data_ptr = handle.ID
 	}
 
-	C.conf2_browse_edit(cb.browser.edit_impl, selectionHnd.ID, ident, data_ptr, data_len, errPtr)
+	C.conf2_browse_edit(cb.browser.edit_impl, nodeHnd.ID, ident, data_ptr, data_len, errPtr)
 
 	if handle != nil {
 		handle.Close()
@@ -302,10 +293,10 @@ func (cb *apiSelector) edit(meta schema.HasDataType, selectionHnd *ApiHandle, va
 	return
 }
 
-func (cb *apiSelector) choose(meta schema.Meta, selectionHnd *ApiHandle, choice *schema.Choice) (resolved schema.Meta, err error) {
+func (cb *apiNodeBridge) choose(meta schema.Meta, nodeHnd *ApiHandle, choice *schema.Choice) (resolved schema.Meta, err error) {
 	errPtr := unsafe.Pointer(&err)
 	ident := C.CString(meta.GetIdent())
-	resolved_case := C.conf2_browse_choose(cb.browser.choose_impl, selectionHnd.ID, ident, errPtr)
+	resolved_case := C.conf2_browse_choose(cb.browser.choose_impl, nodeHnd.ID, ident, errPtr)
 	if err == nil {
 		ccase := choice.GetCase(C.GoString(resolved_case))
 		resolved = ccase.GetFirstMeta()
@@ -313,8 +304,15 @@ func (cb *apiSelector) choose(meta schema.Meta, selectionHnd *ApiHandle, choice 
 	return
 }
 
-func (cb *apiSelector) event(selectionHnd *ApiHandle, e data.Event) (err error) {
+func (cb *apiNodeBridge) find(nodeHnd *ApiHandle, path *schema.Path) (err error) {
 	errPtr := unsafe.Pointer(&err)
-	C.conf2_browse_event(cb.browser.event_impl, selectionHnd.ID, C.int(e), errPtr)
+	cpath := C.CString(path.String())
+	C.conf2_browse_find(cb.browser.find_impl, nodeHnd.ID, cpath, errPtr)
+	return
+}
+
+func (cb *apiNodeBridge) event(nodeHnd *ApiHandle, e data.Event) (err error) {
+	errPtr := unsafe.Pointer(&err)
+	C.conf2_browse_event(cb.browser.event_impl, nodeHnd.ID, C.int(e), errPtr)
 	return
 }
