@@ -30,5 +30,6 @@ Conf2 requires Go 1.5 for shared library support.
     make build
 
 ## Code Examples:
-* [HelloGo](examples/helloGo/hello.go) - Basic Go application that says hello to you
-* [Todo](examples/todo) - Todo Go application
+* [HelloGo](https://github.com/dhubler/conf2-examples/blob/master/helloGo/hello.go) - Basic Go application that says hello to you
+* [Todo](https://github.com/dhubler/conf2-examples/tree/master/todo) - Todo Go application
+
