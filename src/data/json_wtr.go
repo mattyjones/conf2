@@ -11,103 +11,133 @@ const QUOTE = '"'
 
 type JsonWriter struct {
 	out                *bufio.Writer
-	firstInContainer   bool
-	startingInsideList bool
-	firstWrite         bool
-	closeArrayOnExit   bool
 }
+
+type closerFunc func() error
 
 func NewJsonWriter(out io.Writer) *JsonWriter {
 	return &JsonWriter{
 		out:              bufio.NewWriter(out),
-		firstInContainer: true,
 	}
 }
 
 func (json *JsonWriter) Node() Node {
+	var closer closerFunc
+	// JSON can begin at a container, inside a list or inside a container, each of these has
+	// different results to make json legal
+	return &Extend{
+		Label: "JSON",
+		Node: json.Container(json.endContainer),
+		OnSelect: func(p Node, sel *Selection, meta schema.MetaList, new bool) (child Node, err error) {
+			if closer == nil {
+				json.beginObject()
+				closer = json.endContainer
+			}
+			return p.Select(sel, meta, new)
+		},
+		OnNext: func(p Node, sel *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (next Node, err error) {
+			if closer == nil {
+				json.beginObject()
+				json.beginList(meta.GetIdent())
+				closer = func() (closeErr error) {
+					if closeErr = json.endList(); closeErr == nil {
+						closeErr = json.endContainer()
+					}
+					return closeErr
+				}
+			}
+			return p.Next(sel, meta, new, keys, first)
+		},
+		OnWrite: func(p Node, sel *Selection, meta schema.HasDataType, v *schema.Value) (err error) {
+			if closer == nil {
+				json.beginObject()
+				closer = json.endContainer
+			}
+			return p.Write(sel, meta, v)
+		},
+		OnEvent:func(p Node, s *Selection, e Event) error {
+			var err error
+			switch e {
+			case END_EDIT:
+				if closer != nil {
+					if err = closer(); err != nil {
+						return err
+					}
+				}
+				err = json.out.Flush()
+			default:
+				err = p.Event(s, e)
+			}
+			return err
+		},
+	}
+}
+
+func (json *JsonWriter) Container(closer closerFunc) Node {
+	first := true
+	delim := func() (err error) {
+		if ! first {
+			if _, err = json.out.WriteRune(','); err != nil {
+				return
+			}
+		} else {
+			first = false
+		}
+		return
+	}
 	s := &MyNode{Label: "JSON Write"}
 	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error) {
 		if ! new {
 			return nil, nil
 		}
-		if schema.IsList(meta) {
-			err = json.beginList(meta.GetIdent())
-		} else {
-			err = json.beginContainer(meta.GetIdent())
+		if err = delim(); err != nil {
+			return nil, err
 		}
-		return s, nil
+		if schema.IsList(meta) {
+			if err = json.beginList(meta.GetIdent()); err != nil {
+				return nil, err
+			}
+			return json.Container(json.endList), nil
+
+		}
+		if err = json.beginContainer(meta.GetIdent()); err != nil {
+			return nil, err
+		}
+		return json.Container(json.endContainer), nil
 	}
 	s.OnEvent = func(sel *Selection, e Event) (err error) {
 		switch e {
-		case BEGIN_EDIT:
-			_, err = json.out.WriteRune('{')
-			json.startingInsideList = schema.IsList(sel.State.SelectedMeta())
-			json.firstWrite = true
-			return err
-		case END_EDIT:
-			if err = json.conditionallyCloseArrayOnLastWrite(); err != nil {
-				return err
-			}
-			if _, err = json.out.WriteRune('}'); err != nil {
-				return err
-			}
-			err = json.out.Flush()
 		case LEAVE:
-			if schema.IsList(sel.State.SelectedMeta()) {
-				err = json.endList()
-			} else {
-				err = json.endContainer()
-			}
-		case LEAVE_ITEM:
-			err = json.endArrayItem()
+			err = closer()
 		}
 		return
 	}
 	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *schema.Value) (err error) {
+		if err = delim(); err != nil {
+			return err
+		}
 		err = json.writeValue(meta, v)
-		json.firstWrite = false
 		return
 	}
 	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (next Node, err error) {
 		if ! new {
 			return nil, nil
 		}
-		if err = json.conditionallyOpenArrayOnFirstWrite(meta.GetIdent()); err != nil {
+		if err = delim(); err != nil {
 			return nil, err
 		}
-		return s, json.beginArrayItem()
+		if err = json.beginObject(); err != nil {
+			return nil, err
+		}
+		return json.Container(json.endContainer), nil
 	}
 	return s
-}
-
-func (json *JsonWriter) conditionallyOpenArrayOnFirstWrite(ident string) error {
-	var err error
-	if json.firstWrite && json.startingInsideList {
-		json.closeArrayOnExit = true
-		err = json.beginList(ident)
-	}
-	return err
-}
-
-func (json *JsonWriter) conditionallyCloseArrayOnLastWrite() error {
-	var err error
-	if json.closeArrayOnExit {
-		err = json.endList()
-	}
-	return err
 }
 
 func (json *JsonWriter) beginList(ident string) (err error) {
 	if err = json.writeIdent(ident); err == nil {
 		_, err = json.out.WriteRune('[')
-		json.firstInContainer = true
 	}
-	return
-}
-
-func (json *JsonWriter) endList() (err error) {
-	_, err = json.out.WriteRune(']')
-	json.firstInContainer = false
 	return
 }
 
@@ -121,8 +151,33 @@ func (json *JsonWriter) beginContainer(ident string) (err error) {
 	return
 }
 
+func (json *JsonWriter) beginObject() (err error) {
+	if err == nil {
+		_, err = json.out.WriteRune('{')
+	}
+	return
+}
+
+func (json *JsonWriter) writeIdent(ident string) (err error) {
+	if _, err = json.out.WriteRune(QUOTE); err != nil {
+		return
+	}
+	if _, err = json.out.WriteString(ident); err != nil {
+		return
+	}
+	if _, err = json.out.WriteRune(QUOTE); err != nil {
+		return
+	}
+	_, err = json.out.WriteRune(':')
+	return
+}
+
+func (json *JsonWriter) endList() (err error) {
+	_, err = json.out.WriteRune(']')
+	return
+}
+
 func (json *JsonWriter) endContainer() (err error) {
-	json.firstInContainer = false
 	_, err = json.out.WriteRune('}')
 	return
 }
@@ -231,52 +286,3 @@ func (json *JsonWriter) writeString(s string) (err error) {
 	return
 }
 
-func (json *JsonWriter) beginArrayItem() (err error) {
-	if err = json.writeDelim(); err != nil {
-		return
-	}
-	if err = json.beginObject(); err != nil {
-		return
-	}
-	return
-}
-
-func (json *JsonWriter) endArrayItem() (err error) {
-	json.firstInContainer = false
-	_, err = json.out.WriteRune('}')
-	return
-}
-
-func (json *JsonWriter) beginObject() (err error) {
-	if err == nil {
-		_, err = json.out.WriteRune('{')
-		json.firstInContainer = true
-	}
-	return
-}
-
-func (json *JsonWriter) writeIdent(ident string) (err error) {
-	if err = json.writeDelim(); err != nil {
-		return
-	}
-	if _, err = json.out.WriteRune(QUOTE); err != nil {
-		return
-	}
-	if _, err = json.out.WriteString(ident); err != nil {
-		return
-	}
-	if _, err = json.out.WriteRune(QUOTE); err != nil {
-		return
-	}
-	_, err = json.out.WriteRune(':')
-	return
-}
-
-func (json *JsonWriter) writeDelim() (err error) {
-	if json.firstInContainer {
-		json.firstInContainer = false
-	} else {
-		_, err = json.out.WriteRune(',')
-	}
-	return
-}

@@ -79,6 +79,7 @@ var keywords = [...]string{
 	"import",
 	"include",
 	"action",
+	"anyxml",
 }
 
 const eof rune = 0
@@ -380,6 +381,7 @@ func lexBegin(l *lexer) stateFunc {
 		kywd_type,
 		kywd_import,
 		kywd_include,
+		kywd_anyxml,
 	}
 	for _, ttype := range defOrReference {
 		if l.acceptToken(ttype) {
@@ -396,7 +398,7 @@ func lexBegin(l *lexer) stateFunc {
 		}
 	}
 
-	// FORMAT: Either
+	// FORMAT:
 	//  xxx zzz;
 	tokenIdentPair := [...]int{
 		kywd_uses,

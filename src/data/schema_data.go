@@ -151,6 +151,8 @@ func (self *SchemaData) createGroupingsTypedefsDefinitions(parent schema.MetaLis
 	switch childMeta.GetIdent() {
 	case "leaf":
 		child = &schema.Leaf{}
+	case "anyxml":
+		child = &schema.Any{}
 	case "leaf-list":
 		child = &schema.LeafList{}
 	case "container":
@@ -285,13 +287,15 @@ func (self *SchemaData) selectNotifications(notifications schema.MetaList) (Node
 	return s
 }
 
-func (self *SchemaData) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.LeafList) (Node) {
+func (self *SchemaData) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.LeafList, any *schema.Any) (Node) {
 	s := &MyNode{}
 	var leafy schema.HasDataType
 	if leaf != nil {
 		leafy = leaf
-	} else {
+	} else if leafList != nil {
 		leafy = leafList
+	} else {
+		leafy = any
 	}
 	details := leafy.(schema.HasDetails).Details()
 	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (Node, error) {
@@ -428,10 +432,12 @@ func (self *SchemaData) SelectDefinition(parent schema.MetaList, data schema.Met
 			return nil, nil
 		}
 		switch meta.GetIdent() {
+		case "anyxml":
+			return self.selectMetaLeafy(nil, nil, data.(*schema.Any)), nil
 		case "leaf":
-			return self.selectMetaLeafy(data.(*schema.Leaf), nil), nil
+			return self.selectMetaLeafy(data.(*schema.Leaf), nil, nil), nil
 		case "leaf-list":
-			return self.selectMetaLeafy(nil, data.(*schema.LeafList)), nil
+			return self.selectMetaLeafy(nil, data.(*schema.LeafList), nil), nil
 		case "uses":
 			return self.selectMetaUses(data.(*schema.Uses)), nil
 		case "choice":
@@ -497,6 +503,8 @@ func (self *SchemaData) definitionType(data schema.Meta) string {
 		return "uses"
 	case *schema.Choice:
 		return "choice"
+	case *schema.Any:
+		return "anyxml"
 	case *schema.Leaf:
 		return "leaf"
 	case *schema.LeafList:

@@ -14,7 +14,6 @@ const (
 	END_EDIT
 	UNDO_EDIT
 	LEAVE
-	LEAVE_ITEM
 	DELETE
 	UNSELECT
 )
@@ -25,7 +24,6 @@ var eventNames = []string {
 	"END_EDIT",
 	"UNDO_EDIT",
 	"LEAVE",
-	"LEAVE_ITEM",
 	"DELETE",
 	"UNSELECT",
 }

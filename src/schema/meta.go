@@ -629,6 +629,62 @@ func (y *LeafList) Details() *Details {
 	return &y.details
 }
 
+
+////////////////////////////////////////////////////
+
+// No real type, but this is closest incase someone asks
+var AnyDataType = NewDataType("string")
+
+type Any struct {
+	Ident       string
+	Description string
+	MetaBase
+	details  Details
+}
+
+// Distinguishes the concrete type in choice-cases
+func (y *Any) Any() Meta {
+	return y
+}
+
+// Identifiable
+func (y *Any) GetIdent() string {
+	return y.Ident
+}
+
+// Describable
+func (y *Any) GetDescription() string {
+	return y.Description
+}
+func (y *Any) SetDescription(d string) {
+	y.Description = d
+}
+
+// Meta
+func (y *Any) SetParent(parent MetaList) {
+	y.Parent = parent
+}
+func (y *Any) GetParent() MetaList {
+	return y.Parent
+}
+func (y *Any) GetSibling() Meta {
+	return y.Sibling
+}
+func (y *Any) SetSibling(sibling Meta) {
+	y.Sibling = sibling
+}
+
+// HasDataType
+func (y *Any) GetDataType() *DataType {
+	return AnyDataType
+}
+func (y *Any) SetDataType(dataType *DataType) {
+	panic("Illegal operation")
+}
+func (y *Any) Details() *Details {
+	return &y.details
+}
+
 ////////////////////////////////////////////////////
 
 type Grouping struct {

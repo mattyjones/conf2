@@ -83,6 +83,18 @@ module yang {
                         uses type;
                     }
                 }
+                case anyxml {
+                    container anyxml {
+                        uses def-header;
+                        leaf config {
+                            type boolean;
+                        }
+                        leaf mandatory {
+                            type boolean;
+                        }
+                        uses type;
+                    }
+                }
                 case leaf-list {
                     container leaf-list {
                         uses def-header;

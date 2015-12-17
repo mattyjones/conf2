@@ -108,6 +108,7 @@ func popAndAddMeta(yylval *yySymType) error {
 %token kywd_import
 %token kywd_include
 %token kywd_action
+%token kywd_anyxml
 
 %%
 
@@ -195,6 +196,7 @@ body_stmt :
     | container_stmt
     | leaf_stmt
     | leaf_list_stmt
+    | anyxml_stmt
     | uses_stmt
     | choice_stmt
     | action_stmt
@@ -508,6 +510,17 @@ key_stmt: kywd_key token_string token_semi {
      }
 }
 
+anyxml_stmt:
+    anyxml_def token_semi {
+         if HasError(yylex, popAndAddMeta(&yylval)) {
+             goto ret1
+         }
+    }
+
+anyxml_def :
+    kywd_anyxml token_ident {
+        yylval.stack.Push(&schema.Any{Ident:$2})
+    }
 
 leaf_stmt:
     leaf_def

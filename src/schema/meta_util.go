@@ -54,7 +54,7 @@ func IsAction(m Meta) bool {
 
 func IsLeaf(m Meta) bool {
 	switch m.(type) {
-	case *Leaf, *LeafList:
+	case *Leaf, *LeafList, *Any:
 		return true
 	}
 	return false

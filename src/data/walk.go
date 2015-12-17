@@ -32,7 +32,7 @@ func Walk(selection *Selection, controller WalkController) (err error) {
 			if err = Walk(next, controller); err != nil {
 				return
 			}
-			if err = selection.Fire(LEAVE_ITEM); err != nil {
+			if err = next.Fire(LEAVE); err != nil {
 				return err
 			}
 			if next, err = controller.ListIterator(selection, false); err != nil {

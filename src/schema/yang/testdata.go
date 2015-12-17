@@ -76,6 +76,8 @@ module rtstone {
         }
     }
 
+	anyxml credits;
+
     rpc start-game {
         input {
             leaf seconds-from-now {
