@@ -45,7 +45,12 @@ func (kv *StoreData) List(parentPath string) Node {
 	var i int
 	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error) {
 		if new {
-			childPath := kv.listPath(parentPath, sel.State.Key())
+			var childPath string
+			if len(sel.State.Key()) > 0 {
+				childPath = kv.listPath(parentPath, sel.State.Key())
+			} else {
+				childPath = parentPath + "=unknown"
+			}
 			return kv.Container(childPath), nil
 		}
 		if len(key) > 0 {

@@ -55,6 +55,10 @@ func (sel *Selection) SelectListItem(node Node, key []*schema.Value) *Selection 
 	return &next
 }
 
+func (sel *Selection) Meta(ident string) schema.Meta {
+	return schema.FindByIdent2(sel.State.SelectedMeta(), ident)
+}
+
 func (sel *Selection) String() (s string) {
 	if sel.Node == nil {
 		return ""

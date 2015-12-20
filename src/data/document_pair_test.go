@@ -52,7 +52,7 @@ module m {
 	`
 	m, err := yang.LoadModuleFromByteArray([]byte(mstr), nil)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	{
 		t.Log("Testing Init")

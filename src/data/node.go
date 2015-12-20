@@ -18,17 +18,37 @@ type Node interface {
 	Action(sel *Selection, meta *schema.Rpc, input Node) (output Node, err error)
 }
 
+// A way to direct changes to another node to enable CopyOnWrite or other persistable options
+type ChangeAwareNode interface {
+	DirectChanges(config Node)
+	Changes() Node
+}
+
 type MyNode struct {
-	Label    string
-	OnNext   NextFunc
-	OnSelect SelectFunc
-	OnRead   ReadFunc
-	OnWrite  WriteFunc
-	OnChoose ChooseFunc
-	OnAction ActionFunc
-	OnEvent  EventFunc
-	OnFind   FindFunc
-	Resource schema.Resource
+	Label        string
+	ChangeAccess Node
+	OnNext       NextFunc
+	OnSelect     SelectFunc
+	OnRead       ReadFunc
+	OnWrite      WriteFunc
+	OnChoose     ChooseFunc
+	OnAction     ActionFunc
+	OnEvent      EventFunc
+	OnFind       FindFunc
+	Resource     schema.Resource
+}
+
+func (n *MyNode) DirectChanges(changeNode Node) {
+	n.ChangeAccess = changeNode
+}
+
+func (n *MyNode) Changes() Node {
+	// If there's a change interceptor set, use it otherwise
+	// changes go directly back to node
+	if n.ChangeAccess != nil {
+		return n.ChangeAccess
+	}
+	return n
 }
 
 func (s *MyNode) String() string {
@@ -144,15 +164,15 @@ func (e ErrorNode) Next(*Selection, *schema.List, bool, []*schema.Value, bool) (
 	return nil, e.Err
 }
 
-func (e ErrorNode) Read(*Selection, schema.HasDataType) (*schema.Value, error){
+func (e ErrorNode) Read(*Selection, schema.HasDataType) (*schema.Value, error) {
 	return nil, e.Err
 }
 
-func (e ErrorNode) Write(*Selection, schema.HasDataType, *schema.Value) error{
+func (e ErrorNode) Write(*Selection, schema.HasDataType, *schema.Value) error {
 	return e.Err
 }
 
-func (e ErrorNode) Choose(*Selection, *schema.Choice) (schema.Meta, error){
+func (e ErrorNode) Choose(*Selection, *schema.Choice) (schema.Meta, error) {
 	return nil, e.Err
 }
 
