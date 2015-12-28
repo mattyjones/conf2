@@ -112,7 +112,6 @@ func (l *lexer) error(msg string) stateFunc {
 }
 
 func (l *lexer) importModule(into *schema.Module, moduleName string) error {
-
 	fmt.Printf("lexer.go - Import module here %s\n", moduleName)
 	return nil
 }
@@ -511,6 +510,6 @@ func lex(input string, importer ImportModule) *lexer {
 		stack:    newDefStack(256),
 		importer: importer,
 	}
-	l.acceptWS()
+	//l.acceptWS()
 	return l
 }

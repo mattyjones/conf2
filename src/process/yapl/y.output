@@ -1,0 +1,186 @@
+
+state 0
+	$accept: .script $end 
+
+	token_ident  shift 3
+	.  error
+
+	script  goto 1
+	script_def  goto 2
+
+state 1
+	$accept:  script.$end 
+
+	$end  accept
+	.  error
+
+
+state 2
+	script:  script_def.operations 
+
+	token_space_indent  shift 7
+	.  error
+
+	operations  goto 4
+	operation  goto 5
+	indentation  goto 6
+
+state 3
+	script_def:  token_ident.token_eol 
+
+	token_eol  shift 8
+	.  error
+
+
+state 4
+	script:  script_def operations.    (1)
+	operations:  operations.operation 
+
+	token_space_indent  shift 7
+	.  reduce 1 (src line 44)
+
+	operation  goto 9
+	indentation  goto 6
+
+state 5
+	operations:  operation.    (2)
+
+	.  reduce 2 (src line 48)
+
+
+state 6
+	operation:  indentation.operation_stmt 
+	indentation:  indentation.token_space_indent 
+
+	token_ident  shift 14
+	token_space_indent  shift 11
+	kywd_let  shift 15
+	.  error
+
+	operation_stmt  goto 10
+	set  goto 12
+	let  goto 13
+
+state 7
+	indentation:  token_space_indent.    (10)
+
+	.  reduce 10 (src line 67)
+
+
+state 8
+	script_def:  token_ident token_eol.    (12)
+
+	.  reduce 12 (src line 70)
+
+
+state 9
+	operations:  operations operation.    (3)
+
+	.  reduce 3 (src line 49)
+
+
+state 10
+	operation:  indentation operation_stmt.    (4)
+
+	.  reduce 4 (src line 51)
+
+
+state 11
+	indentation:  indentation token_space_indent.    (11)
+
+	.  reduce 11 (src line 68)
+
+
+state 12
+	operation_stmt:  set.    (5)
+
+	.  reduce 5 (src line 54)
+
+
+state 13
+	operation_stmt:  let.    (6)
+
+	.  reduce 6 (src line 56)
+
+
+state 14
+	set:  token_ident.token_equal expression token_eol 
+
+	token_equal  shift 16
+	.  error
+
+
+state 15
+	let:  kywd_let.token_ident token_equal expression token_eol 
+
+	token_ident  shift 17
+	.  error
+
+
+state 16
+	set:  token_ident token_equal.expression token_eol 
+
+	token_ident  shift 19
+	.  error
+
+	expression  goto 18
+
+state 17
+	let:  kywd_let token_ident.token_equal expression token_eol 
+
+	token_equal  shift 20
+	.  error
+
+
+state 18
+	set:  token_ident token_equal expression.token_eol 
+
+	token_eol  shift 21
+	.  error
+
+
+state 19
+	expression:  token_ident.    (9)
+
+	.  reduce 9 (src line 64)
+
+
+state 20
+	let:  kywd_let token_ident token_equal.expression token_eol 
+
+	token_ident  shift 19
+	.  error
+
+	expression  goto 22
+
+state 21
+	set:  token_ident token_equal expression token_eol.    (7)
+
+	.  reduce 7 (src line 58)
+
+
+state 22
+	let:  kywd_let token_ident token_equal expression.token_eol 
+
+	token_eol  shift 23
+	.  error
+
+
+state 23
+	let:  kywd_let token_ident token_equal expression token_eol.    (8)
+
+	.  reduce 8 (src line 61)
+
+
+17 terminals, 10 nonterminals
+13 grammar rules, 24/2000 states
+0 shift/reduce, 0 reduce/reduce conflicts reported
+59 working sets used
+memory: parser 11/30000
+0 extra closures
+14 shift entries, 1 exceptions
+11 goto entries
+1 entries saved by goto default
+Optimizer space used: output 23/30000
+23 table entries, 0 zero
+maximum spread: 15, maximum offset: 20

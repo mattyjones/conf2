@@ -64,7 +64,7 @@ func (sel *Selection) String() (s string) {
 		return ""
 	}
 	s = sel.Node.String()
-	if len(s) > 0 {
+	if len(s) > 0 && sel.State.Position() != nil {
 		s = s + " " + sel.State.Position().GetIdent()
 	}
 	return

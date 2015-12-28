@@ -21,3 +21,37 @@ func ChangeValue(sel *Selection, ident string, value interface{}) error {
 	return n.Write(sel, meta, v)
 }
 
+func GetValue(sel *Selection, ident string) (*schema.Value, error) {
+	prop := schema.FindByIdent2(sel.State.SelectedMeta(), ident)
+	if prop != nil {
+		v, err := sel.Node.Read(sel, prop.(schema.HasDataType))
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	return nil, nil
+}
+
+func SelectMetaList(sel *Selection, ident string, autoCreate bool) (*Selection, error) {
+	m := schema.FindByIdent2(sel.State.SelectedMeta(), ident)
+	var err error
+	var child Node
+	if m != nil {
+		sel.State.SetPosition(m)
+		child, err = sel.Node.Select(sel, m.(schema.MetaList), false)
+		if err != nil {
+			return nil, err
+		} else if child == nil && autoCreate {
+			child, err = sel.Node.Select(sel, m.(schema.MetaList), true)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	if child != nil {
+		return sel.Select(child), nil
+	}
+	return nil, nil
+}
+
