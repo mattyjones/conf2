@@ -38,35 +38,20 @@ func (setup *ScriptTestSetup) ToString(t *testing.T) string {
 func TestScriptExec(t *testing.T) {
 	a := ScriptSetup(moduleA, t)
 	z := ScriptSetup(moduleZ, t)
-
-	scripts := map[string]*Script {
-		"b2z" : &Script{
-			Operations: []*Operation {
-				{
-					Command : &Set{
-						Name : "x",
-						Value : `{{get "c"}}`,
-					},
-				},
-			},
-		},
+	tx := &Script{Name:"tx"}
+	txy := &Select{
+		On : "b",
+		Into : "y",
 	}
-	script := &Script{
-		Operations: []*Operation {
-			{
-				Command : &Set{
-					Name : "u",
-					Value : `{{get "f"}}`,
-				},
-			},{
-				Command : &Select{
-					On : "b",
-					Into : "y",
-					Script: "b2z",
-				},
-			},
-		},
-	}
+	txy.AddOperation(&Set{
+		Name : "x",
+		Value : "c",
+	})
+	tx.AddOperation(&Set{
+		Name : "u",
+		Value : "f",
+	})
+	tx.AddOperation(txy)
 	tests := []struct {
 		aPath string
 		aValue *schema.Value
@@ -84,9 +69,8 @@ func TestScriptExec(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-
 		stack := &Stack{
-			Scripts: scripts,
+			Scripts: map[string]*Script{"tx" : tx},
 			Join: &Join{
 				On : &Table{
 					Corner: data.NewSelection(a.Data.Node(), a.Module),
@@ -100,7 +84,7 @@ func TestScriptExec(t *testing.T) {
 		a.Store.Clear()
 		z.Store.Clear()
 		a.Store.Values[test.aPath] = test.aValue
-		err := script.Exec(stack)
+		err := tx.Exec(stack)
 		if err != nil {
 			t.Error(err)
 		} else {

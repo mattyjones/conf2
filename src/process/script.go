@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"conf2"
 	"fmt"
+	"strings"
+	"errors"
 )
 
 type Stack struct {
@@ -62,25 +64,66 @@ func (stack *Stack) ClearLastError() error {
 	return e
 }
 
-type Operation struct {
-	If *If
-	Command Command
-}
-
-type Command interface {
+type Operation interface {
+	SetParent(CodeBlock)
+	Parent() CodeBlock
 	Exec(stack *Stack) error
 }
 
+type CodeBlock interface {
+	Operation
+	AddOperation(op Operation)
+}
+
 type If struct {
+	parent CodeBlock
 	Expression string
-	Operations []*Operation
+	operations []Operation
 }
 
 func (iF *If) IsTrue(stack *Stack) bool {
 	return true
 }
 
+func (iF *If) Operations() []Operation {
+	return iF.operations
+}
+
+func (iF *If) SetParent(parent CodeBlock) {
+	iF.parent = parent
+}
+
+func (iF *If) Parent() CodeBlock {
+	return iF.parent
+}
+
+func (iF *If) AddOperation(op Operation) {
+	if iF.operations == nil {
+		iF.operations = make([]Operation, 0, 1)
+	}
+	iF.operations = append(iF.operations, op)
+}
+
+func (iF *If) Exec(stack *Stack) error {
+	condition, err := stack.Eval(iF.Expression)
+	if err != nil {
+		return err
+	}
+	clean := strings.TrimSpace(condition)
+	if len(clean) == 0 || "false" == clean || "0" == clean {
+		return nil
+	}
+	for _, op := range iF.operations {
+		if err = op.Exec(stack); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+
 type Let struct {
+	parent CodeBlock
 	Name string
 	Value string
 }
@@ -90,9 +133,26 @@ func (v *Let) Exec(stack *Stack) error {
 	return nil
 }
 
+func (v *Let) SetParent(parent CodeBlock) {
+	v.parent = parent
+}
+
+func (v *Let) Parent() CodeBlock {
+	return v.parent
+}
+
 type Set struct {
+	parent CodeBlock
 	Name string
 	Value string
+}
+
+func (s *Set) SetParent(parent CodeBlock) {
+	s.parent = parent
+}
+
+func (s *Set) Parent() CodeBlock {
+	return s.parent
 }
 
 func (set *Set) Exec(stack *Stack) error {
@@ -106,11 +166,53 @@ func (set *Set) Exec(stack *Stack) error {
 	return data.ChangeValue(stack.Join.Into.Row, set.Name, s)
 }
 
+type Goto struct {
+	parent CodeBlock
+	Script string
+}
+
+func (g *Goto) Parent() CodeBlock {
+	return g.parent
+}
+
+func (g *Goto) SetParent(parent CodeBlock)  {
+	g.parent = parent
+}
+
+func (g *Goto) Exec(stack *Stack) error {
+	s, found := stack.Scripts[g.Script]
+	if !found {
+		return errors.New(g.Script + " script not found")
+	}
+	return s.Exec(stack)
+}
+
 type Select struct {
+	parent CodeBlock
 	On string
 	Into string
 	Script string
-	Operations []*Operation
+	operations []Operation
+}
+
+func (s *Select) Parent() CodeBlock {
+	return s.parent
+}
+
+func (s *Select) SetParent(parent CodeBlock)  {
+	s.parent = parent
+}
+
+func (s *Select) Operations() []Operation {
+	return s.operations
+}
+
+func (s *Select) AddOperation(op Operation) {
+	if s.operations == nil {
+		s.operations = make([]Operation, 0, 1)
+	}
+	op.SetParent(s)
+	s.operations = append(s.operations, op)
 }
 
 func (selct *Select) Exec(stack *Stack) error {
@@ -160,19 +262,33 @@ func (selct *Select) Exec(stack *Stack) error {
 
 type Script struct {
 	Name string
-	Operations []*Operation
+	operations []Operation
+}
+
+func (s *Script) Parent() CodeBlock {
+	return nil
+}
+
+func (s *Script) SetParent(parent CodeBlock)  {
+	panic("Cannot set parent on script")
+}
+
+func (s *Script) Operations() []Operation {
+	return s.operations
+}
+
+func (s *Script) AddOperation(op Operation) {
+	if s.operations == nil {
+		s.operations = make([]Operation, 0, 1)
+	}
+	s.operations = append(s.operations, op)
 }
 
 func (script *Script) Exec(stack *Stack) (err error) {
 	more, err := stack.Join.Iterate()
 	for more && err == nil {
-		for _, op := range script.Operations {
-			if op.If != nil {
-				if ! op.If.IsTrue(stack) {
-					continue
-				}
-			}
-			if err = op.Command.Exec(stack); err != nil {
+		for _, op := range script.Operations() {
+			if err = op.Exec(stack); err != nil {
 				return err
 			}
 		}

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"process"
 	"fmt"
+	"conf2"
 )
 
 // This uses the go feature call go tools in the build process. To ensure this gets
@@ -42,6 +43,7 @@ const (
 const (
 	char_doublequote  = '"'
 	char_eol = '\n'
+	char_space = ' '
 	char_backslash    = '\\'
 	str_comment_start = '#'
 )
@@ -66,32 +68,30 @@ var keywords = [...]string{
 	"if",
 }
 
+const MaxCodeDepth = 64
 
 type operatorStack struct {
 	scripts   []*process.Script
-	defs  [64]process.Operation
-	count int
+	code 	  [MaxCodeDepth]process.CodeBlock
+	depth	  int
+	nextDepth int
 }
 
 func (s *operatorStack) PushScript(script *process.Script) {
+conf2.Debug.Printf("Pushing script %s", script.Name)
 	if s.scripts == nil {
 		s.scripts = make([]*process.Script, 0, 1)
 	}
 	s.scripts = append(s.scripts, script)
+	s.code[0] = script
 }
 
 func (s *operatorStack) Push(def process.Operation) {
-	s.defs[s.count] = def
-	s.count++
-}
-
-func (s *operatorStack) Pop() process.Operation {
-	s.count--
-	return s.defs[s.count]
-}
-
-func (s *operatorStack) Peek() process.Operation {
-	return s.defs[s.count-1]
+	s.code[s.depth].AddOperation(def)
+	if next, isCodeBlock := def.(process.CodeBlock); isCodeBlock {
+conf2.Debug.Printf("pushing, depth=%d", s.depth + 1)
+		s.code[s.depth + 1] = next
+	}
 }
 
 type lexer struct {
@@ -111,12 +111,40 @@ func (l *lexer) acceptSpaceIndent() bool {
 	return l.acceptToken(token_space_indent)
 }
 
-func (l *lexer) acceptWS() {
-	if l.next() != ' ' {
-		l.backup()
-		return
+func (l *lexer) acceptEmptyLine() bool {
+	if l.isEof() {
+		return false
 	}
+	var i int
+	var c rune
+	for i, c = range l.input[l.start:] {
+		switch c {
+		case char_space:
+			continue
+		case char_eol:
+			goto empty_line
+		default:
+			return false
+		}
+	}
+
+empty_line:
+	l.pos += (i + 1)
 	l.ignore()
+	return true
+}
+
+func (l *lexer) acceptWS() {
+	for {
+		if l.next() != ' ' {
+			l.backup()
+			return
+		}
+		l.ignore()
+		if l.isEof() {
+			return
+		}
+	}
 }
 
 func (l *lexer) emit(t int) {
@@ -331,7 +359,7 @@ func (l *lexer) error(msg string) stateFunc {
 }
 
 func lexBegin(l *lexer) stateFunc {
-	for l.acceptToken(token_eol) {
+	for l.acceptEmptyLine() {
 	}
 
 	for l.acceptToken(token_space_indent) {
