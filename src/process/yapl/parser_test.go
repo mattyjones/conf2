@@ -25,7 +25,7 @@ bleep
 	if len(scripts) != 2 {
 		t.Errorf("Expected 2 scripts, got %d", len(scripts))
 	}
-	if scripts[0].Name != "foo" {
-		t.Error("Incorrect script name " + scripts[0].Name)
+	if _, found := scripts["foo"]; !found {
+		t.Error("'foo' script not found")
 	}
 }

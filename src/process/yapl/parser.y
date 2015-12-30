@@ -22,6 +22,8 @@ func (l *lexer) Lex(lval *yySymType) int {
     token string
     stack *operatorStack
     sel *process.Select
+    args []process.Expression
+    expr process.Expression
 }
 
 %token <token> token_ident
@@ -33,6 +35,7 @@ func (l *lexer) Lex(lval *yySymType) int {
 %token token_close_paren
 %token token_comma
 %token token_equal
+%token <token> token_function
 
 %token kywd_select
 %token kywd_into
@@ -41,6 +44,10 @@ func (l *lexer) Lex(lval *yySymType) int {
 %token kywd_if
 
 %type <sel> select_def
+%type <args> arguments
+%type <args> optional_arguments
+%type <expr> expression
+%type <expr> function
 
 %%
 
@@ -106,8 +113,35 @@ select :
     }
 
 expression :
-    token_ident
-    | token_string;
+    token_ident {
+        $$ = &process.Primative{Var:$1}
+    }
+    | token_string {
+        $$ = &process.Primative{Str:$1}
+    }
+    | token_number {
+        $$ = &process.Primative{Num:0}
+    }
+    | function;
+
+function :
+    token_function token_open_paren optional_arguments token_close_paren {
+        $$ = &process.Function{Name:$1, Arguments:$3}
+    }
+
+optional_arguments :
+    /* empty */ {
+        $$ = []process.Expression{}
+    }
+    | arguments;
+
+arguments :
+    expression {
+        $$ = []process.Expression{$1}
+    }
+    | arguments expression {
+        $$ = append($1, $2)
+    }
 
 indent : token_space_indent {
     yylval.stack.depth = yylval.stack.nextDepth
@@ -121,5 +155,4 @@ script_def : token_ident eol {
    s := &process.Script{Name:$1}
    yylval.stack.PushScript(s)
 }
-
 %%

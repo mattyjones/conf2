@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-func Load(data string) ([]*process.Script, error) {
+func Load(data string) (map[string]*process.Script, error) {
 	l := lex(data)
 	err_code := yyParse(l)
 	if err_code != 0 || l.lastError != nil {

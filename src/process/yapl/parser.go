@@ -25,6 +25,8 @@ type yySymType struct {
 	token string
 	stack *operatorStack
 	sel   *process.Select
+	args  []process.Expression
+	expr  process.Expression
 }
 
 const token_ident = 57346
@@ -36,11 +38,12 @@ const token_open_paren = 57351
 const token_close_paren = 57352
 const token_comma = 57353
 const token_equal = 57354
-const kywd_select = 57355
-const kywd_into = 57356
-const kywd_let = 57357
-const kywd_goto = 57358
-const kywd_if = 57359
+const token_function = 57355
+const kywd_select = 57356
+const kywd_into = 57357
+const kywd_let = 57358
+const kywd_goto = 57359
+const kywd_if = 57360
 
 var yyToknames = [...]string{
 	"$end",
@@ -55,6 +58,7 @@ var yyToknames = [...]string{
 	"token_close_paren",
 	"token_comma",
 	"token_equal",
+	"token_function",
 	"kywd_select",
 	"kywd_into",
 	"kywd_let",
@@ -67,7 +71,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line parser.y:125
+//line parser.y:158
 
 //line yacctab:1
 var yyExca = [...]int{
@@ -76,62 +80,68 @@ var yyExca = [...]int{
 	-2, 0,
 }
 
-const yyNprod = 26
+const yyNprod = 33
 const yyPrivate = 57344
 
 var yyTokenNames []string
 var yyStates []string
 
-const yyLast = 46
+const yyLast = 55
 
 var yyAct = [...]int{
 
-	11, 21, 31, 12, 10, 37, 27, 9, 12, 30,
-	26, 10, 22, 25, 24, 7, 15, 32, 33, 38,
-	35, 34, 13, 28, 29, 4, 2, 20, 5, 19,
-	36, 18, 39, 17, 16, 40, 14, 41, 8, 43,
-	42, 6, 3, 44, 1, 23,
+	31, 21, 40, 12, 10, 11, 27, 32, 33, 34,
+	30, 26, 52, 22, 25, 24, 36, 43, 9, 12,
+	10, 41, 38, 7, 37, 28, 4, 15, 39, 29,
+	13, 2, 20, 5, 19, 18, 17, 42, 16, 14,
+	8, 46, 6, 44, 50, 45, 3, 47, 1, 35,
+	53, 48, 51, 49, 23,
 }
 var yyPact = [...]int{
 
-	21, 21, -1000, 4, 0, -1000, 4, -1000, -3, -1000,
+	22, 22, -1000, 13, 11, -1000, 13, -1000, -3, -1000,
 	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, -6, 19, -5, 13, 17, 16, 13, -7, -1000,
-	15, 0, -1000, -1000, 0, -1000, 0, 13, 0, -1000,
-	-1000, -1000, 0, -1000, -1000,
+	-1000, -6, 21, -5, 3, 20, 18, 3, -10, -1000,
+	17, 11, -1000, -1000, -1000, -1000, 8, 11, -1000, 11,
+	3, 11, -1000, 3, -1000, -1000, 11, -1000, 2, 3,
+	-1000, -1000, -1000, -1000,
 }
 var yyPgo = [...]int{
 
-	0, 45, 44, 26, 42, 41, 15, 38, 36, 34,
-	33, 31, 29, 27, 0, 2, 7,
+	0, 54, 53, 51, 0, 49, 48, 31, 46, 42,
+	23, 40, 39, 38, 36, 35, 34, 32, 5, 18,
 }
 var yyR1 = [...]int{
 
-	0, 2, 2, 3, 5, 5, 6, 8, 8, 8,
-	8, 8, 14, 9, 10, 12, 13, 1, 11, 11,
-	15, 15, 16, 7, 7, 4,
+	0, 6, 6, 7, 9, 9, 10, 12, 12, 12,
+	12, 12, 18, 13, 14, 16, 17, 1, 15, 15,
+	4, 4, 4, 4, 5, 3, 3, 2, 2, 19,
+	11, 11, 8,
 }
 var yyR2 = [...]int{
 
 	0, 1, 2, 2, 1, 2, 2, 1, 1, 1,
 	1, 1, 1, 4, 5, 3, 3, 2, 2, 4,
-	1, 1, 1, 1, 2, 2,
+	1, 1, 1, 1, 4, 0, 1, 1, 2, 1,
+	1, 2, 2,
 }
 var yyChk = [...]int{
 
-	-1000, -2, -3, -4, 4, -3, -5, -6, -7, -16,
-	7, -14, 8, -6, -8, -16, -9, -10, -11, -12,
-	-13, 4, 15, -1, 17, 16, 13, 12, 4, -14,
-	14, -15, 4, 5, 4, 4, -15, 12, 4, -14,
-	-14, -14, -15, -14, -14,
+	-1000, -6, -7, -8, 4, -7, -9, -10, -11, -19,
+	7, -18, 8, -10, -12, -19, -13, -14, -15, -16,
+	-17, 4, 16, -1, 18, 17, 14, 12, 4, -18,
+	15, -4, 4, 5, 6, -5, 13, 4, 4, -4,
+	12, 4, -18, 9, -18, -18, -4, -18, -3, -2,
+	-4, -18, 10, -4,
 }
 var yyDef = [...]int{
 
-	0, -2, 1, 0, 0, 2, 3, 4, 0, 23,
-	22, 25, 12, 5, 6, 24, 7, 8, 9, 10,
+	0, -2, 1, 0, 0, 2, 3, 4, 0, 30,
+	29, 32, 12, 5, 6, 31, 7, 8, 9, 10,
 	11, 0, 0, 0, 0, 0, 0, 0, 0, 18,
-	0, 0, 20, 21, 0, 17, 0, 0, 0, 15,
-	16, 13, 0, 19, 14,
+	0, 0, 20, 21, 22, 23, 0, 0, 17, 0,
+	0, 0, 15, 25, 16, 13, 0, 19, 0, 26,
+	27, 14, 24, 28,
 }
 var yyTok1 = [...]int{
 
@@ -140,7 +150,7 @@ var yyTok1 = [...]int{
 var yyTok2 = [...]int{
 
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-	12, 13, 14, 15, 16, 17,
+	12, 13, 14, 15, 16, 17, 18,
 }
 var yyTok3 = [...]int{
 	0,
@@ -488,41 +498,41 @@ yydefault:
 
 	case 12:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:67
+		//line parser.y:74
 		{
 			yylval.stack.nextDepth = 0
 		}
 	case 13:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:72
+		//line parser.y:79
 		{
 			op := &process.Set{Name: yyDollar[1].token}
 			yylval.stack.Push(op)
 		}
 	case 14:
 		yyDollar = yyS[yypt-5 : yypt+1]
-		//line parser.y:78
+		//line parser.y:85
 		{
 			op := &process.Let{Name: yyDollar[2].token}
 			yylval.stack.Push(op)
 		}
 	case 15:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:84
+		//line parser.y:91
 		{
 			op := &process.If{}
 			yylval.stack.Push(op)
 		}
 	case 16:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:90
+		//line parser.y:97
 		{
 			op := &process.Goto{Script: yyDollar[2].token}
 			yylval.stack.Push(op)
 		}
 	case 17:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:96
+		//line parser.y:103
 		{
 			op := &process.Select{On: yyDollar[2].token}
 			yylval.stack.Push(op)
@@ -530,20 +540,62 @@ yydefault:
 		}
 	case 19:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:104
+		//line parser.y:111
 		{
 			yyDollar[1].sel.Into = yyDollar[3].token
 		}
+	case 20:
+		yyDollar = yyS[yypt-1 : yypt+1]
+		//line parser.y:116
+		{
+			yyVAL.expr = &process.Primative{Var: yyDollar[1].token}
+		}
+	case 21:
+		yyDollar = yyS[yypt-1 : yypt+1]
+		//line parser.y:119
+		{
+			yyVAL.expr = &process.Primative{Str: yyDollar[1].token}
+		}
 	case 22:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:112
+		//line parser.y:122
+		{
+			yyVAL.expr = &process.Primative{Num: 0}
+		}
+	case 24:
+		yyDollar = yyS[yypt-4 : yypt+1]
+		//line parser.y:128
+		{
+			yyVAL.expr = &process.Function{Name: yyDollar[1].token, Arguments: yyDollar[3].args}
+		}
+	case 25:
+		yyDollar = yyS[yypt-0 : yypt+1]
+		//line parser.y:133
+		{
+			yyVAL.args = []process.Expression{}
+		}
+	case 27:
+		yyDollar = yyS[yypt-1 : yypt+1]
+		//line parser.y:139
+		{
+			yyVAL.args = []process.Expression{yyDollar[1].expr}
+		}
+	case 28:
+		yyDollar = yyS[yypt-2 : yypt+1]
+		//line parser.y:142
+		{
+			yyVAL.args = append(yyDollar[1].args, yyDollar[2].expr)
+		}
+	case 29:
+		yyDollar = yyS[yypt-1 : yypt+1]
+		//line parser.y:146
 		{
 			yylval.stack.depth = yylval.stack.nextDepth
 			yylval.stack.nextDepth++
 		}
-	case 25:
+	case 32:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:120
+		//line parser.y:154
 		{
 			s := &process.Script{Name: yyDollar[1].token}
 			yylval.stack.PushScript(s)

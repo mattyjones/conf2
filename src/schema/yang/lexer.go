@@ -510,6 +510,6 @@ func lex(input string, importer ImportModule) *lexer {
 		stack:    newDefStack(256),
 		importer: importer,
 	}
-	//l.acceptWS()
+	l.acceptWS()
 	return l
 }

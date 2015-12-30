@@ -23,7 +23,7 @@ state 1
 state 2
 	scripts:  script.    (1)
 
-	.  reduce 1 (src line 47)
+	.  reduce 1 (src line 54)
 
 
 state 3
@@ -48,7 +48,7 @@ state 4
 state 5
 	scripts:  scripts script.    (2)
 
-	.  reduce 2 (src line 48)
+	.  reduce 2 (src line 55)
 
 
 state 6
@@ -56,7 +56,7 @@ state 6
 	operations:  operations.operation 
 
 	token_space_indent  shift 10
-	.  reduce 3 (src line 50)
+	.  reduce 3 (src line 57)
 
 	operation  goto 13
 	indentation  goto 8
@@ -65,7 +65,7 @@ state 6
 state 7
 	operations:  operation.    (4)
 
-	.  reduce 4 (src line 54)
+	.  reduce 4 (src line 61)
 
 
 state 8
@@ -90,75 +90,75 @@ state 8
 	indent  goto 15
 
 state 9
-	indentation:  indent.    (23)
+	indentation:  indent.    (30)
 
-	.  reduce 23 (src line 117)
+	.  reduce 30 (src line 151)
 
 
 state 10
-	indent:  token_space_indent.    (22)
+	indent:  token_space_indent.    (29)
 
-	.  reduce 22 (src line 112)
+	.  reduce 29 (src line 146)
 
 
 state 11
-	script_def:  token_ident eol.    (25)
+	script_def:  token_ident eol.    (32)
 
-	.  reduce 25 (src line 120)
+	.  reduce 32 (src line 154)
 
 
 state 12
 	eol:  token_eol.    (12)
 
-	.  reduce 12 (src line 67)
+	.  reduce 12 (src line 74)
 
 
 state 13
 	operations:  operations operation.    (5)
 
-	.  reduce 5 (src line 55)
+	.  reduce 5 (src line 62)
 
 
 state 14
 	operation:  indentation operation_stmt.    (6)
 
-	.  reduce 6 (src line 57)
+	.  reduce 6 (src line 64)
 
 
 state 15
-	indentation:  indentation indent.    (24)
+	indentation:  indentation indent.    (31)
 
-	.  reduce 24 (src line 118)
+	.  reduce 31 (src line 152)
 
 
 state 16
 	operation_stmt:  set.    (7)
 
-	.  reduce 7 (src line 60)
+	.  reduce 7 (src line 67)
 
 
 state 17
 	operation_stmt:  let.    (8)
 
-	.  reduce 8 (src line 62)
+	.  reduce 8 (src line 69)
 
 
 state 18
 	operation_stmt:  select.    (9)
 
-	.  reduce 9 (src line 63)
+	.  reduce 9 (src line 70)
 
 
 state 19
 	operation_stmt:  if.    (10)
 
-	.  reduce 10 (src line 64)
+	.  reduce 10 (src line 71)
 
 
 state 20
 	operation_stmt:  goto.    (11)
 
-	.  reduce 11 (src line 65)
+	.  reduce 11 (src line 72)
 
 
 state 21
@@ -190,21 +190,24 @@ state 24
 
 	token_ident  shift 32
 	token_string  shift 33
+	token_number  shift 34
+	token_function  shift 36
 	.  error
 
 	expression  goto 31
+	function  goto 35
 
 state 25
 	goto:  kywd_goto.token_ident eol 
 
-	token_ident  shift 34
+	token_ident  shift 37
 	.  error
 
 
 state 26
 	select_def:  kywd_select.token_ident 
 
-	token_ident  shift 35
+	token_ident  shift 38
 	.  error
 
 
@@ -213,27 +216,30 @@ state 27
 
 	token_ident  shift 32
 	token_string  shift 33
+	token_number  shift 34
+	token_function  shift 36
 	.  error
 
-	expression  goto 36
+	expression  goto 39
+	function  goto 35
 
 state 28
 	let:  kywd_let token_ident.token_equal expression eol 
 
-	token_equal  shift 37
+	token_equal  shift 40
 	.  error
 
 
 state 29
 	select:  select_def eol.    (18)
 
-	.  reduce 18 (src line 102)
+	.  reduce 18 (src line 109)
 
 
 state 30
 	select:  select_def kywd_into.token_ident eol 
 
-	token_ident  shift 38
+	token_ident  shift 41
 	.  error
 
 
@@ -243,106 +249,181 @@ state 31
 	token_eol  shift 12
 	.  error
 
-	eol  goto 39
+	eol  goto 42
 
 state 32
 	expression:  token_ident.    (20)
 
-	.  reduce 20 (src line 108)
+	.  reduce 20 (src line 115)
 
 
 state 33
 	expression:  token_string.    (21)
 
-	.  reduce 21 (src line 110)
+	.  reduce 21 (src line 119)
 
 
 state 34
-	goto:  kywd_goto token_ident.eol 
+	expression:  token_number.    (22)
 
-	token_eol  shift 12
-	.  error
+	.  reduce 22 (src line 122)
 
-	eol  goto 40
 
 state 35
-	select_def:  kywd_select token_ident.    (17)
+	expression:  function.    (23)
 
-	.  reduce 17 (src line 95)
+	.  reduce 23 (src line 125)
 
 
 state 36
-	set:  token_ident token_equal expression.eol 
+	function:  token_function.token_open_paren optional_arguments token_close_paren 
 
-	token_eol  shift 12
+	token_open_paren  shift 43
 	.  error
 
-	eol  goto 41
 
 state 37
-	let:  kywd_let token_ident token_equal.expression eol 
-
-	token_ident  shift 32
-	token_string  shift 33
-	.  error
-
-	expression  goto 42
-
-state 38
-	select:  select_def kywd_into token_ident.eol 
-
-	token_eol  shift 12
-	.  error
-
-	eol  goto 43
-
-state 39
-	if:  kywd_if expression eol.    (15)
-
-	.  reduce 15 (src line 83)
-
-
-state 40
-	goto:  kywd_goto token_ident eol.    (16)
-
-	.  reduce 16 (src line 89)
-
-
-state 41
-	set:  token_ident token_equal expression eol.    (13)
-
-	.  reduce 13 (src line 71)
-
-
-state 42
-	let:  kywd_let token_ident token_equal expression.eol 
+	goto:  kywd_goto token_ident.eol 
 
 	token_eol  shift 12
 	.  error
 
 	eol  goto 44
 
+state 38
+	select_def:  kywd_select token_ident.    (17)
+
+	.  reduce 17 (src line 102)
+
+
+state 39
+	set:  token_ident token_equal expression.eol 
+
+	token_eol  shift 12
+	.  error
+
+	eol  goto 45
+
+state 40
+	let:  kywd_let token_ident token_equal.expression eol 
+
+	token_ident  shift 32
+	token_string  shift 33
+	token_number  shift 34
+	token_function  shift 36
+	.  error
+
+	expression  goto 46
+	function  goto 35
+
+state 41
+	select:  select_def kywd_into token_ident.eol 
+
+	token_eol  shift 12
+	.  error
+
+	eol  goto 47
+
+state 42
+	if:  kywd_if expression eol.    (15)
+
+	.  reduce 15 (src line 90)
+
+
 state 43
-	select:  select_def kywd_into token_ident eol.    (19)
+	function:  token_function token_open_paren.optional_arguments token_close_paren 
+	optional_arguments: .    (25)
 
-	.  reduce 19 (src line 104)
+	token_ident  shift 32
+	token_string  shift 33
+	token_number  shift 34
+	token_function  shift 36
+	.  reduce 25 (src line 132)
 
+	arguments  goto 49
+	optional_arguments  goto 48
+	expression  goto 50
+	function  goto 35
 
 state 44
+	goto:  kywd_goto token_ident eol.    (16)
+
+	.  reduce 16 (src line 96)
+
+
+state 45
+	set:  token_ident token_equal expression eol.    (13)
+
+	.  reduce 13 (src line 78)
+
+
+state 46
+	let:  kywd_let token_ident token_equal expression.eol 
+
+	token_eol  shift 12
+	.  error
+
+	eol  goto 51
+
+state 47
+	select:  select_def kywd_into token_ident eol.    (19)
+
+	.  reduce 19 (src line 111)
+
+
+state 48
+	function:  token_function token_open_paren optional_arguments.token_close_paren 
+
+	token_close_paren  shift 52
+	.  error
+
+
+state 49
+	optional_arguments:  arguments.    (26)
+	arguments:  arguments.expression 
+
+	token_ident  shift 32
+	token_string  shift 33
+	token_number  shift 34
+	token_function  shift 36
+	.  reduce 26 (src line 136)
+
+	expression  goto 53
+	function  goto 35
+
+state 50
+	arguments:  expression.    (27)
+
+	.  reduce 27 (src line 138)
+
+
+state 51
 	let:  kywd_let token_ident token_equal expression eol.    (14)
 
-	.  reduce 14 (src line 77)
+	.  reduce 14 (src line 84)
 
 
-17 terminals, 17 nonterminals
-26 grammar rules, 45/2000 states
+state 52
+	function:  token_function token_open_paren optional_arguments token_close_paren.    (24)
+
+	.  reduce 24 (src line 127)
+
+
+state 53
+	arguments:  arguments expression.    (28)
+
+	.  reduce 28 (src line 142)
+
+
+18 terminals, 20 nonterminals
+33 grammar rules, 54/2000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
-66 working sets used
-memory: parser 29/30000
-1 extra closures
-30 shift entries, 1 exceptions
-27 goto entries
-3 entries saved by goto default
-Optimizer space used: output 46/30000
-46 table entries, 0 zero
-maximum spread: 17, maximum offset: 42
+69 working sets used
+memory: parser 38/30000
+9 extra closures
+46 shift entries, 1 exceptions
+32 goto entries
+7 entries saved by goto default
+Optimizer space used: output 55/30000
+55 table entries, 0 zero
+maximum spread: 18, maximum offset: 49

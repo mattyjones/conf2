@@ -18,7 +18,7 @@ func ScriptSetup(mstr string, t *testing.T) (setup *ScriptTestSetup) {
 	var err error
 	setup.Module, err = yang.LoadModuleFromByteArray([]byte(mstr), nil)
 	if err != nil {
-		t.Fatal("not implemented")
+		t.Fatal(err)
 	}
 	setup.Store = data.NewBufferStore()
 	setup.Data = data.NewStoreData(setup.Module, setup.Store)
@@ -38,20 +38,20 @@ func (setup *ScriptTestSetup) ToString(t *testing.T) string {
 func TestScriptExec(t *testing.T) {
 	a := ScriptSetup(moduleA, t)
 	z := ScriptSetup(moduleZ, t)
-	tx := &Script{Name:"tx"}
+	main := &Script{Name:"main"}
 	txy := &Select{
 		On : "b",
 		Into : "y",
 	}
 	txy.AddOperation(&Set{
 		Name : "x",
-		Value : "c",
+		Expression : &Primative{Var:"c"},
 	})
-	tx.AddOperation(&Set{
+	main.AddOperation(&Set{
 		Name : "u",
-		Value : "f",
+		Expression : &Primative{Var:"f"},
 	})
-	tx.AddOperation(txy)
+	main.AddOperation(txy)
 	tests := []struct {
 		aPath string
 		aValue *schema.Value
@@ -69,22 +69,11 @@ func TestScriptExec(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		stack := &Stack{
-			Scripts: map[string]*Script{"tx" : tx},
-			Join: &Join{
-				On : &Table{
-					Corner: data.NewSelection(a.Data.Node(), a.Module),
-				},
-				Into : &Table{
-					Corner: data.NewSelection(z.Data.Node(), z.Module),
-				},
-			},
-		}
-
+		p := NewProcess(a.Data.Node(), a.Module).Into(z.Data.Node(), z.Module)
 		a.Store.Clear()
 		z.Store.Clear()
 		a.Store.Values[test.aPath] = test.aValue
-		err := tx.Exec(stack)
+		err := p.RunScript(main)
 		if err != nil {
 			t.Error(err)
 		} else {

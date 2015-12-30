@@ -6,7 +6,6 @@ import (
 	"strings"
 	"process"
 	"fmt"
-	"conf2"
 )
 
 // This uses the go feature call go tools in the build process. To ensure this gets
@@ -59,6 +58,7 @@ var keywords = [...]string{
 	")",
 	",",
 	"=",
+	"[func]",
 
 	// KEEP LIST IN SYNC WITH parser.y
 	"select",
@@ -71,25 +71,23 @@ var keywords = [...]string{
 const MaxCodeDepth = 64
 
 type operatorStack struct {
-	scripts   []*process.Script
+	scripts   map[string]*process.Script
 	code 	  [MaxCodeDepth]process.CodeBlock
 	depth	  int
 	nextDepth int
 }
 
 func (s *operatorStack) PushScript(script *process.Script) {
-conf2.Debug.Printf("Pushing script %s", script.Name)
 	if s.scripts == nil {
-		s.scripts = make([]*process.Script, 0, 1)
+		s.scripts = make(map[string]*process.Script)
 	}
-	s.scripts = append(s.scripts, script)
+	s.scripts[script.Name] = script
 	s.code[0] = script
 }
 
 func (s *operatorStack) Push(def process.Operation) {
 	s.code[s.depth].AddOperation(def)
 	if next, isCodeBlock := def.(process.CodeBlock); isCodeBlock {
-conf2.Debug.Printf("pushing, depth=%d", s.depth + 1)
 		s.code[s.depth + 1] = next
 	}
 }
@@ -226,20 +224,48 @@ func (l *lexer) peek() rune {
 	return r
 }
 
-func (l *lexer) acceptAlphaNumeric(ttype int) bool {
-	accepted := false
-	for {
+func (l *lexer) isIdent() bool {
+	for i := 0; true; i++ {
 		r := l.next()
-		// TODO: review spec on legal chars
-		if !unicode.IsDigit(r) && !unicode.IsLetter(r) && !(r == '-') && !(r == '_') {
-			l.backup()
-			if accepted {
-				l.emit(ttype)
-			}
-			return accepted
+		if (unicode.IsDigit(r) && i > 0) || unicode.IsLetter(r) || (r == '-' && i > 0) || r == '_' {
+			continue
 		}
-		accepted = true
+		if i == 0 {
+			break
+		}
+		l.backup()
+		return true
 	}
+	l.pos = l.start
+	return false
+}
+
+func (l *lexer) acceptFunction() bool {
+	if l.isIdent() {
+		for !l.isEof() {
+			r := l.next()
+			if unicode.IsSpace(r) {
+				continue
+			}
+			if r == '(' {
+				l.emit(token_function)
+				return true
+			} else {
+				break
+			}
+		}
+	}
+	l.pos = l.start
+	return false
+}
+
+func (l *lexer) acceptAlphaNumeric(ttype int) bool {
+	if l.isIdent() {
+		l.emit(ttype)
+		return true
+	}
+	l.pos = l.start
+	return false
 }
 
 func (l *lexer) acceptString(ttype int) bool {
@@ -290,6 +316,8 @@ func (l *lexer) acceptToken(ttype int) bool {
 	}
 	var keyword string
 	switch ttype {
+	case token_function:
+		return l.acceptFunction()
 	case token_ident:
 		return l.acceptAlphaNumeric(token_ident)
 	case token_string:
@@ -327,6 +355,7 @@ func lexExpression(l *lexer) stateFunc {
 		token_eol,
 		token_number,
 		token_string,
+		token_function,
 		// least specific should be least first
 		token_ident,
 	}
