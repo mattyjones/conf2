@@ -77,19 +77,19 @@ eol : token_eol {
 
 set :
     token_ident token_equal expression eol {
-       op := &process.Set{Name:$1}
+       op := &process.Set{Name:$1, Expression: $3}
        yylval.stack.Push(op)
     }
 
 let :
     kywd_let token_ident token_equal expression eol {
-        op := &process.Let{Name:$2}
+        op := &process.Let{Name:$2, Expression: $4}
         yylval.stack.Push(op)
     }
 
 if :
     kywd_if expression eol {
-        op := &process.If{}
+        op := &process.If{Expression: $2}
         yylval.stack.Push(op)
     }
 

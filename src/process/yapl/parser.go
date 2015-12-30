@@ -506,21 +506,21 @@ yydefault:
 		yyDollar = yyS[yypt-4 : yypt+1]
 		//line parser.y:79
 		{
-			op := &process.Set{Name: yyDollar[1].token}
+			op := &process.Set{Name: yyDollar[1].token, Expression: yyDollar[3].expr}
 			yylval.stack.Push(op)
 		}
 	case 14:
 		yyDollar = yyS[yypt-5 : yypt+1]
 		//line parser.y:85
 		{
-			op := &process.Let{Name: yyDollar[2].token}
+			op := &process.Let{Name: yyDollar[2].token, Expression: yyDollar[4].expr}
 			yylval.stack.Push(op)
 		}
 	case 15:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		//line parser.y:91
 		{
-			op := &process.If{}
+			op := &process.If{Expression: yyDollar[2].expr}
 			yylval.stack.Push(op)
 		}
 	case 16:
