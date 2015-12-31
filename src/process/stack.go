@@ -8,6 +8,25 @@ type Stack struct {
 	LastErr error
 }
 
+func (stack *Stack) Let(key string, value interface{}) {
+	if stack.Lets == nil {
+		stack.Lets = make(map[string]interface{}, 1)
+	}
+	stack.Lets[key] = value
+}
+
+func (stack *Stack) Func(key string) (f interface{}, found bool) {
+	if stack.Funcs == nil {
+		if stack.Parent == nil {
+			stack.Funcs = builtins
+		} else {
+			return stack.Parent.Func(key)
+		}
+	}
+	f, found = stack.Funcs[key]
+	return
+}
+
 func (stack *Stack) ResolveValue(valname string, table Table) interface{} {
 	if v, hasValue := stack.Lets[valname]; hasValue {
 		return v

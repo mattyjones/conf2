@@ -227,7 +227,11 @@ func (l *lexer) peek() rune {
 func (l *lexer) isIdent() bool {
 	for i := 0; true; i++ {
 		r := l.next()
-		if (unicode.IsDigit(r) && i > 0) || unicode.IsLetter(r) || (r == '-' && i > 0) || r == '_' {
+		if (unicode.IsDigit(r) && i > 0) ||
+			unicode.IsLetter(r) ||
+			(r == '-' && i > 0) ||
+			(r == '.' && i > 0) ||
+			r == '_' {
 			continue
 		}
 		if i == 0 {
@@ -248,6 +252,7 @@ func (l *lexer) acceptFunction() bool {
 				continue
 			}
 			if r == '(' {
+				l.backup()
 				l.emit(token_function)
 				return true
 			} else {
@@ -362,9 +367,9 @@ func lexExpression(l *lexer) stateFunc {
 	for _, t := range expectedTokens {
 		if l.acceptToken(t) {
 			if t == token_eol {
-				return lexBegin(l)
+				return lexBegin
 			}
-			return lexExpression(l)
+			return lexExpression
 		}
 	}
 
@@ -402,11 +407,11 @@ func lexBegin(l *lexer) stateFunc {
 			return l.error("Expected end of statement")
 		}
 
-		return lexBegin(l)
+		return lexBegin
 	}
 
 	if l.acceptToken(kywd_if) {
-		return lexExpression(l)
+		return lexExpression
 	}
 
 	if l.acceptToken(kywd_select) {
@@ -421,17 +426,17 @@ func lexBegin(l *lexer) stateFunc {
 		if ! l.acceptToken(token_eol) {
 			return l.error("Expected end of statement")
 		}
-		return lexBegin(l)
+		return lexBegin
 	}
 
 	l.acceptToken(kywd_let)
 
 	if l.acceptToken(token_ident) {
 		if l.acceptToken(token_eol) {
-			return lexBegin(l)
+			return lexBegin
 		}
 		if l.acceptToken(token_equal) {
-			return lexExpression(l)
+			return lexExpression
 		}
 	}
 
@@ -441,7 +446,7 @@ func lexBegin(l *lexer) stateFunc {
 func lex(input string) *lexer {
 	l := &lexer{
 		input: input,
-		tokens: make([]Token, 64),
+		tokens: make([]Token, 128),
 		state : lexBegin,
 	}
 	l.state = l.state(l)

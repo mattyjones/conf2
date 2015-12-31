@@ -3,6 +3,7 @@ package yapl
 
 import (
     "process"
+    "strconv"
 )
 
 func (l *lexer) Lex(lval *yySymType) int {
@@ -117,10 +118,15 @@ expression :
         $$ = &process.Primative{Var:$1}
     }
     | token_string {
-        $$ = &process.Primative{Str:$1}
+        $$ = &process.Primative{Str:$1[1:len($1)-1]}
     }
     | token_number {
-        $$ = &process.Primative{Num:0}
+        n, err := strconv.Atoi("-42")
+        if err != nil {
+            yylex.Error(err.Error())
+            goto ret1
+        }
+        $$ = &process.Primative{Num:n}
     }
     | function;
 
@@ -139,8 +145,8 @@ arguments :
     expression {
         $$ = []process.Expression{$1}
     }
-    | arguments expression {
-        $$ = append($1, $2)
+    | arguments token_comma expression {
+        $$ = append($1, $3)
     }
 
 indent : token_space_indent {

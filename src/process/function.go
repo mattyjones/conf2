@@ -1,5 +1,9 @@
 package process
-import "errors"
+import (
+	"errors"
+	"bytes"
+	"fmt"
+)
 
 type Function struct {
 	Name string
@@ -7,7 +11,7 @@ type Function struct {
 }
 
 func (f *Function) Eval(stack *Stack, table Table) (interface{}, error) {
-	fPtr, found := stack.Funcs[f.Name]
+	fPtr, found := stack.Func(f.Name)
 	if !found {
 		return nil, errors.New("Function not found " + f.Name)
 	}
@@ -21,3 +25,19 @@ func (f *Function) Eval(stack *Stack, table Table) (interface{}, error) {
 	return call(fPtr, argumentValues)
 }
 
+var builtins map[string]interface{}
+func init() {
+	builtins = map[string]interface{} {
+		"concat" : func(args ...interface{}) string {
+			var buff bytes.Buffer
+			for _, arg := range args {
+				if tostr, ok := arg.(fmt.Stringer); ok {
+					buff.WriteString(tostr.String())
+				} else {
+					buff.WriteString(fmt.Sprintf("%v", arg))
+				}
+			}
+			return buff.String()
+		},
+	}
+}

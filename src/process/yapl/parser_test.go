@@ -2,19 +2,19 @@ package yapl
 import "testing"
 
 func TestYaplParser(t *testing.T) {
-	//yyDebug = 3
+	//yyDebug = 4
 	scripts, err := Load(
 `foo
   a = b
   let a = b
   select z into q
-    x = x
+    x = x(z)
+    y = w()
   if p
-    z = "y"
+    x = x(z,b,c(z))
     goto bleep
-
 bleep
-  glop = blop
+    z = s
 `)
 	if err != nil {
 		t.Error(err)

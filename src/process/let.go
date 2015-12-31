@@ -6,8 +6,9 @@ type Let struct {
 	Expression Expression
 }
 
-func (v *Let) Exec(stack *Stack, table Table) (err error) {
-	stack.Lets[v.Name], err = v.Expression.Eval(stack, table)
+func (l *Let) Exec(stack *Stack, table Table) (error) {
+	v, err := l.Expression.Eval(stack, table)
+	stack.Let(l.Name, v)
 	return err
 }
 

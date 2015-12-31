@@ -4,6 +4,7 @@ import (
 	"schema"
 	"data"
 	"strings"
+	"conf2"
 )
 
 type Table interface {
@@ -105,7 +106,7 @@ func (t *NodeTable) getSelection(path string) (*data.Selection, error) {
 	ident := path
 	dot := strings.LastIndexFunc(path, t.IsDot)
 	if dot > 0 {
-		ident = path[dot:]
+		ident = path[dot + 1:]
 		var selErr error
 		if sel, selErr = t.getSelection(path[:dot]); selErr != nil {
 			return nil, selErr
@@ -150,7 +151,7 @@ func (t *NodeTable) resolveIdentPath(identPath string) (sel *data.Selection, ide
 		if sel, err = t.getSelection(identPath[:dot]); err != nil {
 			return
 		}
-		ident = identPath[dot:]
+		ident = identPath[dot + 1:]
 	}
 	return
 }
@@ -163,6 +164,9 @@ func (t *NodeTable) Get(identPath string) (interface{}, error) {
 	}
 	sel, ident, err := t.resolveIdentPath(identPath)
 	if err != nil {
+		return nil, err
+	}
+	if sel == nil {
 		return nil, err
 	}
 	if v, err = data.GetValue(sel, ident); err != nil {
@@ -179,6 +183,10 @@ func (t *NodeTable) Get(identPath string) (interface{}, error) {
 }
 
 func (t *NodeTable) Set(identPath string, v interface{}) error {
+	if v == nil {
+		return nil
+	}
+	conf2.Debug.Printf("v=%v", v)
 	sel, ident, err := t.resolveIdentPath(identPath)
 	if err != nil {
 		return err

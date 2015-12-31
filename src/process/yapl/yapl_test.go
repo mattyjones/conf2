@@ -12,9 +12,12 @@ func TestYaplExec(t *testing.T) {
 	z := data.ModuleSetup(moduleZ, t)
 	scripts, err := Load(
 `main
-  u = f
-  select b into y
-    x = c
+  tone = color
+  select facets into attributes
+    let label = "orangey-"
+    attribute = facet
+    if data.value
+      additional.detail = concat(label, data.value)
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -25,14 +28,14 @@ func TestYaplExec(t *testing.T) {
 		expected string
 	} {
 		{
-			"f",
-			&schema.Value{Str:"Eff"},
-			`{"u":"Eff"}`,
+			"color",
+			&schema.Value{Str:"red"},
+			`{"tone":"red"}`,
 		},
 		{
-			"b=Cee1/c",
-			&schema.Value{Str:"Cee1"},
-			`{"y":[{"x":"Cee1"}]}`,
+			"facets=seeds/facet",
+			&schema.Value{Str:"seeds"},
+			`{"attributes":[{"attribute":"seeds"}]}`,
 		},
 	}
 	for i, test := range tests {
@@ -54,20 +57,20 @@ func TestYaplExec(t *testing.T) {
 }
 
 var moduleA = `
-module a {
+module apple {
 	prefix "";
 	namespace "";
 	revision 0;
-	leaf f {
+	leaf color {
 		type string;
 	}
-	list b {
-		key "c";
-		leaf c {
+	list facets {
+		key "facet";
+		leaf facet {
 			type string;
 		}
-		container d {
-			leaf e {
+		container data {
+			leaf value {
 				type string;
 			}
 		}
@@ -76,20 +79,20 @@ module a {
 `
 
 var moduleZ = `
-module z {
+module orange {
 	prefix "";
 	namespace "";
 	revision 0;
-	leaf u {
+	leaf tone {
 		type string;
 	}
-	list y {
-		key "x";
-		leaf x {
+	list attributes {
+		key "attribute";
+		leaf attribute {
 			type string;
 		}
-		container w {
-			leaf v {
+		container additional {
+			leaf detail {
 				type string;
 			}
 		}
