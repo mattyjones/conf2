@@ -146,7 +146,8 @@ func (l *lexer) acceptWS() {
 }
 
 func (l *lexer) emit(t int) {
-	l.pushToken(Token{t, l.input[l.start:l.pos]})
+	s := l.input[l.start:l.pos]
+	l.pushToken(Token{t, s})
 	l.start = l.pos
 	switch t {
 	case token_space_indent, token_eol:

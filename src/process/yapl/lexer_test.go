@@ -3,11 +3,12 @@ import "testing"
 
 
 func TestYaplIndent(t *testing.T) {
-	l := &lexer{input:""}
+	tokens := make([]Token, 10)
+	l := &lexer{input:"",tokens:tokens}
 	if l.acceptSpaceIndent() {
 		t.Error("expected no indent")
 	}
-	l = &lexer{input:"  "}
+	l = &lexer{input:"  ",tokens:tokens}
 	if ! l.acceptSpaceIndent() {
 		t.Error("expected one ident")
 	}
