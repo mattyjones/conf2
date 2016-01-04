@@ -133,8 +133,11 @@ func (self *JsonReader) List(list []interface{}) Node {
 					keyData, hasKey := container[meta.Keys[0]]
 					// Key may legitimately not exist when inserting new data
 					if hasKey {
-						keyStrs := []string{keyData.(string)}
-						key, err = schema.CoerseKeys(meta, keyStrs)
+						keyValue, keyErr := schema.SetValue(meta.KeyMeta()[0].GetDataType(), keyData)
+						if keyErr != nil {
+							return nil, keyErr
+						}
+						key := []*schema.Value{keyValue}
 						sel.State.SetKey(key)
 					}
 				}
