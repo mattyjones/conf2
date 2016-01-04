@@ -4,16 +4,17 @@ import (
 	"fmt"
 	"reflect"
 	"schema"
+	"conf2"
 )
 
-func ReadField(meta schema.HasDataType, obj interface{}) (*schema.Value, error) {
+func ReadField(meta schema.HasDataType, obj interface{}) (*Value, error) {
 	return ReadFieldWithFieldName(schema.MetaNameToFieldName(meta.GetIdent()), meta, obj)
 }
 
-func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}) (v *schema.Value, err error) {
+func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}) (v *Value, err error) {
 	objType := reflect.ValueOf(obj).Elem()
 	value := objType.FieldByName(fieldName)
-	v = &schema.Value{Type: meta.GetDataType()}
+	v = &Value{Type: meta.GetDataType()}
 	switch v.Type.Format {
 	case schema.FMT_BOOLEAN:
 		v.Bool = value.Bool()
@@ -38,17 +39,23 @@ func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj inter
 		default:
 			v.SetEnum(int(value.Int()))
 		}
+	case schema.FMT_ANYDATA:
+		if anyData, isAnyData := value.Interface().(AnyData); isAnyData {
+			v.Data = anyData
+		} else {
+			return nil, conf2.NewErr("Cannot read anydata from value that doesn't implement AnyData")
+		}
 	default:
 		panic(fmt.Sprintf("Format code %d not implemented", meta.GetDataType().Format))
 	}
 	return
 }
 
-func WriteField(meta schema.HasDataType, obj interface{}, v *schema.Value) error {
+func WriteField(meta schema.HasDataType, obj interface{}, v *Value) error {
 	return WriteFieldWithFieldName(schema.MetaNameToFieldName(meta.GetIdent()), meta, obj, v)
 }
 
-func WriteFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}, v *schema.Value) error {
+func WriteFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}, v *Value) error {
 	objType := reflect.ValueOf(obj).Elem()
 	if !objType.IsValid() {
 		panic(fmt.Sprintf("Cannot find property \"%s\" on invalid or nil %s", fieldName, reflect.TypeOf(obj)))
@@ -81,6 +88,10 @@ func WriteFieldWithFieldName(fieldName string, meta schema.HasDataType, obj inte
 		default:
 			value.SetInt(int64(v.Int))
 		}
+	case schema.FMT_ANYDATA:
+		// could support writing to string as well
+		value.Set(reflect.ValueOf(v.Data))
+
 	// TODO: Enum list
 	default:
 		panic(meta.GetIdent() + " not implemented")

@@ -35,10 +35,10 @@ func MarshalContainer(Obj interface{}) Node {
 		}
 		return nil, nil
 	}
-	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*schema.Value, error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, Obj)
 	}
-	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *schema.Value) error {
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *Value) error {
 		return WriteField(meta, Obj, val)
 	}
 	return s

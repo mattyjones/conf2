@@ -9,10 +9,10 @@ import (
 type Node interface {
 	fmt.Stringer
 	Select(sel *Selection, meta schema.MetaList, new bool) (child Node, err error)
-	Find(sel *Selection, path *schema.Path) error
-	Next(sel *Selection, meta *schema.List, new bool, keys []*schema.Value, isFirst bool) (next Node, err error)
-	Read(sel *Selection, meta schema.HasDataType) (*schema.Value, error)
-	Write(sel *Selection, meta schema.HasDataType, val *schema.Value) error
+	Find(sel *Selection, path *Path) error
+	Next(sel *Selection, meta *schema.List, new bool, keys []*Value, isFirst bool) (next Node, err error)
+	Read(sel *Selection, meta schema.HasDataType) (*Value, error)
+	Write(sel *Selection, meta schema.HasDataType, val *Value) error
 	Choose(sel *Selection, choice *schema.Choice) (m schema.Meta, err error)
 	Event(sel *Selection, e Event) error
 	Action(sel *Selection, meta *schema.Rpc, input Node) (output Node, err error)
@@ -73,7 +73,7 @@ func (s *MyNode) Select(sel *Selection, meta schema.MetaList, new bool) (Node, e
 	return s.OnSelect(sel, meta, new)
 }
 
-func (s *MyNode) Next(sel *Selection, meta *schema.List, new bool, keys []*schema.Value, isFirst bool) (Node, error) {
+func (s *MyNode) Next(sel *Selection, meta *schema.List, new bool, keys []*Value, isFirst bool) (Node, error) {
 	if s.OnNext == nil {
 		return nil, &browseError{
 			Code: http.StatusNotImplemented,
@@ -83,7 +83,7 @@ func (s *MyNode) Next(sel *Selection, meta *schema.List, new bool, keys []*schem
 	return s.OnNext(sel, meta, new, keys, isFirst)
 }
 
-func (s *MyNode) Read(sel *Selection, meta schema.HasDataType) (*schema.Value, error) {
+func (s *MyNode) Read(sel *Selection, meta schema.HasDataType) (*Value, error) {
 	if s.OnRead == nil {
 		return nil, &browseError{
 			Code: http.StatusNotImplemented,
@@ -93,7 +93,7 @@ func (s *MyNode) Read(sel *Selection, meta schema.HasDataType) (*schema.Value, e
 	return s.OnRead(sel, meta)
 }
 
-func (s *MyNode) Write(sel *Selection, meta schema.HasDataType, val *schema.Value) error {
+func (s *MyNode) Write(sel *Selection, meta schema.HasDataType, val *Value) error {
 	if s.OnWrite == nil {
 		return &browseError{
 			Code: http.StatusNotImplemented,
@@ -131,7 +131,7 @@ func (s *MyNode) Event(sel *Selection, e Event) (err error) {
 	return nil
 }
 
-func (s *MyNode) Find(sel *Selection, p *schema.Path) (err error) {
+func (s *MyNode) Find(sel *Selection, p *Path) (err error) {
 	if s.OnFind != nil {
 		return s.OnFind(sel, p)
 	}
@@ -160,15 +160,15 @@ func (e ErrorNode) Select(sel *Selection, meta schema.MetaList, new bool) (Node,
 	return nil, e.Err
 }
 
-func (e ErrorNode) Next(*Selection, *schema.List, bool, []*schema.Value, bool) (Node, error) {
+func (e ErrorNode) Next(*Selection, *schema.List, bool, []*Value, bool) (Node, error) {
 	return nil, e.Err
 }
 
-func (e ErrorNode) Read(*Selection, schema.HasDataType) (*schema.Value, error) {
+func (e ErrorNode) Read(*Selection, schema.HasDataType) (*Value, error) {
 	return nil, e.Err
 }
 
-func (e ErrorNode) Write(*Selection, schema.HasDataType, *schema.Value) error {
+func (e ErrorNode) Write(*Selection, schema.HasDataType, *Value) error {
 	return e.Err
 }
 
@@ -184,15 +184,15 @@ func (e ErrorNode) Action(*Selection, *schema.Rpc, Node) (Node, error) {
 	return nil, e.Err
 }
 
-func (e ErrorNode) Find(*Selection, *schema.Path) (error) {
+func (e ErrorNode) Find(*Selection, *Path) (error) {
 	return e.Err
 }
 
-type NextFunc func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error)
+type NextFunc func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error)
 type SelectFunc func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error)
-type ReadFunc func(sel *Selection, meta schema.HasDataType) (*schema.Value, error)
-type WriteFunc func(sel *Selection, meta schema.HasDataType, val *schema.Value) error
+type ReadFunc func(sel *Selection, meta schema.HasDataType) (*Value, error)
+type WriteFunc func(sel *Selection, meta schema.HasDataType, val *Value) error
 type ChooseFunc func(sel *Selection, choice *schema.Choice) (m schema.Meta, err error)
 type ActionFunc func(sel *Selection, rpc *schema.Rpc, input Node) (output Node, err error)
-type FindFunc func(sel *Selection, path *schema.Path) error
+type FindFunc func(sel *Selection, path *Path) error
 type EventFunc func(sel *Selection, e Event) error

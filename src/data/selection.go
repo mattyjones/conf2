@@ -26,7 +26,7 @@ func NewSelection(node Node, meta schema.MetaList) *Selection {
 		Node: node,
 		Events: &EventsImpl{},
 		State: &WalkState{
-			path : schema.NewRootPath(meta, nil),
+			path : NewRootPath(meta, nil),
 		},
 	}
 	return sel
@@ -37,13 +37,13 @@ func (sel *Selection) Select(node Node) *Selection {
 		Events: sel.Events,
 		Node: node,
 		State: &WalkState{
-			path : schema.NewContainerPath(sel.State.path, sel.State.Position().(schema.MetaList)),
+			path : NewContainerPath(sel.State.path, sel.State.Position().(schema.MetaList)),
 		},
 	}
 	return child
 }
 
-func (sel *Selection) SelectListItem(node Node, key []*schema.Value) *Selection {
+func (sel *Selection) SelectListItem(node Node, key []*Value) *Selection {
 	next := *sel
 	// important flag, otherwise we recurse indefinitely
 	next.State.insideList = true
@@ -70,7 +70,7 @@ func (sel *Selection) String() (s string) {
 	return
 }
 
-func (sel *Selection) RequireKey(key []*schema.Value, err error) {
+func (sel *Selection) RequireKey(key []*Value, err error) {
 	key = sel.State.Key()
 	if key == nil {
 		err = errors.New(fmt.Sprint("Cannot select list without key ", sel.String()))

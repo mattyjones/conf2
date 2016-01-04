@@ -4,7 +4,6 @@ import (
 	"schema/yang"
 	"strings"
 	"testing"
-	"schema"
 )
 
 func TestJsonWalk(t *testing.T) {
@@ -47,7 +46,7 @@ module json-test {
 		for _, test := range tests {
 			rdr = NewJsonReader(strings.NewReader(json)).Node()
 			in = NewSelection(rdr, module)
-			selection, err = WalkPath(in, schema.NewPathSlice(test, module))
+			selection, err = WalkPath(in, NewPathSlice(test, module))
 			if err != nil {
 				t.Error("failed to transmit json", err)
 			} else if selection == nil {

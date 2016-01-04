@@ -23,6 +23,7 @@ const (
 	FMT_UINT32
 	FMT_UINT64
 	FMT_UNION
+	FMT_ANYDATA
 )
 
 const (
@@ -45,10 +46,15 @@ const (
 	FMT_UINT32_LIST
 	FMT_UINT64_LIST
 	FMT_UNION_LIST
+	FMT_ANYDATA_LIST
 )
 
 func IsListFormat(f DataFormat) bool {
 	return f >= FMT_BINARY_LIST && f <= FMT_UNION_LIST
+}
+
+func DataTypeImplicitFormat(typeIdent string) DataFormat {
+	return internalTypes[typeIdent]
 }
 
 var internalTypes = map[string]DataFormat{
@@ -71,4 +77,5 @@ var internalTypes = map[string]DataFormat{
 	"uint32":              FMT_UINT32,
 	"uint64":              FMT_UINT64,
 	"union":               FMT_UNION,
+	"any":                 FMT_ANYDATA,
 }

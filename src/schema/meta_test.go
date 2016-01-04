@@ -16,13 +16,18 @@ func TestMetaIsConfig(t *testing.T) {
 	m.AddMeta(c)
 	l := &List{Ident: "l"}
 	c.AddMeta(l)
-	path := NewPathSlice("c", m)
-	if ! l.Details().Config(path.Tail) {
+	path := &MetaPath{
+		parent : &MetaPath{
+			meta : m,
+		},
+		meta : c,
+	}
+	if ! l.Details().Config(path) {
 		t.Error("Should be config")
 	}
 	c.details.ConfigFlag = SET_FALSE
-	if l.Details().Config(path.Tail) {
-		t.Errorf(" %s should not be config", path.Tail.String())
+	if l.Details().Config(path) {
+		t.Errorf(" %s should not be config", path.String())
 	}
 }
 

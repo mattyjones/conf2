@@ -35,7 +35,7 @@ module m {
 		B string
 		C string
 	} {}
-	p.Collect("c", &schema.Value{Type: schema.NewDataType("string"), Str: "z"})
+	p.Collect("c", &Value{Type: schema.NewDataType("string"), Str: "z"})
 	p.Record("b")
 	n := MarshalContainer(&obj)
 	sel := NewSelection(n, m)

@@ -95,7 +95,7 @@ func (self *selectionPair) selectPair(operNode Node, configNode Node) Node {
 		}
 		return err
 	}
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (Node, error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (Node, error) {
 		var err error
 		if err = onInit(sel); err != nil {
 			return nil, err
@@ -121,7 +121,7 @@ func (self *selectionPair) selectPair(operNode Node, configNode Node) Node {
 		}
 		return self.selectPair(operNext, configNext), nil
 	}
-	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *schema.Value) (err error) {
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *Value) (err error) {
 		if err = onInit(sel); err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ func (self *selectionPair) selectPair(operNode Node, configNode Node) Node {
 		}
 		return err
 	}
-	s.OnRead = func(sel *Selection, meta schema.HasDataType) (v *schema.Value, err error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (v *Value, err error) {
 		if err = onInit(sel); err != nil {
 			return nil, err
 		}

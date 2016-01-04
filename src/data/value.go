@@ -1,42 +1,44 @@
-package schema
+package data
 
 import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"schema"
 )
 
 type Value struct {
-	Type     *DataType
-	Bool     bool
-	Int      int
-	Int64	  int64
+	Type      *schema.DataType
+	Bool      bool
+	Int       int
+	Int64     int64
 	Int64list []int64
-	Str      string
-	Float    float64
-	Intlist  []int
-	Strlist  []string
-	Boollist []bool
-	Keys     []string
+	Str       string
+	Float     float64
+	Intlist   []int
+	Strlist   []string
+	Boollist  []bool
+	Keys      []string
+	Data      AnyData
 }
 
 func (v *Value) Value() interface{} {
 	switch v.Type.Format {
-	case FMT_BOOLEAN:
+	case schema.FMT_BOOLEAN:
 		return v.Bool
-	case FMT_BOOLEAN_LIST:
+	case schema.FMT_BOOLEAN_LIST:
 		return v.Boollist
-	case FMT_INT64:
+	case schema.FMT_INT64:
 		return v.Int64
-	case FMT_INT64_LIST:
+	case schema.FMT_INT64_LIST:
 		return v.Int64list
-	case FMT_INT32, FMT_ENUMERATION:
+	case schema.FMT_INT32, schema.FMT_ENUMERATION:
 		return v.Int
-	case FMT_INT32_LIST, FMT_ENUMERATION_LIST:
+	case schema.FMT_INT32_LIST, schema.FMT_ENUMERATION_LIST:
 		return v.Intlist
-	case FMT_STRING:
+	case schema.FMT_STRING:
 		return v.Str
-	case FMT_STRING_LIST:
+	case schema.FMT_STRING_LIST:
 		return v.Strlist
 	default:
 		panic("Not implemented")
@@ -56,7 +58,7 @@ func (a *Value) Equal(b *Value) bool {
 	if a.Type.Format != b.Type.Format {
 		return false
 	}
-	if IsListFormat(a.Type.Format) {
+	if schema.IsListFormat(a.Type.Format) {
 		return reflect.DeepEqual(a.Value(), b.Value())
 	}
 	return a.Value() == b.Value()
@@ -117,16 +119,16 @@ func (v *Value) SetEnumByLabel(label string) bool {
 
 func (v *Value) String() string {
 	switch v.Type.Format {
-	case FMT_BOOLEAN:
+	case schema.FMT_BOOLEAN:
 		if v.Bool {
 			return "true"
 		}
 		return "false"
-	case FMT_INT32:
+	case schema.FMT_INT32:
 		return strconv.Itoa(v.Int)
-	case FMT_INT64:
+	case schema.FMT_INT64:
 		return strconv.FormatInt(v.Int64, 10)
-	case FMT_STRING:
+	case schema.FMT_STRING:
 		return v.Str
 	default:
 		panic("Not implemented")
@@ -134,42 +136,42 @@ func (v *Value) String() string {
 }
 
 // Incoming value should be of appropriate type according to given data type format
-func SetValue(typ *DataType, val interface{}) (*Value, error) {
+func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
 	if val == nil {
 		return nil, nil
 	}
 	reflectVal := reflect.ValueOf(val)
 	v := &Value{Type: typ}
 	switch typ.Format {
-	case FMT_BOOLEAN:
+	case schema.FMT_BOOLEAN:
 		v.Bool = reflectVal.Bool()
-	case FMT_BOOLEAN_LIST:
+	case schema.FMT_BOOLEAN_LIST:
 		v.Boollist = InterfaceToBoollist(reflectVal.Interface())
-	case FMT_INT32_LIST:
+	case schema.FMT_INT32_LIST:
 		v.Intlist = InterfaceToIntlist(val)
-	case FMT_INT32:
+	case schema.FMT_INT32:
 		switch reflectVal.Kind() {
 		case reflect.Float64:
 			v.Int = int(reflectVal.Float())
 		default:
 			v.Int = int(reflectVal.Int())
 		}
-	case FMT_DECIMAL64:
+	case schema.FMT_DECIMAL64:
 		v.Float = reflectVal.Float()
-	case FMT_INT64:
+	case schema.FMT_INT64:
 		v.Int64 = reflectVal.Int()
-	case FMT_INT64_LIST:
+	case schema.FMT_INT64_LIST:
 		v.Int64list = InterfaceToInt64list(val)
-	case FMT_STRING:
+	case schema.FMT_STRING:
 		v.Str = reflectVal.String()
-	case FMT_ENUMERATION:
+	case schema.FMT_ENUMERATION:
 		switch reflectVal.Kind() {
 		case reflect.String:
 			v.SetEnumByLabel(reflectVal.String())
 		default:
 			v.SetEnum(int(reflectVal.Int()))
 		}
-	case FMT_ENUMERATION_LIST:
+	case schema.FMT_ENUMERATION_LIST:
 		val := reflectVal.Interface()
 		strlist := InterfaceToStrlist(val)
 		if len(strlist) > 0 {
@@ -178,7 +180,7 @@ func SetValue(typ *DataType, val interface{}) (*Value, error) {
 			intlist := InterfaceToIntlist(val)
 			v.SetEnumList(intlist)
 		}
-	case FMT_STRING_LIST:
+	case schema.FMT_STRING_LIST:
 		v.Strlist = InterfaceToStrlist(reflectVal.Interface())
 	default:
 		panic(fmt.Sprintf("Format code %d not implemented", typ.Format))
@@ -244,21 +246,21 @@ func InterfaceToIntlist(o interface{}) (intlist []int) {
 
 func (v *Value) CoerseStrValue(s string) error {
 	switch v.Type.Format {
-	case FMT_BOOLEAN:
+	case schema.FMT_BOOLEAN:
 		v.Bool = s == "true"
-	case FMT_INT64:
+	case schema.FMT_INT64:
 		var err error
 		v.Int64, err = strconv.ParseInt(s, 10, 64)
 		if err != nil {
 			return err
 		}
-	case FMT_INT32:
+	case schema.FMT_INT32:
 		var err error
 		v.Int, err = strconv.Atoi(s)
 		if err != nil {
 			return err
 		}
-	case FMT_STRING:
+	case schema.FMT_STRING:
 		v.Str = s
 	default:
 		panic("Coersion not supported from this data format")

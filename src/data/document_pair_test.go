@@ -3,7 +3,6 @@ package data
 import (
 	"schema/yang"
 	"testing"
-	"schema"
 )
 
 func TestBrowserPair(t *testing.T) {
@@ -57,12 +56,12 @@ module m {
 	{
 		t.Log("Testing Init")
 		oper := NewBufferStore()
-		oper.Values["a/aa/aab"] = &schema.Value{Str: "b"}
+		oper.Values["a/aa/aab"] = &Value{Str: "b"}
 		operBrowser := NewStoreData(m, oper)
 
 		config := NewBufferStore()
 		configBrowser := NewStoreData(m, config)
-		config.Values["a/aa/aaa"] = &schema.Value{Str: "a"}
+		config.Values["a/aa/aaa"] = &Value{Str: "a"}
 		var pair *DocumentPair
 		if pair, err = NewDocumentPair(operBrowser, configBrowser); err != nil {
 			t.Error(err)
@@ -71,10 +70,10 @@ module m {
 			t.Error("Expected 2 items got ", len(oper.Values))
 		}
 
-		oper.Values["a/aa/aac/aaca"] = &schema.Value{Str: "c"}
+		oper.Values["a/aa/aac/aaca"] = &Value{Str: "c"}
 
 		var selection *Selection
-		selection, err = WalkPath(NewSelection(pair.Node(), m), schema.NewPathSlice("a/aa/aac", m))
+		selection, err = WalkPath(NewSelection(pair.Node(), m), NewPathSlice("a/aa/aac", m))
 		if selection == nil {
 			t.Error("nil selection")
 		}
@@ -82,8 +81,8 @@ module m {
 	{
 		t.Log("Testing Edit")
 		edit := NewBufferStore()
-		edit.Values["a/ab"] = &schema.Value{Str: "ab"}
-		edit.Values["a/aa/aab"] = &schema.Value{Str: "ab"}
+		edit.Values["a/ab"] = &Value{Str: "ab"}
+		edit.Values["a/aa/aab"] = &Value{Str: "ab"}
 		editBrowser := NewStoreData(m, edit)
 
 		oper := NewBufferStore()

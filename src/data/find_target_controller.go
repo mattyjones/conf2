@@ -6,13 +6,13 @@ import (
 )
 
 type FindTarget struct {
-	path     *schema.PathSlice
-	position *schema.Path
+	path     *PathSlice
+	position *Path
 	Target   *Selection
 	resource schema.Resource
 }
 
-func NewFindTarget(p *schema.PathSlice) *FindTarget {
+func NewFindTarget(p *PathSlice) *FindTarget {
 	return &FindTarget{
 		path: p,
 		position: p.NextAfter(p.Head),

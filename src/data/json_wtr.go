@@ -35,7 +35,7 @@ func (json *JsonWriter) Node() Node {
 			}
 			return p.Select(sel, meta, new)
 		},
-		OnNext: func(p Node, sel *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (next Node, err error) {
+		OnNext: func(p Node, sel *Selection, meta *schema.List, new bool, keys []*Value, first bool) (next Node, err error) {
 			if closer == nil {
 				json.beginObject()
 				json.beginList(meta.GetIdent())
@@ -48,7 +48,7 @@ func (json *JsonWriter) Node() Node {
 			}
 			return p.Next(sel, meta, new, keys, first)
 		},
-		OnWrite: func(p Node, sel *Selection, meta schema.HasDataType, v *schema.Value) (err error) {
+		OnWrite: func(p Node, sel *Selection, meta schema.HasDataType, v *Value) (err error) {
 			if closer == nil {
 				json.beginObject()
 				closer = json.endContainer
@@ -112,14 +112,14 @@ func (json *JsonWriter) Container(closer closerFunc) Node {
 		}
 		return
 	}
-	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *schema.Value) (err error) {
+	s.OnWrite = func(state *Selection, meta schema.HasDataType, v *Value) (err error) {
 		if err = delim(); err != nil {
 			return err
 		}
 		err = json.writeValue(meta, v)
 		return
 	}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (next Node, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (next Node, err error) {
 		if ! new {
 			return nil, nil
 		}
@@ -182,7 +182,7 @@ func (json *JsonWriter) endContainer() (err error) {
 	return
 }
 
-func (json *JsonWriter) writeValue(meta schema.Meta, v *schema.Value) (err error) {
+func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 	json.writeIdent(meta.GetIdent())
 	if schema.IsListFormat(v.Type.Format) {
 		if _, err = json.out.WriteRune('['); err != nil {
@@ -192,6 +192,12 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *schema.Value) (err error
 	switch v.Type.Format {
 	case schema.FMT_BOOLEAN:
 		err = json.writeBool(v.Bool)
+	case schema.FMT_ANYDATA:
+		var s string
+		s, err = v.Data.String()
+		if err == nil {
+			json.out.WriteString(s)
+		}
 	case schema.FMT_INT64:
 		err = json.writeInt64(v.Int64)
 	case schema.FMT_INT32:

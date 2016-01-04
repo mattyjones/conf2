@@ -1,5 +1,4 @@
 package data
-import "schema"
 
 type EventMulticast struct {
 	A Events
@@ -16,7 +15,7 @@ func (multi *EventMulticast) RemoveListener(l *Listener) {
 	multi.B.RemoveListener(l)
 }
 
-func (multi *EventMulticast) Fire(path *schema.Path, e Event) (err error) {
+func (multi *EventMulticast) Fire(path *Path, e Event) (err error) {
 	if err = multi.A.Fire(path, e); err == nil {
 		err = multi.B.Fire(path, e)
 	}

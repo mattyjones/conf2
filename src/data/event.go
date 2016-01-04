@@ -3,7 +3,6 @@ import (
 	"regexp"
 	"conf2"
 	"fmt"
-	"schema"
 )
 
 type Event int
@@ -31,7 +30,7 @@ var eventNames = []string {
 type Events interface {
 	AddListener(*Listener)
 	RemoveListener(*Listener)
-	Fire(path *schema.Path, e Event) error
+	Fire(path *Path, e Event) error
 }
 
 type EventsImpl struct {
@@ -78,7 +77,7 @@ func (impl *EventsImpl) RemoveListener(l *Listener) {
 	}
 }
 
-func (impl *EventsImpl) Fire(path *schema.Path, e Event) (err error) {
+func (impl *EventsImpl) Fire(path *Path, e Event) (err error) {
 	if len(impl.listeners) > 0 {
 		pathStr := path.String()
 		for _, l := range impl.listeners {

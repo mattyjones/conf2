@@ -8,7 +8,7 @@ import (
 type ControlledWalk struct {
 	MaxDepth   int
 	finalDepth int
-	InitialKey []*schema.Value
+	InitialKey []*Value
 }
 
 func LimitedWalk(params map[string][]string) *ControlledWalk {
@@ -52,7 +52,7 @@ func (e *ControlledWalk) ListIterator(selection *Selection, first bool) (next *S
 	}
 	listMeta := selection.State.SelectedMeta().(*schema.List)
 	var listNode Node
-	listNode, err = selection.Node.Next(selection, listMeta, false, schema.NO_KEYS, first)
+	listNode, err = selection.Node.Next(selection, listMeta, false, NO_KEYS, first)
 	if listNode == nil || err != nil {
 		return nil, err
 	}

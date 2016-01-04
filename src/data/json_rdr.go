@@ -26,7 +26,7 @@ func (self *JsonReader) Node() (Node) {
 			return ErrorNode{Err:err}
 		}
 	}
-	return self.Container(self.values)
+	return JsonContainerReader(self.values)
 }
 
 func (self *JsonReader) decode() (map[string]interface{}, error) {
@@ -39,9 +39,9 @@ func (self *JsonReader) decode() (map[string]interface{}, error) {
 	return self.values, nil
 }
 
-func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interface{}) (v *schema.Value, err error) {
+func leafOrLeafListJsonReader(meta schema.HasDataType, data interface{}) (v *Value, err error) {
 	// TODO: Consider using CoerseValue
-	v = &schema.Value{Type: meta.GetDataType()}
+	v = &Value{Type: meta.GetDataType()}
 	switch v.Type.Format {
 	case schema.FMT_INT64:
 		v.Int64 = int64(data.(float64))
@@ -80,12 +80,16 @@ func (self *JsonReader) readLeafOrLeafList(meta schema.HasDataType, data interfa
 	case schema.FMT_ENUMERATION:
 		v.SetEnumByLabel(data.(string))
 	case schema.FMT_ENUMERATION_LIST:
-		strlist := schema.InterfaceToStrlist(data)
+		strlist := InterfaceToStrlist(data)
 		if len(strlist) > 0 {
 			v.SetEnumListByLabels(strlist)
 		} else {
-			intlist := schema.InterfaceToIntlist(data)
+			intlist := InterfaceToIntlist(data)
 			v.SetEnumList(intlist)
+		}
+	case schema.FMT_ANYDATA:
+		v.Data = &AnyJson{
+			container: data.(map[string]interface{}),
 		}
 	default:
 		msg := fmt.Sprint("JSON reading value type not implemented ", meta.GetDataType().Format)
@@ -102,10 +106,10 @@ func asStringArray(data []interface{}) []string {
 	return s
 }
 
-func (self *JsonReader) List(list []interface{}) Node {
+func JsonListReader(list []interface{}) Node {
 	s := &MyNode{Label: "JSON Read List"}
 	var i int
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
 		if new {
 			panic("Cannot write to JSON reader")
 		}
@@ -114,9 +118,9 @@ func (self *JsonReader) List(list []interface{}) Node {
 				keyFields := meta.Keys
 				for ; i < len(list); i++ {
 					candidate := list[i].(map[string]interface{})
-					if self.jsonKeyMatches(keyFields, candidate, key) {
+					if jsonKeyMatches(keyFields, candidate, key) {
 						sel.State.SetKey(key)
-						return self.Container(candidate), nil
+						return JsonContainerReader(candidate), nil
 					}
 				}
 			}
@@ -133,15 +137,15 @@ func (self *JsonReader) List(list []interface{}) Node {
 					keyData, hasKey := container[meta.Keys[0]]
 					// Key may legitimately not exist when inserting new data
 					if hasKey {
-						keyValue, keyErr := schema.SetValue(meta.KeyMeta()[0].GetDataType(), keyData)
+						keyValue, keyErr := SetValue(meta.KeyMeta()[0].GetDataType(), keyData)
 						if keyErr != nil {
 							return nil, keyErr
 						}
-						key := []*schema.Value{keyValue}
+						key := []*Value{keyValue}
 						sel.State.SetKey(key)
 					}
 				}
-				return self.Container(container), nil
+				return JsonContainerReader(container), nil
 			}
 		}
 		return nil, nil
@@ -149,7 +153,7 @@ func (self *JsonReader) List(list []interface{}) Node {
 	return s
 }
 
-func (self *JsonReader) Container(container map[string]interface{}) Node {
+func JsonContainerReader(container map[string]interface{}) Node {
 	s := &MyNode{Label: "JSON Read Container"}
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		// go thru each case and if there are any properties in the data that are not
@@ -184,20 +188,20 @@ func (self *JsonReader) Container(container map[string]interface{}) Node {
 		}
 		if value, found := container[meta.GetIdent()]; found {
 			if schema.IsList(meta) {
-				return self.List(value.([]interface{})), nil
+				return JsonListReader(value.([]interface{})), nil
 			} else {
-				return self.Container(value.(map[string]interface{})), nil
+				return JsonContainerReader(value.(map[string]interface{})), nil
 			}
 		}
 		return
 	}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (val *schema.Value, err error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (val *Value, err error) {
 		if value, found := container[meta.GetIdent()]; found {
-			return self.readLeafOrLeafList(meta, value)
+			return leafOrLeafListJsonReader(meta, value)
 		}
 		return
 	}
-	s.OnNext = func(sel *Selection, meta *schema.List, create bool, key []*schema.Value, first bool) (Node, error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, create bool, key []*Value, first bool) (Node, error) {
 		// divert to list handler
 		foundValues, found := container[meta.GetIdent()]
 		list, ok := foundValues.([]interface{})
@@ -205,12 +209,12 @@ func (self *JsonReader) Container(container map[string]interface{}) Node {
 			msg := fmt.Sprintf("Expected { %s: [] }", meta.GetIdent())
 			return nil, errors.New(msg)
 		}
-		return self.List(list), nil
+		return JsonListReader(list), nil
 	}
 	return s
 }
 
-func (self *JsonReader) jsonKeyMatches(keyFields []string, candidate map[string]interface{}, key []*schema.Value) bool {
+func jsonKeyMatches(keyFields []string, candidate map[string]interface{}, key []*Value) bool {
 	for i, field := range keyFields {
 		if candidate[field] != key[i].String() {
 			return false

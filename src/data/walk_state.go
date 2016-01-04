@@ -4,9 +4,9 @@ import (
 )
 
 type WalkState struct {
-	path       *schema.Path
+	path       *Path
 	position   schema.Meta
-	key			[]*schema.Value
+	key			[]*Value
 	insideList bool
 }
 
@@ -22,7 +22,7 @@ func (state *WalkState) SetPosition(position schema.Meta) {
 	state.position = position
 }
 
-func (state *WalkState) Path() *schema.Path {
+func (state *WalkState) Path() *Path {
 	return state.path
 }
 
@@ -37,11 +37,11 @@ func (state *WalkState) InsideList() bool {
 	return state.insideList
 }
 
-func (state *WalkState) Key() []*schema.Value {
+func (state *WalkState) Key() []*Value {
 	return state.key
 }
 
-func (state *WalkState) SetKey(key []*schema.Value) {
+func (state *WalkState) SetKey(key []*Value) {
 	state.key = key
 }
 

@@ -49,8 +49,8 @@ func SelectionToSelection(from *Selection, to *Selection) *Editor {
 
 func NodeToPath(fromNode Node, data Data, path string) (*Editor, error) {
 	var err error
-	var p *schema.PathSlice
-	if p, err = schema.ParsePath(path, data.Schema()); err != nil {
+	var p *PathSlice
+	if p, err = ParsePath(path, data.Schema()); err != nil {
 		return nil, err
 	}
 	var to *Selection
@@ -65,8 +65,8 @@ func NodeToPath(fromNode Node, data Data, path string) (*Editor, error) {
 
 func PathToNode(data Data, path string, toNode Node) (*Editor, error) {
 	var err error
-	var p *schema.PathSlice
-	if p, err = schema.ParsePath(path, data.Schema()); err != nil {
+	var p *PathSlice
+	if p, err = ParsePath(path, data.Schema()); err != nil {
 		return nil, err
 	}
 	var from *Selection
@@ -81,8 +81,8 @@ func PathToNode(data Data, path string, toNode Node) (*Editor, error) {
 
 func PathToPath(fromData Data, toData Data, path string) (*Editor, error) {
 	var err error
-	var p *schema.PathSlice
-	if p, err = schema.ParsePath(path, fromData.Schema()); err != nil {
+	var p *PathSlice
+	if p, err = ParsePath(path, fromData.Schema()); err != nil {
 		return nil, err
 	}
 	from := NewSelection(fromData.Node(), fromData.Schema())
@@ -181,7 +181,7 @@ func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy, p
 	}
 	s := &MyNode{Label: fmt.Sprint("Edit list ", fromNode.String(), "=>", toNode.String())}
 	// List Edit - See "List Edit State Machine" diagram for additional documentation
-	s.OnNext = func(sel *Selection, meta *schema.List, _ bool, key []*schema.Value, first bool) (next Node, err error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, _ bool, key []*Value, first bool) (next Node, err error) {
 		to.State = sel.State
 		from.State = sel.State
 		var created bool
@@ -191,7 +191,7 @@ func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy, p
 			return nil, err
 		}
 
-		var nextKey []*schema.Value
+		var nextKey []*Value
 		var toNextNode Node
 		if nextKey, err = e.loadKey(sel, key); err != nil {
 			return nil, err
@@ -313,7 +313,7 @@ func (e *Editor) container(fromNode Node, toNode Node, new bool, strategy Strate
 		from.State = sel.State
 		return e.handleEvent(sel, from, to, new, event)
 	}
-	s.OnRead = func(sel *Selection, meta schema.HasDataType) (v *schema.Value, err error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (v *Value, err error) {
 		to.State = sel.State
 		from.State = sel.State
 		if v, err = fromNode.Read(from, meta); err != nil {
@@ -346,7 +346,7 @@ func (e *Editor) handleEvent(sel *Selection, from *Selection, to *Selection, new
 	return
 }
 
-func (e *Editor) loadKey(selection *Selection, explictKey []*schema.Value) ([]*schema.Value, error) {
+func (e *Editor) loadKey(selection *Selection, explictKey []*Value) ([]*Value, error) {
 	if len(explictKey) > 0 {
 		return explictKey, nil
 	}

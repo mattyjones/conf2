@@ -8,8 +8,8 @@ func TestExtend(t *testing.T) {
 	child := &MyNode{Label: "Bloop"}
 	n := &MyNode{
 		Label: "Blop",
-		OnRead: func(*Selection, schema.HasDataType) (*schema.Value, error) {
-			return &schema.Value{Str:"Hello"}, nil
+		OnRead: func(*Selection, schema.HasDataType) (*Value, error) {
+			return &Value{Str:"Hello"}, nil
 		},
 		OnSelect: func(s *Selection, meta schema.MetaList, new bool) (Node, error) {
 			return child, nil
@@ -18,9 +18,9 @@ func TestExtend(t *testing.T) {
 	x := Extend{
 		Label: "Bleep",
 		Node: n,
-		OnRead: func(p Node, s *Selection, m schema.HasDataType) (*schema.Value, error) {
+		OnRead: func(p Node, s *Selection, m schema.HasDataType) (*Value, error) {
 			v, _ := p.Read(s, m)
-			return &schema.Value{Str:v.Str + " World"}, nil
+			return &Value{Str:v.Str + " World"}, nil
 		},
 	}
 	actualValue, _  := x.Read(nil, nil)

@@ -6,13 +6,13 @@ import (
 	"schema"
 )
 
-func ReadKeys(sel *Selection) (values []*schema.Value, err error) {
+func ReadKeys(sel *Selection) (values []*Value, err error) {
 	if len(sel.State.Key()) > 0 {
 		return sel.State.Key(), nil
 	}
 	list := sel.State.SelectedMeta().(*schema.List)
-	values = make([]*schema.Value, len(list.Keys))
-	var key *schema.Value
+	values = make([]*Value, len(list.Keys))
+	var key *Value
 	for i, keyIdent := range list.Keys {
 		keyMeta := schema.FindByIdent2(sel.State.SelectedMeta(), keyIdent).(schema.HasDataType)
 		if key, err = sel.Node.Read(sel, keyMeta); err != nil {

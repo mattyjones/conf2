@@ -13,6 +13,7 @@ func TestYaplParser(t *testing.T) {
   if p
     x = x(z,b,c(z))
     goto bleep
+
 bleep
     z = s
 `)

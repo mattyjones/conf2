@@ -57,10 +57,10 @@ module m {
 	}
 	oper := NewBufferStore()
 	operNode := NewStoreData(m, oper).Node()
-	//oper.Values["a/aa/aaa"] = &schema.Value{Str:":hello"}
+	//oper.Values["a/aa/aaa"] = &Value{Str:":hello"}
 	config := NewBufferStore()
 	configNode := NewStoreData(m, config).Node()
-	//oper.Values["a/aa/aaa"] = &schema.Value{Str:":hello"}
+	//oper.Values["a/aa/aaa"] = &Value{Str:":hello"}
 	edit := `{"a":{"aa":{"aaa":"hello"}}}`
 	in := NewJsonReader(strings.NewReader(edit)).Node()
 	err = NodeToNode(in, Config(configNode, operNode), m).Insert()

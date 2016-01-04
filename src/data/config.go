@@ -30,7 +30,7 @@ func Config(operational Node, config Node) Node {
 			}
 			return Config(operChild, configChild), nil
 		},
-		OnNext: func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error) {
+		OnNext: func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
 			operChild, err := operational.Next(sel, meta, new, key, first)
 			if err != nil || operChild == nil {
 				return nil, err
@@ -53,7 +53,7 @@ func Config(operational Node, config Node) Node {
 			}
 			return Config(operChild, configChild), nil
 		},
-		OnWrite: func(sel *Selection, meta schema.HasDataType, val *schema.Value) error {
+		OnWrite: func(sel *Selection, meta schema.HasDataType, val *Value) error {
 			if err := operational.Write(sel, meta, val); err != nil {
 				return err
 			}

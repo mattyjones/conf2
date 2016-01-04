@@ -14,14 +14,14 @@ func ChangeValue(sel *Selection, ident string, value interface{}) error {
 		return errors.New("property not found " + ident)
 	}
 	meta := pos.(schema.HasDataType)
-	v, e := schema.SetValue(meta.GetDataType(), value)
+	v, e := SetValue(meta.GetDataType(), value)
 	if e != nil {
 		return e
 	}
 	return n.Write(sel, meta, v)
 }
 
-func GetValue(sel *Selection, ident string) (*schema.Value, error) {
+func GetValue(sel *Selection, ident string) (*Value, error) {
 	prop := schema.FindByIdent2(sel.State.SelectedMeta(), ident)
 	if prop != nil {
 		v, err := sel.Node.Read(sel, prop.(schema.HasDataType))

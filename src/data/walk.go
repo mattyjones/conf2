@@ -4,7 +4,7 @@ import (
 	"schema"
 )
 
-func WalkPath(selection *Selection, path *schema.PathSlice) (*Selection, error) {
+func WalkPath(selection *Selection, path *PathSlice) (*Selection, error) {
 	if path.Empty() {
 		return selection, nil
 	}
@@ -14,7 +14,7 @@ func WalkPath(selection *Selection, path *schema.PathSlice) (*Selection, error) 
 }
 
 func WalkDataPath(data Data, path string) (*Selection, error) {
-	p, err := schema.ParsePath(path, data.Schema())
+	p, err := ParsePath(path, data.Schema())
 	if err != nil {
 		return nil, err
 	}

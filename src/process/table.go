@@ -4,7 +4,6 @@ import (
 	"schema"
 	"data"
 	"strings"
-	"conf2"
 )
 
 type Table interface {
@@ -20,46 +19,7 @@ type NodeTable struct {
 	Row        *data.Selection
 	autoCreate bool
 	sels       map[string]*data.Selection
-	vals       map[string]*schema.Value
-}
-
-type Join struct {
-	On   Table
-	Into Table
-}
-
-func (j *Join) Next() (error) {
-	// TODO: link thru key
-	var err error
-	if err = j.On.Next(); err != nil {
-		return err
-	}
-	if err = j.Into.Next(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (j *Join) HasNext() bool {
-	return j.On.HasNext() && j.Into.HasNext()
-}
-
-func (j *Join) Select(identPath string, autocreate bool) (t Table, err error) {
-	if autocreate {
-		return j.Into.Select(identPath, true)
-	}
-	return j.On.Select(identPath, false)
-}
-
-func (j *Join) Get(key string) (v interface{}, err error) {
-	if v, err = j.On.Get(key); v == nil && err == nil {
-		v, err = j.Into.Get(key)
-	}
-	return v, err
-}
-
-func (j *Join) Set(key string, v interface{}) (err error) {
-	return j.Into.Set(key, v)
+	vals       map[string]*data.Value
 }
 
 func (t *NodeTable) HasNext() (bool) {
@@ -79,7 +39,7 @@ func (t *NodeTable) Next() (error) {
 
 	// List
 	meta := t.Corner.State.SelectedMeta().(*schema.List)
-	rowNode, err := t.Corner.Node.Next(t.Corner, meta, t.autoCreate, schema.NO_KEYS, t.Row == nil)
+	rowNode, err := t.Corner.Node.Next(t.Corner, meta, t.autoCreate, data.NO_KEYS, t.Row == nil)
 	if err != nil {
 		return err
 	}
@@ -89,7 +49,7 @@ func (t *NodeTable) Next() (error) {
 		t.Row = t.Corner.SelectListItem(rowNode, t.Corner.State.Key())
 	}
 	t.sels = make(map[string]*data.Selection)
-	t.vals = make(map[string]*schema.Value)
+	t.vals = make(map[string]*data.Value)
 	return nil
 }
 
@@ -173,7 +133,7 @@ func (t *NodeTable) Get(identPath string) (interface{}, error) {
 		return nil, err
 	}
 	if t.vals == nil {
-		t.vals = make(map[string]*schema.Value)
+		t.vals = make(map[string]*data.Value)
 	}
 	t.vals[identPath] = v
 	if v == nil {
@@ -186,7 +146,6 @@ func (t *NodeTable) Set(identPath string, v interface{}) error {
 	if v == nil {
 		return nil
 	}
-	conf2.Debug.Printf("v=%v", v)
 	sel, ident, err := t.resolveIdentPath(identPath)
 	if err != nil {
 		return err

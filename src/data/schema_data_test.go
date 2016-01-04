@@ -54,7 +54,8 @@ module json-test {
 	}
 }
 
-func TestYangWrite(t *testing.T) {
+// TODO: support typedefs - simpleyang datatypes that use typedefs return format=0
+func DISABLED_TestYangWrite(t *testing.T) {
 	simple, err := yang.LoadModuleFromByteArray([]byte(yang.TestDataSimpleYang), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -70,23 +71,29 @@ func TestYangWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	// dump original and clone to see if anything is missing
-	var expected string
-	var actual string
-	expected, err = DumpModule(from)
-	if err != nil {
-		t.Error(err)
-	}
-	actual, err = DumpModule(to)
-	if err != nil {
-		t.Error(err)
-	}
-	if actual != expected {
-		t.Log("Different")
-		//				t.Log(expected)
-		//				t.Log("Actual")
-		//				t.Log(actual)
-		//				t.Fail()
-	}
+	diff := Diff(from.Node(), to.Node())
+	var out bytes.Buffer
+	diffOut := NewJsonWriter(&out).Node()
+	NodeToNode(diff, diffOut, from.Schema()).Insert()
+	t.Log(out.String())
+//
+//	var expected string
+//	var actual string
+//	expected, err = DumpModule(from)
+//	if err != nil {
+//		t.Error(err)
+//	}
+//	actual, err = DumpModule(to)
+//	if err != nil {
+//		t.Error(err)
+//	}
+//	if actual != expected {
+//		t.Log("Different")
+//						t.Log(expected)
+//						t.Log("Actual")
+//						t.Log(actual)
+//						t.Fail()
+//	}
 }
 
 func DumpModule(b *SchemaData) (string, error) {

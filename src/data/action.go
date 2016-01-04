@@ -4,7 +4,7 @@ import (
 )
 
 func PathAction(data Data, path string, input Node, output Node) (error) {
-	p, err := schema.ParsePath(path, data.Schema())
+	p, err := ParsePath(path, data.Schema())
 	if err != nil {
 		return  err
 	}

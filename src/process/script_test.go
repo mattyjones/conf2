@@ -54,17 +54,17 @@ func TestScriptExec(t *testing.T) {
 	main.AddOperation(txy)
 	tests := []struct {
 		aPath string
-		aValue *schema.Value
+		aValue *data.Value
 		expected string
 	} {
 		{
 			"f",
-			&schema.Value{Str:"Eff"},
+			&data.Value{Str:"Eff"},
 			`{"u":"Eff"}`,
 		},
 		{
 			"b=Cee1/c",
-			&schema.Value{Str:"Cee1"},
+			&data.Value{Str:"Cee1"},
 			`{"y":[{"x":"Cee1"}]}`,
 		},
 	}

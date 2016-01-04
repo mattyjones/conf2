@@ -88,15 +88,15 @@ func (self *SchemaData) SelectModule(module *schema.Module) (Node) {
 
 func (self *SchemaData) selectRevision(rev *schema.Revision) (Node) {
 	s := &MyNode{}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (*schema.Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		switch meta.GetIdent() {
 		case "rev-date":
-			return &schema.Value{Str: rev.Ident}, nil
+			return &Value{Str: rev.Ident}, nil
 		default:
 			return ReadField(meta, rev)
 		}
 	}
-	s.OnWrite = func(state *Selection, meta schema.HasDataType, val *schema.Value) error {
+	s.OnWrite = func(state *Selection, meta schema.HasDataType, val *Value) error {
 		switch meta.GetIdent() {
 		case "rev-date":
 			rev.Ident = val.Str
@@ -109,13 +109,22 @@ func (self *SchemaData) selectRevision(rev *schema.Revision) (Node) {
 }
 
 func (self *SchemaData) selectType(typeData *schema.DataType) (Node) {
-	return MarshalContainer(typeData)
+	return &Extend{
+		Node:MarshalContainer(typeData),
+		OnWrite: func(parent Node, state *Selection, meta schema.HasDataType, val *Value) error {
+			switch meta.GetIdent() {
+			case "ident":
+				typeData.Format = schema.DataTypeImplicitFormat(val.Str)
+			}
+			return parent.Write(state, meta, val)
+		},
+	}
 }
 
 func (self *SchemaData) selectGroupings(groupings schema.MetaList) (Node) {
 	s := &MyNode{}
 	i := listIterator{dataList: groupings, resolve: self.resolve}
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (Node, error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		var group *schema.Grouping
 		if new {
 			group = &schema.Grouping{}
@@ -203,7 +212,7 @@ func (self *SchemaData) selectRpc(rpc *schema.Rpc) (Node) {
 func (self *SchemaData) selectTypedefs(typedefs schema.MetaList) (Node) {
 	s := &MyNode{}
 	i := listIterator{dataList: typedefs, resolve: self.resolve}
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (Node, error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		var typedef *schema.Typedef
 		if new {
 			typedef = &schema.Typedef{}
@@ -269,7 +278,7 @@ func (self *SchemaData) selectMetaList(data schema.MetaList) (Node) {
 func (self *SchemaData) selectNotifications(notifications schema.MetaList) (Node) {
 	s := &MyNode{}
 	i := listIterator{dataList: notifications, resolve: self.resolve}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (Node, error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		var notif *schema.Notification
 		if new {
 			notif = &schema.Notification{}
@@ -310,22 +319,22 @@ func (self *SchemaData) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.Leaf
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (*schema.Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		switch meta.GetIdent() {
 		case "config":
 			if details.ConfigFlag.IsSet() {
-				return &schema.Value{Bool: details.ConfigFlag.Bool()}, nil
+				return &Value{Bool: details.ConfigFlag.Bool()}, nil
 			}
 		case "mandatory":
 			if details.MandatoryFlag.IsSet() {
-				return &schema.Value{Bool: details.MandatoryFlag.Bool()}, nil
+				return &Value{Bool: details.MandatoryFlag.Bool()}, nil
 			}
 		default:
 			return ReadField(meta, leafy)
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(state *Selection, meta schema.HasDataType, val *schema.Value) error {
+	s.OnWrite = func(state *Selection, meta schema.HasDataType, val *Value) error {
 		switch meta.GetIdent() {
 		case "config":
 			details.ConfigFlag.Set(val.Bool)
@@ -347,7 +356,7 @@ func (self *SchemaData) selectMetaUses(data *schema.Uses) (Node) {
 func (self *SchemaData) selectMetaCases(choice *schema.Choice) (Node) {
 	s := &MyNode{}
 	i := listIterator{dataList: choice, resolve: self.resolve}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (Node, error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		var choiceCase *schema.ChoiceCase
 		if new {
 			choiceCase = &schema.ChoiceCase{}
@@ -388,7 +397,7 @@ type listIterator struct {
 	temp     int
 }
 
-func (i *listIterator) iterate(sel *Selection, meta *schema.List, keys []*schema.Value, first bool) bool {
+func (i *listIterator) iterate(sel *Selection, meta *schema.List, keys []*Value, first bool) bool {
 	i.data = nil
 	if i.dataList == nil {
 		return false
@@ -407,8 +416,8 @@ func (i *listIterator) iterate(sel *Selection, meta *schema.List, keys []*schema
 			if i.data == nil {
 				panic(fmt.Sprintf("Bad iterator at %s, item number %d", sel.String(), i.temp))
 			}
-			sel.State.SetKey([]*schema.Value{
-				&schema.Value{
+			sel.State.SetKey([]*Value{
+				&Value{
 					Str:  i.data.GetIdent(),
 					Type: &schema.DataType{Format: schema.FMT_STRING},
 				},
@@ -449,10 +458,10 @@ func (self *SchemaData) SelectDefinition(parent schema.MetaList, data schema.Met
 		}
 		return nil, nil
 	}
-	s.OnRead = func(state *Selection, meta schema.HasDataType) (*schema.Value, error) {
+	s.OnRead = func(state *Selection, meta schema.HasDataType) (*Value, error) {
 		return ReadField(meta, data)
 	}
-	s.OnWrite = func(state *Selection, meta schema.HasDataType, val *schema.Value) (err error) {
+	s.OnWrite = func(state *Selection, meta schema.HasDataType, val *Value) (err error) {
 		switch meta.GetIdent() {
 		case "ident":
 			// if data is nil then we're creating a def and we'll get name again
@@ -472,7 +481,7 @@ func (self *SchemaData) SelectDefinition(parent schema.MetaList, data schema.Met
 func (self *SchemaData) SelectDefinitionsList(dataList schema.MetaList) (Node) {
 	s := &MyNode{}
 	i := listIterator{dataList: dataList, resolve: self.resolve}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*schema.Value, first bool) (Node, error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		if new {
 			return self.SelectDefinition(dataList, nil), nil
 		} else {

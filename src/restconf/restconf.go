@@ -44,7 +44,7 @@ type Service struct {
 
 func (service *Service) Manage() data.Node {
 	s := &data.MyNode{}
-	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
+	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
 		switch meta.GetIdent() {
 		case "registrations":
 			strlist := make([]string, len(service.registrations))
@@ -53,13 +53,13 @@ func (service *Service) Manage() data.Node {
 				strlist[i] = name
 				i++
 			}
-			return &schema.Value{Strlist:strlist}, nil
+			return &data.Value{Strlist:strlist}, nil
 		default:
 			return data.ReadField(meta, service)
 		}
 		return nil, nil
 	}
-	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *schema.Value) (err error) {
+	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *data.Value) (err error) {
 		switch meta.GetIdent() {
 		case "docRoot":
 			service.DocRoot = v.Str
@@ -98,9 +98,9 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var err error
-	var path *schema.PathSlice
+	var path *data.PathSlice
 	var payload data.Node
-	if path, err = schema.ParsePath(r.URL.Path, reg.browser.Schema()); err == nil {
+	if path, err = data.ParsePath(r.URL.Path, reg.browser.Schema()); err == nil {
 		path.SetParams(map[string][]string(r.URL.Query()))
 		root := data.NewSelection(reg.browser.Node(), reg.browser.Schema())
 		var sel *data.Selection

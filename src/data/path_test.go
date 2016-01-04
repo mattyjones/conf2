@@ -1,9 +1,10 @@
-package yang
+package data
 
 import (
 	"fmt"
 	"testing"
 	"schema"
+	"schema/yang"
 )
 
 // This file should live in schema package, but I really needed to use
@@ -11,14 +12,14 @@ import (
 
 
 func TestPathEmpty(t *testing.T) {
-	p, _ := schema.ParsePath("", &schema.Container{})
+	p, _ := ParsePath("", &schema.Container{})
 	if p.Len() != 1 {
 		t.Error("expected one segments")
 	}
 }
 
 func TestPathStringAndEqual(t *testing.T) {
-	m, err := LoadModuleFromByteArray([]byte(mstr), nil)
+	m, err := yang.LoadModuleFromByteArray([]byte(pathTestModule), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +31,7 @@ func TestPathStringAndEqual(t *testing.T) {
 		{"x=9", "m/x=9"},
 	}
 	for _, test := range tests {
-		p, e := schema.ParsePath(test[0], m)
+		p, e := ParsePath(test[0], m)
 		if e != nil {
 			t.Error(e)
 		}
@@ -40,14 +41,14 @@ func TestPathStringAndEqual(t *testing.T) {
 		}
 
 		// Test equals
-		p2, _ := schema.ParsePath(test[0], m)
+		p2, _ := ParsePath(test[0], m)
 		if ! p.Equal(p2) {
 			t.Errorf("%s does not equal itself", test)
 		}
 	}
 }
 
-var mstr = `
+var pathTestModule = `
 module m {
 	prefix "";
 	namespace "";
@@ -77,7 +78,7 @@ module m {
 }
 `
 func TestPathSegment(t *testing.T) {
-	m, err := LoadModuleFromByteArray([]byte(mstr), nil)
+	m, err := yang.LoadModuleFromByteArray([]byte(pathTestModule), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +92,7 @@ func TestPathSegment(t *testing.T) {
 		{"a/b?foo=1", []string{"m", "a", "b"}},
 	}
 	for _, test := range tests {
-		p, e := schema.ParsePath(test.in, m)
+		p, e := ParsePath(test.in, m)
 		if e != nil {
 			t.Errorf("Error parsing %s : %s", test.in, e)
 		}
@@ -109,7 +110,7 @@ func TestPathSegment(t *testing.T) {
 }
 
 func TestPathSegmentKeys(t *testing.T) {
-	m, err := LoadModuleFromByteArray([]byte(mstr), nil)
+	m, err := yang.LoadModuleFromByteArray([]byte(pathTestModule), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +124,7 @@ func TestPathSegmentKeys(t *testing.T) {
 		{"x=9", [][]interface{}{none, []interface{}{9}}},
 	}
 	for _, test := range tests {
-		p, e := schema.ParsePath(test.in, m)
+		p, e := ParsePath(test.in, m)
 		if e != nil {
 			t.Errorf("Error parsing %s : %s", test.in, e)
 		}

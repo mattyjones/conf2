@@ -632,8 +632,7 @@ func (y *LeafList) Details() *Details {
 
 ////////////////////////////////////////////////////
 
-// No real type, but this is closest incase someone asks
-var AnyDataType = NewDataType("string")
+var AnyDataType = NewDataType("any")
 
 type Any struct {
 	Ident       string
@@ -1057,7 +1056,7 @@ func NewDataType(ident string) (t *DataType) {
 	t = &DataType{Ident: ident}
 	// if not found, then not internal type and Resolve should
 	// determine type
-	t.Format = internalTypes[ident]
+	t.Format = DataTypeImplicitFormat(ident)
 	return
 }
 

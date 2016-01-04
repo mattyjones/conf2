@@ -58,17 +58,17 @@ func (m *BridgeMapping) SelectMap(externalMeta schema.Meta, internalParentMeta s
 	return internalMeta, mapping
 }
 
-//func (b *Bridge) internalPath(externalPath *schema.Path, internalMeta schema.MetaList) *schema.Path {
+//func (b *Bridge) internalPath(externalPath *Path, internalMeta schema.MetaList) *Path {
 //	mapping := b.Mapping
 //	var found bool
-//	internalPath := &schema.Path{
+//	internalPath := &Path{
 //		Info : externalPath.Info,
 //		Meta: internalMeta,
 //	}
 //	i := internalPath
 //	xNext := externalPath
 //	for xNext != nil {
-//		iNext := &schema.Path{
+//		iNext := &Path{
 //			Info : i.Info,
 //			Parent: i,
 //		}
@@ -114,20 +114,20 @@ func (b *Bridge) selectBridge(internal *Selection, mapping *BridgeMapping) Node 
 		}
 		return
 	}
-	s.OnWrite = func(state *Selection, externalMeta schema.HasDataType, val *schema.Value) error {
+	s.OnWrite = func(state *Selection, externalMeta schema.HasDataType, val *Value) error {
 		if _, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
 			return internal.Node.Write(internal, internal.State.Position().(schema.HasDataType), val)
 		}
 		return nil
 	}
-	s.OnRead = func(state *Selection, externalMeta schema.HasDataType) (*schema.Value, error) {
+	s.OnRead = func(state *Selection, externalMeta schema.HasDataType) (*Value, error) {
 		if _, ok := b.updateInternalPosition(externalMeta, internal, mapping); ok {
 			// TODO: translate val
 			return internal.Node.Read(internal, internal.State.Position().(schema.HasDataType))
 		}
 		return nil, nil
 	}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error) {
+	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
 		var internalNextNode Node
 		// TODO: translate keys?
 		internalNextNode, err = internal.Node.Next(internal, meta, new, key, first)

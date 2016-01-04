@@ -6,7 +6,7 @@ import (
 
 type Parameters struct {
 	Ignores  map[string]struct{}
-	Collected map[string]*schema.Value
+	Collected map[string]*Value
 }
 
 func (p *Parameters) Record(ident string) {
@@ -16,9 +16,9 @@ func (p *Parameters) Record(ident string) {
 	p.Ignores[ident] = struct{}{}
 }
 
-func (p *Parameters) Collect(ident string, val *schema.Value) {
+func (p *Parameters) Collect(ident string, val *Value) {
 	if p.Collected == nil {
-		p.Collected = make(map[string]*schema.Value)
+		p.Collected = make(map[string]*Value)
 	}
 	p.Collected[ident] = val
 }
@@ -34,7 +34,7 @@ func (p *Parameters) Finish(sel *Selection, node Node) (err error) {
 		if ! hasType {
 			continue
 		}
-		var v *schema.Value
+		var v *Value
 		var found bool
 		v, found = p.Collected[m.GetIdent()]
 		if !found {
@@ -42,7 +42,7 @@ func (p *Parameters) Finish(sel *Selection, node Node) (err error) {
 			if len(def) == 0 {
 				continue
 			}
-			v = &schema.Value{Type:t.GetDataType()}
+			v = &Value{Type:t.GetDataType()}
 			if err = v.CoerseStrValue(def); err != nil {
 				return err
 			}

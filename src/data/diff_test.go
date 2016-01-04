@@ -47,17 +47,17 @@ module m {
 
 	// new
 	a := NewBufferStore()
-	a.Values["movie/name"] = &schema.Value{Str: "StarWars"}
-	a.Values["movie/character/name"] = &schema.Value{Str: "Hans Solo"}
-	a.Values["car/name"] = &schema.Value{Str: "Malibu"}
+	a.Values["movie/name"] = &Value{Str: "StarWars"}
+	a.Values["movie/character/name"] = &Value{Str: "Hans Solo"}
+	a.Values["car/name"] = &Value{Str: "Malibu"}
 	aData := NewStoreData(m, a).Node()
 
 	// old
 	b := NewBufferStore()
-	b.Values["movie/name"] = &schema.Value{Str: "StarWars"}
-	laya := &schema.Value{Type: str, Str: "Princess Laya"}
+	b.Values["movie/name"] = &Value{Str: "StarWars"}
+	laya := &Value{Type: str, Str: "Princess Laya"}
 	b.Values["movie/character/name"] = laya
-	gtav := &schema.Value{Type: str, Str: "GTA V"}
+	gtav := &Value{Type: str, Str: "GTA V"}
 	b.Values["videoGame/name"] = gtav
 	bData := NewStoreData(m, b).Node()
 

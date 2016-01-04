@@ -18,7 +18,7 @@ func TestKeyListBuilderInBufferStore(t *testing.T) {
 		{"a/c", "y|z"},
 	}
 	store := NewBufferStore()
-	v := &schema.Value{}
+	v := &Value{}
 	store.Values["a/a/c"] = v
 	store.Values["a/b=x/c"] = v
 	store.Values["a/c=y/c"] = v
@@ -84,8 +84,8 @@ func TestStoreBrowserKeyValueRead(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreData(m, store)
-	store.Values["a/aa/aaa"] = &schema.Value{Str: "hi"}
-	store.Values["b=x/ba"] = &schema.Value{Str: "x"}
+	store.Values["a/aa/aaa"] = &Value{Str: "hi"}
+	store.Values["b=x/ba"] = &Value{Str: "x"}
 	var actualBytes bytes.Buffer
 	json := NewJsonWriter(&actualBytes).Node()
 	if err := NodeToNode(kv.Node(), json, kv.Schema()).Insert(); err != nil {
@@ -134,7 +134,7 @@ func TestStoreBrowserKeyValueEdit(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreData(m, store)
-	store.Values["b=x/ba"] = &schema.Value{Str: "z"}
+	store.Values["b=x/ba"] = &Value{Str: "z"}
 
 	// change key
 	json := NewJsonReader(strings.NewReader(`{"ba":"y"}`)).Node()
@@ -159,8 +159,8 @@ func TestStoreBrowserReadListList(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
 	kv := NewStoreData(m, store)
-	store.Values["b=x/ba"] = &schema.Value{Str: "x"}
-	store.Values["b=x/bc=y/bca"] = &schema.Value{Str: "y"}
+	store.Values["b=x/ba"] = &Value{Str: "x"}
+	store.Values["b=x/bc=y/bca"] = &Value{Str: "y"}
 	var actual bytes.Buffer
 	out := NewJsonWriter(&actual).Node()
 	if err := NodeToNode(kv.Node(), out, kv.Schema()).Upsert(); err != nil {
@@ -172,8 +172,8 @@ func TestStoreBrowserReadListList(t *testing.T) {
 func TestStoreRemoveAll(t *testing.T) {
 	store := NewBufferStore()
 	m := keyValuesTestModule()
-	store.Values["b=x/ba"] = &schema.Value{Str: "x"}
-	store.Values["b=x/bc=y/bca"] = &schema.Value{Str: "y"}
+	store.Values["b=x/ba"] = &Value{Str: "x"}
+	store.Values["b=x/bc=y/bca"] = &Value{Str: "y"}
 	kv := NewStoreData(m, store)
 	sel, err := WalkDataPath(kv, "b=x/bc")
 	if err != nil {

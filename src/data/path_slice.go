@@ -1,10 +1,11 @@
-package schema
+package data
 
 import (
 	"strings"
 	"errors"
 	"bytes"
 	"net/url"
+	"schema"
 )
 
 type PathSlice struct {
@@ -28,7 +29,7 @@ func (slice *PathSlice) SetParams(params map[string][]string) {
 	}
 }
 
-func NewPathSlice(path string, meta MetaList) (p *PathSlice) {
+func NewPathSlice(path string, meta schema.MetaList) (p *PathSlice) {
 	var err error
 	if p, err = ParsePath(path, meta); err != nil {
 		if err != nil {
@@ -38,7 +39,7 @@ func NewPathSlice(path string, meta MetaList) (p *PathSlice) {
 	return p
 }
 
-func ParsePath(path string, meta MetaList) (*PathSlice, error) {
+func ParsePath(path string, meta schema.MetaList) (*PathSlice, error) {
 	u, err := url.Parse(path)
 	if err != nil {
 		return nil, err
@@ -72,16 +73,16 @@ func ParsePath(path string, meta MetaList) (*PathSlice, error) {
 				return nil, err
 			}
 		}
-		m := FindByIdentExpandChoices(p.meta, ident)
+		m := schema.FindByIdentExpandChoices(p.meta, ident)
 		var notLeaf bool
 		if m == nil {
 			return nil, errors.New(ident + " not found in " + p.meta.GetIdent())
 		}
-		if seg.meta, notLeaf = m.(MetaList); ! notLeaf {
+		if seg.meta, notLeaf = m.(schema.MetaList); ! notLeaf {
 			return nil, errors.New("paths cannot contain leaf types:" + ident)
 		}
 		if len(keyStrs) > 0 {
-			if seg.key, err = CoerseKeys(seg.meta.(*List), keyStrs); err != nil {
+			if seg.key, err = CoerseKeys(seg.meta.(*schema.List), keyStrs); err != nil {
 				return nil, err
 			}
 		}

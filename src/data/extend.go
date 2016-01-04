@@ -42,7 +42,7 @@ func (e *Extend) Select(sel *Selection, meta schema.MetaList, new bool) (Node, e
 	return child, err
 }
 
-func (e *Extend) Next(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (Node, error) {
+func (e *Extend) Next(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (Node, error) {
 	var err error
 	var child Node
 	if e.OnNext == nil {
@@ -65,7 +65,7 @@ func (e *Extend) Extend(n Node) Node {
 	return &extendedChild
 }
 
-func (e *Extend) Read(sel *Selection, meta schema.HasDataType) (*schema.Value, error) {
+func (e *Extend) Read(sel *Selection, meta schema.HasDataType) (*Value, error) {
 	if e.OnRead == nil {
 		return e.Node.Read(sel, meta)
 	} else {
@@ -73,7 +73,7 @@ func (e *Extend) Read(sel *Selection, meta schema.HasDataType) (*schema.Value, e
 	}
 }
 
-func (e *Extend) Write(sel *Selection, meta schema.HasDataType, v *schema.Value) (error) {
+func (e *Extend) Write(sel *Selection, meta schema.HasDataType, v *Value) (error) {
 	if e.OnWrite == nil {
 		return e.Node.Write(sel, meta, v)
 	} else {
@@ -105,7 +105,7 @@ func (e *Extend) Event(sel *Selection, event Event) (err error) {
 	}
 }
 
-func (e *Extend) Find(sel *Selection, p *schema.Path) (err error) {
+func (e *Extend) Find(sel *Selection, p *Path) (err error) {
 	if e.OnFind == nil {
 		return e.Node.Find(sel, p)
 	} else {
@@ -113,12 +113,12 @@ func (e *Extend) Find(sel *Selection, p *schema.Path) (err error) {
 	}
 }
 
-type ExtendNextFunc func(parent Node, sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error)
+type ExtendNextFunc func(parent Node, sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error)
 type ExtendSelectFunc func(parent Node, sel *Selection, meta schema.MetaList, new bool) (child Node, err error)
-type ExtendReadFunc func(parent Node, sel *Selection, meta schema.HasDataType) (*schema.Value, error)
-type ExtendWriteFunc func(parent Node, sel *Selection, meta schema.HasDataType, val *schema.Value) error
+type ExtendReadFunc func(parent Node, sel *Selection, meta schema.HasDataType) (*Value, error)
+type ExtendWriteFunc func(parent Node, sel *Selection, meta schema.HasDataType, val *Value) error
 type ExtendChooseFunc func(parent Node, sel *Selection, choice *schema.Choice) (m schema.Meta, err error)
 type ExtendActionFunc func(parent Node, sel *Selection, rpc *schema.Rpc, input Node) (output Node, err error)
-type ExtendFindFunc func(parent Node, sel *Selection, path *schema.Path) error
+type ExtendFindFunc func(parent Node, sel *Selection, path *Path) error
 type ExtendEventFunc func(parent Node, sel *Selection, e Event) error
 type ExtendFunc func(e *Extend, sel *Selection, child Node) (Node, error)

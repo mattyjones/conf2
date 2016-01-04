@@ -38,14 +38,14 @@ module m {
 	// lazy trick, we stick all data, input, output into one bucket
 	store := NewBufferStore()
 	b := NewStoreData(m, store)
-	var yourName *schema.Value
+	var yourName *Value
 	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input Node) (output Node, err error) {
 		if err = NodeToNode(input, b.Container(""), meta.Input).Insert(); err != nil {
 conf2.Debug.Printf("here")
 			return nil, err
 		}
 		yourName = store.Values["name"]
-		store.Values["salutation"] = &schema.Value{Str: fmt.Sprint("Hello ", yourName)}
+		store.Values["salutation"] = &Value{Str: fmt.Sprint("Hello ", yourName)}
 		return b.Container(""), nil
 	}
 	in := NewJsonReader(strings.NewReader(`{"name":"joe"}`)).Node()

@@ -43,7 +43,7 @@ func (kv *StoreData) List(parentPath string) Node {
 	s := &MyNode{Label:"StoreData List"}
 	var keyList []string
 	var i int
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*schema.Value, first bool) (next Node, err error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
 		if new {
 			var childPath string
 			if len(sel.State.Key()) > 0 {
@@ -70,8 +70,8 @@ func (kv *StoreData) List(parentPath string) Node {
 				i++
 			}
 			if hasMore := i < len(keyList); hasMore {
-				var key []*schema.Value
-				if key, err = schema.CoerseKeys(meta, []string{keyList[i]}); err != nil {
+				var key []*Value
+				if key, err = CoerseKeys(meta, []string{keyList[i]}); err != nil {
 					return nil, err
 				}
 				sel.State.SetKey(key)
@@ -106,12 +106,12 @@ func (kv *StoreData) containerPath(parentPath string, meta schema.Meta) string {
 	return fmt.Sprint(parentPath, "/", meta.GetIdent())
 }
 
-func (kv *StoreData) listPath(parentPath string, key []*schema.Value) string {
+func (kv *StoreData) listPath(parentPath string, key []*Value) string {
 	// TODO: support compound keys
 	return fmt.Sprint(parentPath, "=", key[0].String())
 }
 
-func (kv *StoreData) listPathWithNewKey(parentPath string, key []*schema.Value) string {
+func (kv *StoreData) listPathWithNewKey(parentPath string, key []*Value) string {
 	eq := strings.LastIndex(parentPath, "=")
 	return kv.listPath(parentPath[:eq], key)
 }
@@ -147,7 +147,7 @@ func (kv *StoreData) Container(copy string) Node {
 		msg := fmt.Sprintf("No discriminating data for choice schema %s ", sel.String())
 		return nil, errors.New(msg)
 	}
-	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*schema.Value, error) {
+	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*Value, error) {
 		return kv.store.Value(kv.containerPath(copy, meta), meta.GetDataType()), nil
 	}
 	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error) {
@@ -170,7 +170,7 @@ func (kv *StoreData) Container(copy string) Node {
 		}
 		return
 	}
-	s.OnWrite = func(sel *Selection, meta schema.HasDataType, v *schema.Value) (err error) {
+	s.OnWrite = func(sel *Selection, meta schema.HasDataType, v *Value) (err error) {
 		propPath := kv.containerPath(copy, meta)
 		if err = kv.store.SetValue(propPath, v); err != nil {
 			return err
@@ -178,7 +178,7 @@ func (kv *StoreData) Container(copy string) Node {
 		if schema.IsKeyLeaf(sel.State.SelectedMeta(), meta) {
 			oldPath := copy
 			// TODO: Support compound keys
-			newKey := []*schema.Value{v}
+			newKey := []*Value{v}
 			newPath := kv.listPathWithNewKey(copy, newKey)
 			kv.store.RenameKey(oldPath, newPath)
 		}

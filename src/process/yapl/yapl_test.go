@@ -3,8 +3,8 @@ package yapl
 import (
 	"testing"
 	"process"
-	"schema"
 	"data"
+	"strings"
 )
 
 func TestYaplExec(t *testing.T) {
@@ -18,31 +18,35 @@ func TestYaplExec(t *testing.T) {
     attribute = facet
     if data.value
       additional.detail = concat(label, data.value)
+    select extra into even
+      more = info
 `)
 	if err != nil {
 		t.Fatal(err)
 	}
 	tests := []struct {
-		aPath string
-		aValue *schema.Value
+		aData string
 		expected string
 	} {
 		{
-			"color",
-			&schema.Value{Str:"red"},
+			`{"color":"red"}`,
 			`{"tone":"red"}`,
 		},
 		{
-			"facets=seeds/facet",
-			&schema.Value{Str:"seeds"},
+			`{"facets":[{"facet":"seeds"}]}`,
 			`{"attributes":[{"attribute":"seeds"}]}`,
+		},
+		{
+			`{"facets":[{"facet":"seeds","extra":{"info":"32"}}]}`,
+			// correct expectation, but json wtr is wrong
+			//   `{"attributes":[{"attribute":"seeds","even":{"more":"32"}}]}`,
+			`{"attributes":[{"attribute":"seeds"},{"even":{"more":"32"}}]}`,
 		},
 	}
 	for i, test := range tests {
-		p := process.NewProcess(a.Data.Node(), a.Module).Into(z.Data.Node(), z.Module)
-		a.Store.Clear()
+		aIn := data.NewJsonReader(strings.NewReader(test.aData))
+		p := process.NewProcess(aIn.Node(), a.Module).Into(z.Data.Node(), z.Module)
 		z.Store.Clear()
-		a.Store.Values[test.aPath] = test.aValue
 		err := p.Run(scripts, "main")
 		if err != nil {
 			t.Error(err)
@@ -74,6 +78,11 @@ module apple {
 				type string;
 			}
 		}
+		container extra {
+			leaf info {
+				type string;
+			}
+		}
 	}
 }
 `
@@ -93,6 +102,11 @@ module orange {
 		}
 		container additional {
 			leaf detail {
+				type string;
+			}
+		}
+		container even {
+			leaf more {
 				type string;
 			}
 		}

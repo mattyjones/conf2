@@ -30,7 +30,7 @@ type Details struct {
 	MandatoryFlag Flag
 }
 
-func (d *Details) Config(p *Path) bool {
+func (d *Details) Config(p Path) bool {
 	switch d.ConfigFlag {
 	case SET_TRUE:
 		return true
@@ -41,9 +41,9 @@ func (d *Details) Config(p *Path) bool {
 	// if details are on leaf, then p is parent container, otherwise
 	// p is what we're supposed to check config for
 	if p != nil {
-		if hasDetails, ok := p.meta.(HasDetails); ok {
+		if hasDetails, ok := p.Meta().(HasDetails); ok {
 			if parentDetails := hasDetails.Details(); parentDetails == d {
-				return hasDetails.Details().Config(p.parent)
+				return hasDetails.Details().Config(p.MetaParent())
 			}
 			return hasDetails.Details().Config(p)
 		}

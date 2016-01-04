@@ -1,23 +1,24 @@
-package schema
+package data
 
 import (
 	"strings"
 	"bytes"
+	"schema"
 )
 
 // Immutable otherwise children paths become illegal if parent state changes
 type Path struct {
-	meta   MetaList
+	meta   schema.MetaList
 	key    []*Value
 	params map[string][]string
 	parent *Path
 }
 
-func NewRootPath(meta MetaList, params map[string][]string) *Path {
+func NewRootPath(meta schema.MetaList, params map[string][]string) *Path {
 	return &Path{meta:meta, params:params}
 }
 
-func NewListItemPath(parent *Path, meta *List, key []*Value) *Path {
+func NewListItemPath(parent *Path, meta *schema.List, key []*Value) *Path {
 	return &Path{parent: parent, meta:meta, key: key}
 }
 
@@ -25,7 +26,7 @@ func (path *Path) SetKey(key []*Value) *Path {
 	return &Path{parent: path.parent, meta:path.meta, key: key}
 }
 
-func NewContainerPath(parent *Path, meta MetaList) *Path {
+func NewContainerPath(parent *Path, meta schema.MetaList) *Path {
 	return &Path{parent: parent, meta:meta}
 }
 
@@ -33,7 +34,11 @@ func (path *Path) Parent() *Path {
 	return path.parent
 }
 
-func (path *Path) Meta() MetaList {
+func (path *Path) MetaParent() schema.Path {
+	return path.parent
+}
+
+func (path *Path) Meta() schema.MetaList {
 	return path.meta
 }
 

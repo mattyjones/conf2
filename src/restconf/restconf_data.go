@@ -45,7 +45,7 @@ func SelectManagement(service *Service) data.Node {
 		}
 		return
 	}
-	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, val *schema.Value) (err error) {
+	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, val *data.Value) (err error) {
 		switch meta.GetIdent() {
 		case "docRoot":
 			service.SetDocRoot(&schema.FileStreamSource{Root: val.Str})
@@ -61,7 +61,7 @@ func SelectManagement(service *Service) data.Node {
 		}
 		return
 	}
-	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
+	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*data.Value, error) {
 		switch meta.GetIdent() {
 		default:
 			return data.ReadField(meta, service)
@@ -82,10 +82,10 @@ func SelectModule(name string, reg *registration) data.Node {
 		}
 		return nil, nil
 	}
-	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
+	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*data.Value, error) {
 		switch meta.GetIdent() {
 		case "name":
-			return &schema.Value{Str: name}, nil
+			return &data.Value{Str: name}, nil
 		}
 		return nil, nil
 	}
@@ -95,16 +95,16 @@ func SelectModule(name string, reg *registration) data.Node {
 func SelectModules(registrations map[string]*registration) (data.Node) {
 	s := &data.MyNode{}
 	index := newRegIndex(registrations)
-	s.OnNext = func(sel *data.Selection, meta *schema.List, new bool, keys []*schema.Value, isFirst bool) (data.Node, error) {
+	s.OnNext = func(sel *data.Selection, meta *schema.List, new bool, keys []*data.Value, isFirst bool) (data.Node, error) {
 		if hasMore, err := index.Index.OnNext(sel, meta, keys, isFirst); hasMore {
 			return SelectModule(index.Index.CurrentKey(), index.Selected), err
 		}
 		return nil, nil
 	}
-	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*schema.Value, error) {
+	s.OnRead = func(sel *data.Selection, meta schema.HasDataType) (*data.Value, error) {
 		switch meta.GetIdent() {
 		case "name":
-			return &schema.Value{Str: index.Index.CurrentKey()}, nil
+			return &data.Value{Str: index.Index.CurrentKey()}, nil
 		}
 		return nil, nil
 	}

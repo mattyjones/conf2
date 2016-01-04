@@ -47,7 +47,7 @@ module m {
 		t.Fatal(err)
 	}
 	node := &MyNode{}
-	node.OnNext = func(*Selection, *schema.List, bool, []*schema.Value, bool) (Node, error) {
+	node.OnNext = func(*Selection, *schema.List, bool, []*Value, bool) (Node, error) {
 		return node, nil
 	}
 	node.OnSelect = func(*Selection, schema.MetaList, bool) (Node, error) {
@@ -64,7 +64,7 @@ module m {
 	for _, test := range tests {
 		t.Log(test[0])
 		root := NewSelection(node, module)
-		selection, err = WalkPath(root, schema.NewPathSlice(test[0], module))
+		selection, err = WalkPath(root, NewPathSlice(test[0], module))
 		if selection == nil {
 			t.Errorf("Target for %s not found", test[0])
 		} else {
@@ -129,7 +129,7 @@ module json-test {
 			if err != nil {
 				t.Error(err)
 			}
-			p := schema.NewPathSlice(test.path, module)
+			p := NewPathSlice(test.path, module)
 			if in, err = WalkPath(in, p); err != nil {
 				t.Error(err)
 			}
