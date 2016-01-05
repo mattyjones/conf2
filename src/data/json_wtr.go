@@ -196,6 +196,7 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 		var s string
 		s, err = v.Data.String()
 		if err == nil {
+			// TODO: don't assume output is json
 			json.out.WriteString(s)
 		}
 	case schema.FMT_INT64:
