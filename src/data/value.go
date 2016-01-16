@@ -135,6 +135,18 @@ func (v *Value) String() string {
 	}
 }
 
+func SetValues(meta []schema.HasDataType, objs ...interface{}) []*Value {
+	var err error
+	vals := make([]*Value, len(meta))
+	for i, obj := range objs {
+		vals[i], err = SetValue(meta[i].GetDataType(), obj)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return vals
+}
+
 // Incoming value should be of appropriate type according to given data type format
 func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
 	if val == nil {

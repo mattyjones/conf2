@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"schema"
 	"regexp"
+	"conf2"
 )
 
 type Selection struct {
+	parent *Selection
 	Events Events
 	Node   Node
 	State  *WalkState
@@ -34,6 +36,7 @@ func NewSelection(node Node, meta schema.MetaList) *Selection {
 
 func (sel *Selection) Select(node Node) *Selection {
 	child := &Selection{
+		parent: sel,
 		Events: sel.Events,
 		Node: node,
 		State: &WalkState{
@@ -112,4 +115,71 @@ func (sel *Selection) OnRegex(e Event, regex *regexp.Regexp, handler ListenFunc)
 	listener := &Listener{event: e, regex: regex, handler: handler}
 	sel.Events.AddListener(listener)
 	return listener
+}
+
+func (sel *Selection) ResolveLeafref(cwd *Selection, lreafrefIdent string, value interface{}) (interface{}, error) {
+	m := schema.FindByIdent2(sel.State.SelectedMeta(), lreafrefIdent).(schema.HasDataType)
+	sel, prop, err := XPath{}.SelectProperty(cwd, m.GetDataType().Path)
+	if err != nil {
+		return nil, err
+	}
+	switch x := sel.State.SelectedMeta().(type) {
+	case *schema.List:
+		if x.KeyMeta()[0].GetIdent() != prop.GetIdent() {
+			return nil, conf2.NewErrC("Cannot resolve leafrefs to non-key values", conf2.NotImplemented)
+		}
+		key, keyErr := SetValue(x.KeyMeta()[0].GetDataType(), value)
+		if keyErr != nil {
+			return nil, keyErr
+		}
+		found, foundErr := sel.Node.Next(sel, x, false, []*Value{key}, true)
+		if foundErr != nil {
+			return nil, foundErr
+		}
+		if found != nil {
+			sel = sel.SelectListItem(found, []*Value{key})
+		}
+	}
+	if schema.IsLeaf(prop) {
+		v, err := sel.Node.Read(sel, prop.(schema.HasDataType))
+		if err != nil {
+			return nil, err
+		}
+		return v.Value(), nil
+	}
+	return sel.Peek(), nil
+}
+
+//func (sel *Selection) FindSelectionByPropertyXPath(path string, prop interface{}) (*Selection, error) {
+//	panic("TODO")
+//	return nil, nil
+//}
+//
+//func (sel *Selection) FindByPropertyXPath(ident string, prop interface{}) (interface{}, error) {
+//	m := schema.FindByIdent2(sel.State.SelectedMeta(), ident).(schema.HasDataType)
+//	xpath := m.GetDataType().Path
+//	hndSel, err := sel.FindSelectionByPropertyXPath(xpath, prop)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return hndSel.Peek(), nil
+//}
+//
+//func (sel *Selection) Find(path string) (*Selection, error) {
+//	if strings.HasPrefix("../", path) {
+//		if sel.parent != nil {
+//			return sel.parent.Find(path[3:])
+//		} else {
+//			return nil, conf2.NewErrC("No parent path to resolve " + path, conf2.NotFound)
+//		}
+//	}
+//	p, err := ParsePath(path, sel.State.SelectedMeta())
+//	if err != nil {
+//		return nil, err
+//	}
+//	return WalkPath(sel, p)
+//}
+
+func (sel *Selection) Peek() interface{} {
+	return sel.Node.Peek(sel)
 }

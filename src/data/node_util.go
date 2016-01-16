@@ -21,6 +21,22 @@ func ChangeValue(sel *Selection, ident string, value interface{}) error {
 	return n.Write(sel, meta, v)
 }
 
+func Get(sel *Selection, ident string) (interface{}, error) {
+	prop := schema.FindByIdent2(sel.State.SelectedMeta(), ident)
+	if prop != nil {
+		if schema.IsLeaf(prop) {
+			v, err := sel.Node.Read(sel, prop.(schema.HasDataType))
+			if err != nil {
+				return nil, err
+			}
+			return v.Value(), nil
+		} else {
+			return sel.Peek(), nil
+		}
+	}
+	return nil, nil
+}
+
 func GetValue(sel *Selection, ident string) (*Value, error) {
 	prop := schema.FindByIdent2(sel.State.SelectedMeta(), ident)
 	if prop != nil {
@@ -31,6 +47,10 @@ func GetValue(sel *Selection, ident string) (*Value, error) {
 		return v, nil
 	}
 	return nil, nil
+}
+
+func ClearAll(sel *Selection) error {
+	return sel.Node.Event(sel, DELETE)
 }
 
 func SelectMetaList(sel *Selection, ident string, autoCreate bool) (*Selection, error) {

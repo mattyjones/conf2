@@ -47,20 +47,24 @@ func SelectionToSelection(from *Selection, to *Selection) *Editor {
 	}
 }
 
-func NodeToPath(fromNode Node, data Data, path string) (*Editor, error) {
+func NodeToNodePath(fromNode Node, toNode Node, meta schema.MetaList, path string) (*Editor, error) {
 	var err error
 	var p *PathSlice
-	if p, err = ParsePath(path, data.Schema()); err != nil {
+	if p, err = ParsePath(path, meta); err != nil {
 		return nil, err
 	}
 	var to *Selection
-	if to, err = WalkPath(NewSelection(data.Node(), data.Schema()), p); err != nil {
+	if to, err = WalkPath(NewSelection(toNode, meta), p); err != nil {
 		return nil, err
 	}
 	if to == nil {
 		return nil, PathNotFound(path)
 	}
 	return NodeToSelection(fromNode, to), nil
+}
+
+func NodeToPath(fromNode Node, data Data, path string) (*Editor, error) {
+	return NodeToNodePath(fromNode, data.Node(), data.Schema(), path)
 }
 
 func PathToNode(data Data, path string, toNode Node) (*Editor, error) {
@@ -166,10 +170,10 @@ func (e *Editor) Edit(strategy Strategy, controller WalkController) (err error) 
 
 func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy, path string) (Node, error) {
 	if toNode == nil {
-		return nil, conf2.NewErrC("Unable to get target node " + path, conf2.NotFound)
+		return nil, conf2.NewErrC("Unable to get edit target list node " + path, conf2.NotFound)
 	}
 	if fromNode == nil {
-		return nil, conf2.NewErrC("Unable to get source node" + path, conf2.NotFound)
+		return nil, conf2.NewErrC("Unable to get edit source list node " + path, conf2.NotFound)
 	}
 	to := &Selection{
 		Events: e.to.Events,
@@ -238,10 +242,10 @@ func (e *Editor) list(fromNode Node, toNode Node, new bool, strategy Strategy, p
 
 func (e *Editor) container(fromNode Node, toNode Node, new bool, strategy Strategy, path string) (Node, error) {
 	if toNode == nil {
-		return nil, conf2.NewErrC("Unable to get target container selection " + path, conf2.NotFound)
+		return nil, conf2.NewErrC("Unable to get target edit container node " + path, conf2.NotFound)
 	}
 	if fromNode == nil {
-		return nil, conf2.NewErrC("Unable to get source node" + path, conf2.NotFound)
+		return nil, conf2.NewErrC("Unable to get source edit container node " + path, conf2.NotFound)
 	}
 	to := &Selection{
 		Events: e.to.Events,

@@ -16,6 +16,7 @@ type Node interface {
 	Choose(sel *Selection, choice *schema.Choice) (m schema.Meta, err error)
 	Event(sel *Selection, e Event) error
 	Action(sel *Selection, meta *schema.Rpc, input Node) (output Node, err error)
+	Peek(sel *Selection) interface{}
 }
 
 // A way to direct changes to another node to enable CopyOnWrite or other persistable options
@@ -26,6 +27,7 @@ type ChangeAwareNode interface {
 
 type MyNode struct {
 	Label        string
+	Internal     interface{}
 	ChangeAccess Node
 	OnNext       NextFunc
 	OnSelect     SelectFunc
@@ -35,6 +37,7 @@ type MyNode struct {
 	OnAction     ActionFunc
 	OnEvent      EventFunc
 	OnFind       FindFunc
+	OnPeek       PeekFunc
 	Resource     schema.Resource
 }
 
@@ -138,6 +141,13 @@ func (s *MyNode) Find(sel *Selection, p *Path) (err error) {
 	return nil
 }
 
+func (s *MyNode) Peek(sel *Selection) (interface{}) {
+	if s.OnPeek != nil {
+		return s.OnPeek(sel)
+	}
+	return s.Internal
+}
+
 // Useful when you want to return an error from Data.Node().  Any call to get data
 // will return same error
 //
@@ -188,6 +198,10 @@ func (e ErrorNode) Find(*Selection, *Path) (error) {
 	return e.Err
 }
 
+func (e ErrorNode) Peek(sel *Selection) (interface{}) {
+	return nil
+}
+
 type NextFunc func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error)
 type SelectFunc func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error)
 type ReadFunc func(sel *Selection, meta schema.HasDataType) (*Value, error)
@@ -196,3 +210,4 @@ type ChooseFunc func(sel *Selection, choice *schema.Choice) (m schema.Meta, err 
 type ActionFunc func(sel *Selection, rpc *schema.Rpc, input Node) (output Node, err error)
 type FindFunc func(sel *Selection, path *Path) error
 type EventFunc func(sel *Selection, e Event) error
+type PeekFunc func(sel *Selection) interface{}

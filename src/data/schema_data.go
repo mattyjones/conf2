@@ -276,7 +276,7 @@ func (self *SchemaData) selectMetaList(data schema.MetaList) (Node) {
 }
 
 func (self *SchemaData) selectNotifications(notifications schema.MetaList) (Node) {
-	s := &MyNode{}
+	s := &MyNode{Internal: notifications}
 	i := listIterator{dataList: notifications, resolve: self.resolve}
 	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		var notif *schema.Notification
@@ -297,7 +297,6 @@ func (self *SchemaData) selectNotifications(notifications schema.MetaList) (Node
 }
 
 func (self *SchemaData) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.LeafList, any *schema.Any) (Node) {
-	s := &MyNode{}
 	var leafy schema.HasDataType
 	if leaf != nil {
 		leafy = leaf
@@ -306,6 +305,7 @@ func (self *SchemaData) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.Leaf
 	} else {
 		leafy = any
 	}
+	s := &MyNode{Internal:leafy}
 	details := leafy.(schema.HasDetails).Details()
 	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (Node, error) {
 		switch meta.GetIdent() {
@@ -354,7 +354,7 @@ func (self *SchemaData) selectMetaUses(data *schema.Uses) (Node) {
 }
 
 func (self *SchemaData) selectMetaCases(choice *schema.Choice) (Node) {
-	s := &MyNode{}
+	s := &MyNode{Internal:choice}
 	i := listIterator{dataList: choice, resolve: self.resolve}
 	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		var choiceCase *schema.ChoiceCase
@@ -429,7 +429,7 @@ func (i *listIterator) iterate(sel *Selection, meta *schema.List, keys []*Value,
 }
 
 func (self *SchemaData) SelectDefinition(parent schema.MetaList, data schema.Meta) (Node) {
-	s := &MyNode{}
+	s := &MyNode{Internal:data}
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		return self.resolveDefinitionCase(choice, data)
 	}
@@ -479,7 +479,7 @@ func (self *SchemaData) SelectDefinition(parent schema.MetaList, data schema.Met
 }
 
 func (self *SchemaData) SelectDefinitionsList(dataList schema.MetaList) (Node) {
-	s := &MyNode{}
+	s := &MyNode{Internal:dataList}
 	i := listIterator{dataList: dataList, resolve: self.resolve}
 	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		if new {

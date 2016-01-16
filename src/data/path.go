@@ -35,6 +35,13 @@ func (path *Path) Parent() *Path {
 }
 
 func (path *Path) MetaParent() schema.Path {
+	if path.parent == nil {
+		// subtle difference returning nil and interface reference to nil struct.
+		// See http://stackoverflow.com/questions/13476349/check-for-nil-and-nil-interface-in-go
+		// by rights in go, all callers should check for interface check for nil and nil interface
+		// so this hack some-what contributes to the bad practice of not doing so.
+		return nil
+	}
 	return path.parent
 }
 

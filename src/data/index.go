@@ -3,10 +3,37 @@ package data
 import (
 	"schema"
 	"sort"
+	"reflect"
 )
 
+type Index struct {
+	Position int
+	Keys     []reflect.Value
+}
+
+func NewIndex(mmap interface{}) *Index {
+	mapVal := reflect.ValueOf(mmap)
+	return &Index{
+		Keys : mapVal.MapKeys(),
+	}
+}
+
+func (self *Index) NextKey(first bool) interface{} {
+	if first {
+		self.Position = 0
+	} else {
+		self.Position++
+	}
+	if self.Position < len(self.Keys) {
+		return self.Keys[self.Position]
+	}
+	return ""
+}
+
+// Deprecated: Use Index
+//
 // Example:
-//   s := &MySelection{}
+//   s := &MyNode{}
 //   index := newMappingIndex(data)
 //   s.OnNext = index.Index.OnNext
 //   ...

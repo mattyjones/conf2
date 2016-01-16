@@ -19,6 +19,7 @@ type Extend struct {
 	OnFind   ExtendFindFunc
 	OnEvent  ExtendEventFunc
 	OnExtend ExtendFunc
+	OnPeek ExtendPeekFunc
 }
 
 func (e *Extend) String() string {
@@ -113,6 +114,14 @@ func (e *Extend) Find(sel *Selection, p *Path) (err error) {
 	}
 }
 
+func (e *Extend) Peek(sel *Selection) interface{} {
+	if e.OnPeek == nil {
+		return e.Node.Peek(sel)
+	} else {
+		return e.OnPeek(e.Node, sel)
+	}
+}
+
 type ExtendNextFunc func(parent Node, sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error)
 type ExtendSelectFunc func(parent Node, sel *Selection, meta schema.MetaList, new bool) (child Node, err error)
 type ExtendReadFunc func(parent Node, sel *Selection, meta schema.HasDataType) (*Value, error)
@@ -122,3 +131,4 @@ type ExtendActionFunc func(parent Node, sel *Selection, rpc *schema.Rpc, input N
 type ExtendFindFunc func(parent Node, sel *Selection, path *Path) error
 type ExtendEventFunc func(parent Node, sel *Selection, e Event) error
 type ExtendFunc func(e *Extend, sel *Selection, child Node) (Node, error)
+type ExtendPeekFunc func(parent Node, sel *Selection) interface{}
