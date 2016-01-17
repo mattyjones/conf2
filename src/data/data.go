@@ -1,13 +1,26 @@
 package data
 
 import (
-"schema"
-"strings"
+	"schema"
+	"strings"
 )
 
 type Data interface {
 	Node() Node
 	Schema() schema.MetaList
+}
+
+type DataHandle struct {
+	Hnd  Node
+	Meta schema.MetaList
+}
+
+func (self DataHandle) Node() Node {
+	return self.Hnd
+}
+
+func (self DataHandle) Schema() schema.MetaList {
+	return self.Meta
 }
 
 //

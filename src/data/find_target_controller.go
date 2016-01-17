@@ -74,6 +74,7 @@ func (n *FindTarget) ContainerIterator(selection *Selection) (schema.MetaIterato
 		n.setTarget(selection)
 		return schema.EmptyInterator(0), nil
 	}
+
 	// should we shorten path to be path[position...tail] ?
 	if err = selection.Node.Find(selection, n.path.Tail); err != nil {
 		return nil, err

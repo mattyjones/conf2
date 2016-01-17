@@ -20,7 +20,7 @@ func (x XPath) Get(cwd *Selection, xpath string) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if sel == nil || prop == nil{
+	if sel == nil || prop == nil {
 		return nil, err
 	}
 	if schema.IsLeaf(prop) {
