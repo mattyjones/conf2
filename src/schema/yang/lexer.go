@@ -80,6 +80,7 @@ var keywords = [...]string{
 	"include",
 	"action",
 	"anyxml",
+	"path",
 }
 
 const eof rune = 0
@@ -423,6 +424,7 @@ func lexBegin(l *lexer) stateFunc {
 		kywd_config,
 		kywd_type,
 		kywd_length,
+		kywd_path,
 		kywd_key,
 		kywd_mandatory,
 		kywd_default,

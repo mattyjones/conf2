@@ -109,6 +109,7 @@ func popAndAddMeta(yylval *yySymType) error {
 %token kywd_include
 %token kywd_action
 %token kywd_anyxml
+%token kywd_path
 
 %%
 
@@ -281,7 +282,8 @@ type_stmt : type_stmt_def type_stmt_body {
         };
 
 type_stmt_def : kywd_type token_ident {
-            yylval.dataType = schema.NewDataType($2)
+            y := yylval.stack.Peek().(schema.HasDataType)
+            yylval.dataType = schema.NewDataType(y, $2)
         };
 
 type_stmt_body :
@@ -296,7 +298,10 @@ type_stmt_types :
                 goto ret1
             }
         }
-        | enum_stmts;
+        | enum_stmts
+        | kywd_path token_string  token_semi {
+              yylval.dataType.Path = tokenString($2)
+        };
 
 container_stmt :
     container_def
@@ -519,7 +524,7 @@ anyxml_stmt:
 
 anyxml_def :
     kywd_anyxml token_ident {
-        yylval.stack.Push(&schema.Any{Ident:$2})
+        yylval.stack.Push(schema.NewAny($2))
     }
 
 leaf_stmt:

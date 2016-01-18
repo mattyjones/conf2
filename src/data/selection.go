@@ -123,6 +123,9 @@ func (sel *Selection) ResolveLeafref(cwd *Selection, lreafrefIdent string, value
 	if err != nil {
 		return nil, err
 	}
+	if prop == nil {
+		return nil, conf2.NewErrC("leafref path did not resolve: " + m.GetDataType().Path, conf2.NotFound)
+	}
 	switch x := sel.State.SelectedMeta().(type) {
 	case *schema.List:
 		if x.KeyMeta()[0].GetIdent() != prop.GetIdent() {

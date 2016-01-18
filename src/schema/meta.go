@@ -569,7 +569,7 @@ func (y *Leaf) SetSibling(sibling Meta) {
 
 // HasDataType
 func (y *Leaf) GetDataType() *DataType {
-	return y.DataType
+	return y.DataType.Resolve()
 }
 func (y *Leaf) SetDataType(dataType *DataType) {
 	y.DataType = dataType
@@ -632,13 +632,18 @@ func (y *LeafList) Details() *Details {
 
 ////////////////////////////////////////////////////
 
-var AnyDataType = NewDataType("any")
-
 type Any struct {
 	Ident       string
 	Description string
 	MetaBase
 	details  Details
+	Type *DataType
+}
+
+func NewAny(ident string) *Any {
+	any := &Any{Ident:ident}
+	any.Type = NewDataType(any, "any")
+	return any
 }
 
 // Distinguishes the concrete type in choice-cases
@@ -675,7 +680,7 @@ func (y *Any) SetSibling(sibling Meta) {
 
 // HasDataType
 func (y *Any) GetDataType() *DataType {
-	return AnyDataType
+	return y.Type
 }
 func (y *Any) SetDataType(dataType *DataType) {
 	panic("Illegal operation")
@@ -1026,7 +1031,7 @@ func (y *Typedef) SetSibling(sibling Meta) {
 
 // HasDataType
 func (y *Typedef) GetDataType() *DataType {
-	return y.DataType
+	return y.DataType.Resolve()
 }
 
 func (y *Typedef) SetDataType(dataType *DataType) {
@@ -1034,6 +1039,7 @@ func (y *Typedef) SetDataType(dataType *DataType) {
 }
 
 type DataType struct {
+	Parent		HasDataType
 	Ident       string
 	Format      DataFormat
 	Range       string
@@ -1043,6 +1049,7 @@ type DataType struct {
 	Path        string
 	Pattern     string
 	Default     string
+	resolved 	*DataType
 	/*
 		FractionDigits
 		Bit
@@ -1052,8 +1059,8 @@ type DataType struct {
 	*/
 }
 
-func NewDataType(ident string) (t *DataType) {
-	t = &DataType{Ident: ident}
+func NewDataType(Parent HasDataType, ident string) (t *DataType) {
+	t = &DataType{Parent: Parent, Ident: ident}
 	// if not found, then not internal type and Resolve should
 	// determine type
 	t.Format = DataTypeImplicitFormat(ident)
@@ -1061,8 +1068,23 @@ func NewDataType(ident string) (t *DataType) {
 }
 
 func (y *DataType) Resolve() *DataType {
-	// TODO: Will look into hierarchy and overlay constraints
-	return y
+	if y.resolved == nil {
+		// TODO: Will look into hierarchy and overlay constraints
+		if y.Format == FMT_EMPTY {
+			y.resolved = y
+		} else if y.Format == FMT_LEAFREF || y.Format == FMT_LEAFREF_LIST {
+			resolvedMeta := FindByPath(y.Parent.GetParent(), y.Path)
+			if resolvedMeta == nil {
+				panic("Leafref path did not resolve " + y.Path)
+			}
+			y.resolved = resolvedMeta.(HasDataType).GetDataType()
+		} else {
+			y.resolved = y
+			//panic("not implemented yet")
+		}
+	}
+
+	return y.resolved
 }
 
 func (y *DataType) DecodeLength(encoded string) (err error) {

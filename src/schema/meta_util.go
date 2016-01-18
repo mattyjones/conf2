@@ -132,6 +132,9 @@ func FindByPath(root MetaList, path string) Meta {
 }
 
 func find(root MetaList, path string, resolveProxies bool) (def Meta) {
+	if strings.HasPrefix(path, "../") {
+		return find(root.GetParent(), path[3:], resolveProxies)
+	}
 	elems := strings.SplitN(path, "/", -1)
 	lastLevel := len(elems) - 1
 	var ok bool

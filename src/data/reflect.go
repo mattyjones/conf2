@@ -41,6 +41,9 @@ func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj inter
 		}
 	case schema.FMT_ANYDATA:
 		if anyData, isAnyData := value.Interface().(AnyData); isAnyData {
+			if value.IsNil() {
+				return nil, nil
+			}
 			v.Data = anyData
 		} else {
 			return nil, conf2.NewErr("Cannot read anydata from value that doesn't implement AnyData")

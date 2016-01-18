@@ -28,7 +28,17 @@ func MarshalContainer(Obj interface{}) Node {
 		fieldName := schema.MetaNameToFieldName(meta.GetIdent())
 		value := objType.FieldByName(fieldName)
 		if schema.IsList(meta) {
-			return MarshalList(value.Interface().([]interface{})), nil
+			if value.Kind() == reflect.Map {
+				marshal := &MarshalMap{
+					Map:value.Interface(),
+				}
+				return marshal.Node(), nil
+			} else {
+				marshal := &MarshalArray{
+					Array: value.Interface(),
+				}
+				return marshal.Node(), nil
+			}
 		} else {
 			if value.Kind() == reflect.Struct {
 				return MarshalContainer(value.Addr().Interface()), nil
@@ -47,39 +57,63 @@ func MarshalContainer(Obj interface{}) Node {
 	return s
 }
 
-func MarshalList(list []interface{}) Node {
-	panic("Not implemented")
-	return nil
-}
-
-type MarshalIndexedList struct {
-	Map interface{}
-	OnNewItem func() interface{}
+type MarshalArray struct {
+	Array        interface{}
+	OnNewItem    func() interface{}
 	OnSelectItem func(item interface{}) Node
 }
 
-func (self *MarshalIndexedList) Node() Node {
+func (self *MarshalArray) Node() Node {
+	aryReflect := reflect.ValueOf(self.Array)
+	n := &MyNode{
+		Label: "Marshal " + aryReflect.Type().Name(),
+		Internal: self.Array,
+	}
+	n.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+		panic("Not implemented")
+		return nil, nil
+	}
+	return n
+}
+
+type MarshalMap struct {
+	Map          interface{}
+	OnNewItem    func() interface{}
+	OnSelectItem func(item interface{}) Node
+}
+
+func (self *MarshalMap) Node() Node {
 	mapReflect := reflect.ValueOf(self.Map)
 	n := &MyNode{
 		Label: "Marshal " + mapReflect.Type().Name(),
 		Internal: self.Map,
 	}
-	//valueReflect := reflect.ValueOf(prototype)
 	index := NewIndex(self.Map)
 	n.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
 		var item interface{}
 		if new {
 			item = self.OnNewItem()
+			mapKey := reflect.ValueOf(key[0].Value())
+			mapReflect.SetMapIndex(mapKey, reflect.ValueOf(item))
 		} else if len(key) > 0 {
 			mapKey := reflect.ValueOf(key[0].Value())
-			item = mapReflect.MapIndex(mapKey).Interface()
+			itemVal := mapReflect.MapIndex(mapKey)
+			if itemVal.IsValid() {
+				item = itemVal.Interface()
+			}
 		} else {
 			nextKey := index.NextKey(first)
-			sel.State.SetKey(SetValues(meta.KeyMeta(), nextKey))
-			item = mapReflect.MapIndex(reflect.ValueOf(nextKey)).Interface()
+			if nextKey != NO_VALUE {
+				sel.State.SetKey(SetValues(meta.KeyMeta(), nextKey.Interface()))
+				itemVal := mapReflect.MapIndex(nextKey)
+				item = itemVal.Interface()
+			}
 		}
 		if item != nil {
-			return self.OnSelectItem(item), nil
+			if self.OnSelectItem != nil {
+				return self.OnSelectItem(item), nil
+			}
+			return MarshalContainer(item), nil
 		}
 		return nil, nil
 	}

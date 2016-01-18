@@ -18,7 +18,10 @@ func NewIndex(mmap interface{}) *Index {
 	}
 }
 
-func (self *Index) NextKey(first bool) interface{} {
+var NO_VALUE reflect.Value
+
+
+func (self *Index) NextKey(first bool) reflect.Value {
 	if first {
 		self.Position = 0
 	} else {
@@ -27,7 +30,8 @@ func (self *Index) NextKey(first bool) interface{} {
 	if self.Position < len(self.Keys) {
 		return self.Keys[self.Position]
 	}
-	return ""
+
+	return NO_VALUE
 }
 
 // Deprecated: Use Index

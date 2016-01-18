@@ -18,6 +18,13 @@ func NewJsonReader(in io.Reader) *JsonReader {
 	return r
 }
 
+func (self *JsonReader) Handle(meta schema.MetaList) (Data) {
+	return &DataHandle{
+		Hnd: self.Node(),
+		Meta: meta,
+	}
+}
+
 func (self *JsonReader) Node() (Node) {
 	var err error
 	if self.values == nil {

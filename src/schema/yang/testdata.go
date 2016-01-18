@@ -49,7 +49,9 @@ module rtstone {
         list leaderboard {
             container entry {
                 leaf team {
-                    type string;
+                    type leafref {
+                    	path "../../../teams/color";
+                    }
                 }
                 leaf time {
                     type int32;

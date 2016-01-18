@@ -21,6 +21,13 @@ func NewJsonWriter(out io.Writer) *JsonWriter {
 	}
 }
 
+func (json *JsonWriter) Handle(meta schema.MetaList) Data {
+	return &DataHandle{
+		Hnd: json.Node(),
+		Meta: meta,
+	}
+}
+
 func (json *JsonWriter) Node() Node {
 	var closer closerFunc
 	// JSON can begin at a container, inside a list or inside a container, each of these has

@@ -43,7 +43,7 @@ module m {
 		t.Fatal(err)
 	}
 
-	str := schema.NewDataType("string")
+	str := schema.NewDataType(nil, "string")
 
 	// new
 	a := NewBufferStore()

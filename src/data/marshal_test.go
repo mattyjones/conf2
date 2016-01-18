@@ -4,6 +4,7 @@ import (
 	"schema/yang"
 	"strings"
 	"testing"
+	"schema"
 )
 
 type TestMessage struct {
@@ -37,5 +38,69 @@ module m {
 	}
 	if obj.Message.Hello != "bob" {
 		t.Fatal("Not selected")
+	}
+}
+
+type TestMessageItem struct {
+	Id string
+}
+
+func TestMarshalIndex(t *testing.T) {
+	mstr := `
+module m {
+	prefix "";
+	namespace "";
+	revision 0;
+	list messages {
+		key "id";
+		leaf id {
+			type string;
+		}
+	}
+}
+`
+	m, err := yang.LoadModuleFromByteArray([]byte(mstr), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	objs := make(map[string]*TestMessageItem)
+	marshaller := &MarshalMap{
+		Map: objs,
+		OnNewItem: func() interface{} {
+			return &TestMessageItem{}
+		},
+		OnSelectItem: func(item interface{}) Node {
+			return MarshalContainer(item)
+		},
+	}
+	d := NewJsonReader(strings.NewReader(`{"messages":[{"id":"bob"},{"id":"barb"}]}`)).Handle(m)
+	sel, selErr := WalkDataPath(d, "messages")
+	if selErr != nil {
+		t.Fatal(selErr)
+	}
+	editErr := SelectionToNode(sel, marshaller.Node()).Upsert()
+	if editErr != nil {
+		t.Fatal(editErr)
+	}
+	if objs["bob"].Id != "bob" {
+		t.Fatal("Not inserted")
+	}
+	n := marshaller.Node()
+	messagesMeta := m.DataDefs().GetFirstMeta().(*schema.List)
+	key := SetValues(messagesMeta.KeyMeta(), "bob")
+	foundByKeyNode, nextByKeyErr := n.Next(sel, messagesMeta, false, key, true)
+	if nextByKeyErr != nil {
+		t.Fatal(nextByKeyErr)
+	}
+	if foundByKeyNode == nil {
+		t.Error("lookup by key failed")
+	}
+
+	foundFirstNode, nextFirstErr := n.Next(sel, messagesMeta, false, []*Value{}, true)
+	if nextFirstErr != nil {
+		t.Fatal(nextFirstErr)
+	}
+	if foundFirstNode == nil {
+		t.Error("lookup by next failed")
 	}
 }
