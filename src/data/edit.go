@@ -323,6 +323,13 @@ func (e *Editor) container(fromNode Node, toNode Node, new bool, strategy Strate
 		if v, err = fromNode.Read(from, meta); err != nil {
 			return
 		}
+		if v == nil && strategy != UPDATE {
+			def := meta.GetDataType().Default
+			if len(def) > 0 {
+				v = &Value{Type:meta.GetDataType()}
+				v.CoerseStrValue(def)
+			}
+		}
 		if v != nil {
 			v.Type = meta.GetDataType()
 			if err = toNode.Write(to, meta, v); err != nil {
