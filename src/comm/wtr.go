@@ -60,9 +60,9 @@ func (c *Writer) WriteValues(vals []*data.Value) (err error) {
 //  and detailed in each put method
 //
 func (c *Writer) WriteValue(val *data.Value) (err error) {
-	c.WriteInt(int(val.Type.Format))
+	c.WriteInt(int(val.Type.Format()))
 	// Implied Fix-Length data types
-	switch val.Type.Format {
+	switch val.Type.Format() {
 	case schema.FMT_INT32, schema.FMT_ENUMERATION:
 		c.WriteInt(val.Int)
 	case schema.FMT_BOOLEAN:

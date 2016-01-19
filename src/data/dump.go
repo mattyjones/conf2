@@ -71,7 +71,7 @@ func (d *Dumper) dumpValue(v *Value, level int) {
 	}
 	s := "?"
 	t := v.Type.Ident
-	switch v.Type.Format {
+	switch v.Type.Format() {
 	case schema.FMT_STRING:
 		s = v.Str
 	case schema.FMT_STRING_LIST:

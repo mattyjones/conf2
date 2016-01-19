@@ -26,6 +26,15 @@ module yang {
             leaf-list enumeration {
                 type string;
             }
+            leaf path {
+                type string;
+            }
+            leaf minLength {
+                type int32;
+            }
+            leaf maxLength {
+                type int32;
+            }
         }
     }
 

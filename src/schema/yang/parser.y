@@ -269,7 +269,7 @@ typedef_stmt_body_stmt:
         ;
 default_stmt : kywd_default token_string token_semi {
      if hasType, valid := yylval.stack.Peek().(schema.HasDataType); valid {
-        hasType.GetDataType().Default = tokenString($2)
+        hasType.GetDataType().SetDefault(tokenString($2))
      } else {
         yylex.Error("expected default statement on schema supporting details")
         goto ret1
@@ -300,7 +300,7 @@ type_stmt_types :
         }
         | enum_stmts
         | kywd_path token_string  token_semi {
-              yylval.dataType.Path = tokenString($2)
+              yylval.dataType.SetPath(tokenString($2))
         };
 
 container_stmt :
@@ -585,7 +585,7 @@ enum_stmts :
 
 enum_stmt :
     kywd_enum token_ident token_semi {
-        yylval.dataType.Enumeration = append(yylval.dataType.Enumeration, $2)
+        yylval.dataType.AddEnumeration($2)
     };
 
 reference_stmt :

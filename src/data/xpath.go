@@ -35,21 +35,21 @@ func (x XPath) Get(cwd *Selection, xpath string) (interface{}, error) {
 }
 
 func (x XPath) SelectProperty(cwd *Selection, xpath string) (sel *Selection, meta schema.Meta, err error) {
-	dot := strings.LastIndexFunc(xpath, x.IsFwdSlash)
+	slash := strings.LastIndexFunc(xpath, x.IsFwdSlash)
 	sel = cwd
 	ident := xpath
-	if dot > 0 {
-		if sel, err = x.Select(cwd, xpath[:dot]); err != nil {
+	if slash > 0 {
+		if sel, err = x.Select(cwd, xpath[:slash]); err != nil {
 			return
 		}
-		ident = xpath[dot + 1:]
+		ident = xpath[slash + 1:]
 	}
 	meta = schema.FindByIdent2(sel.State.SelectedMeta(), ident)
 	return
 }
 
 func (x XPath) Select(cwd *Selection, xpath string) (*Selection, error) {
-	if strings.HasPrefix("../", xpath) {
+	if strings.HasPrefix(xpath, "../") {
 		if cwd.parent != nil {
 			return x.Select(cwd.parent, xpath[3:])
 		} else {
@@ -62,21 +62,4 @@ func (x XPath) Select(cwd *Selection, xpath string) (*Selection, error) {
 		return nil, err
 	}
 	return WalkPath(cwd, p)
-//
-//	sel := cwd
-//	ident := xpath
-//	slash := strings.LastIndexFunc(xpath, x.IsFwdSlash)
-//	if slash > 0 {
-//		ident = xpath[slash + 1:]
-//		var selErr error
-//		if sel, selErr = x.Select(cwd, xpath[:slash]); selErr != nil {
-//			return nil, selErr
-//		}
-//	}
-//
-//	s, err := SelectMetaList(sel, ident, x.AutoCreate)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return s, nil
 }

@@ -50,7 +50,7 @@ module rtstone {
             container entry {
                 leaf team {
                     type leafref {
-                    	path "../../../teams/color";
+                    	path "../../teams/color";
                     }
                 }
                 leaf time {

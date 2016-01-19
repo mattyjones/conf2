@@ -4,6 +4,11 @@ import (
 	"schema"
 )
 
+// Pulls defaults from yang after explicit values have been set
+//
+// Mostly deprecated, Upsert and Insert will automatically r/w default
+// values from yang
+
 type Parameters struct {
 	Ignores  map[string]struct{}
 	Collected map[string]*Value
@@ -38,12 +43,11 @@ func (p *Parameters) Finish(sel *Selection, node Node) (err error) {
 		var found bool
 		v, found = p.Collected[m.GetIdent()]
 		if !found {
-			def := t.GetDataType().Default
-			if len(def) == 0 {
+			if ! t.GetDataType().HasDefault() {
 				continue
 			}
 			v = &Value{Type:t.GetDataType()}
-			if err = v.CoerseStrValue(def); err != nil {
+			if err = v.CoerseStrValue(t.GetDataType().Default()); err != nil {
 				return err
 			}
 		}

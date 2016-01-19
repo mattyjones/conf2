@@ -9,8 +9,8 @@ import (
 
 func TestCommWriterValue(t *testing.T) {
 	c := NewWriter()
-	typ := schema.DataType{Format: schema.FMT_INT32}
-	val := &data.Value{Type: &typ, Int: 99}
+	typ := schema.NewDataType(nil, "int32")
+	val := &data.Value{Type: typ, Int: 99}
 	c.WriteValue(val)
 	actual := c.Data()
 	expected := []byte{10, 0, 0, 0, 99, 0, 0, 0}

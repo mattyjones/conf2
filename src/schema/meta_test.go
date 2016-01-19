@@ -3,10 +3,10 @@ package schema
 import "testing"
 
 func TestLeafListFormatSetting(t *testing.T) {
-	leafList := LeafList{}
-	leafList.SetDataType(&DataType{Format: FMT_STRING})
-	if leafList.DataType.Format != FMT_STRING_LIST {
-		t.Error("Not converted to list")
+	leafList := &LeafList{}
+	leafList.SetDataType(NewDataType(leafList, "string"))
+	if leafList.DataType.Format() != FMT_STRING_LIST {
+		t.Errorf("Not converted to list : %d", leafList.DataType.Format())
 	}
 }
 

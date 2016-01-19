@@ -49,7 +49,7 @@ func (self *JsonReader) decode() (map[string]interface{}, error) {
 func leafOrLeafListJsonReader(meta schema.HasDataType, data interface{}) (v *Value, err error) {
 	// TODO: Consider using CoerseValue
 	v = &Value{Type: meta.GetDataType()}
-	switch v.Type.Format {
+	switch v.Type.Format() {
 	case schema.FMT_INT64:
 		v.Int64 = int64(data.(float64))
 	case schema.FMT_INT64_LIST:

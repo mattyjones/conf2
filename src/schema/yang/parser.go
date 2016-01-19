@@ -818,7 +818,7 @@ yydefault:
 		//line parser.y:270
 		{
 			if hasType, valid := yylval.stack.Peek().(schema.HasDataType); valid {
-				hasType.GetDataType().Default = tokenString(yyDollar[2].token)
+				hasType.GetDataType().SetDefault(tokenString(yyDollar[2].token))
 			} else {
 				yylex.Error("expected default statement on schema supporting details")
 				goto ret1
@@ -852,7 +852,7 @@ yydefault:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		//line parser.y:302
 		{
-			yylval.dataType.Path = tokenString(yyDollar[2].token)
+			yylval.dataType.SetPath(tokenString(yyDollar[2].token))
 		}
 	case 57:
 		yyDollar = yyS[yypt-4 : yypt+1]
@@ -1071,7 +1071,7 @@ yydefault:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		//line parser.y:587
 		{
-			yylval.dataType.Enumeration = append(yylval.dataType.Enumeration, yyDollar[2].token)
+			yylval.dataType.AddEnumeration(yyDollar[2].token)
 		}
 	}
 	goto yystack /* stack new state and value */

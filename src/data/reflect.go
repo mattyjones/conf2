@@ -14,8 +14,11 @@ func ReadField(meta schema.HasDataType, obj interface{}) (*Value, error) {
 func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj interface{}) (v *Value, err error) {
 	objType := reflect.ValueOf(obj).Elem()
 	value := objType.FieldByName(fieldName)
+	if ! value.IsValid() {
+		return nil, conf2.NewErr("Field not found:" + meta.GetIdent())
+	}
 	v = &Value{Type: meta.GetDataType()}
-	switch v.Type.Format {
+	switch v.Type.Format() {
 	case schema.FMT_BOOLEAN:
 		v.Bool = value.Bool()
 	case schema.FMT_BOOLEAN_LIST:
@@ -67,7 +70,7 @@ func WriteFieldWithFieldName(fieldName string, meta schema.HasDataType, obj inte
 	if !value.IsValid() {
 		panic(fmt.Sprintf("Invalid property \"%s\" on %s", fieldName, reflect.TypeOf(obj)))
 	}
-	switch v.Type.Format {
+	switch v.Type.Format() {
 	case schema.FMT_BOOLEAN_LIST:
 		value.Set(reflect.ValueOf(v.Boollist))
 	case schema.FMT_BOOLEAN:

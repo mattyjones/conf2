@@ -324,10 +324,9 @@ func (e *Editor) container(fromNode Node, toNode Node, new bool, strategy Strate
 			return
 		}
 		if v == nil && strategy != UPDATE {
-			def := meta.GetDataType().Default
-			if len(def) > 0 {
+			if meta.GetDataType().HasDefault() {
 				v = &Value{Type:meta.GetDataType()}
-				v.CoerseStrValue(def)
+				v.CoerseStrValue(meta.GetDataType().Default())
 			}
 		}
 		if v != nil {

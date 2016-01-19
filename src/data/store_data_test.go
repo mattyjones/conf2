@@ -25,7 +25,7 @@ func TestKeyListBuilderInBufferStore(t *testing.T) {
 	store.Values["a/c=y/c"] = v
 	store.Values["a/c=z/q/f=yy/fg=gf/gf"] = v
 	meta := &schema.List{Ident: "c", Keys: []string{"k"}}
-	meta.AddMeta(&schema.Leaf{Ident: "k", DataType: &schema.DataType{Format: schema.FMT_STRING}})
+	meta.AddMeta(schema.NewLeaf("k", "string"))
 	for _, test := range tests {
 		keys, err := store.KeyList(test.path, meta)
 		if err != nil {

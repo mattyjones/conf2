@@ -4,8 +4,7 @@ type DataFormat int
 
 // matches list in browse.h
 const (
-	FMT_EMPTY DataFormat = iota
-	FMT_BINARY
+	FMT_BINARY DataFormat = iota + 1
 	FMT_BITS
 	FMT_BOOLEAN
 	FMT_DECIMAL64
@@ -27,7 +26,6 @@ const (
 )
 
 const (
-	// FMT_EMPTY_LIST DataFormat = iota + 1024 - Doesn't make sense.
 	FMT_BINARY_LIST DataFormat = iota + 1025
 	FMT_BITS_LIST
 	FMT_BOOLEAN_LIST
@@ -62,7 +60,6 @@ var internalTypes = map[string]DataFormat{
 	"bits":                FMT_BITS,
 	"boolean":             FMT_BOOLEAN,
 	"decimal64":           FMT_DECIMAL64,
-	"empty":               FMT_EMPTY,
 	"enumeration":         FMT_ENUMERATION,
 	"identitydef":         FMT_IDENTITYREF,
 	"instance-identifier": FMT_INSTANCE_IDENTIFIER,

@@ -23,7 +23,7 @@ type Value struct {
 }
 
 func (v *Value) Value() interface{} {
-	switch v.Type.Format {
+	switch v.Type.Format() {
 	case schema.FMT_BOOLEAN:
 		return v.Bool
 	case schema.FMT_BOOLEAN_LIST:
@@ -55,10 +55,10 @@ func (a *Value) Equal(b *Value) bool {
 	if b == nil {
 		return false
 	}
-	if a.Type.Format != b.Type.Format {
+	if a.Type.Format() != b.Type.Format() {
 		return false
 	}
-	if schema.IsListFormat(a.Type.Format) {
+	if schema.IsListFormat(a.Type.Format()) {
 		return reflect.DeepEqual(a.Value(), b.Value())
 	}
 	return a.Value() == b.Value()
@@ -66,11 +66,12 @@ func (a *Value) Equal(b *Value) bool {
 
 func (v *Value) SetEnumList(intlist []int) bool {
 	strlist := make([]string, len(intlist))
+	en := v.Type.Enumeration()
 	for i, n := range intlist {
-		if n >= len(v.Type.Enumeration) {
+		if n >= len(en) {
 			return false
 		}
-		strlist[i] = v.Type.Enumeration[n]
+		strlist[i] = en[n]
 	}
 	v.Intlist = intlist
 	v.Strlist = strlist
@@ -79,9 +80,10 @@ func (v *Value) SetEnumList(intlist []int) bool {
 
 func (v *Value) SetEnumListByLabels(labels []string) bool {
 	intlist := make([]int, len(labels))
+	en := v.Type.Enumeration()
 	for i, s := range labels {
 		var found bool
-		for j, e := range v.Type.Enumeration {
+		for j, e := range en {
 			if s == e {
 				found = true
 				intlist[i] = j
@@ -98,16 +100,17 @@ func (v *Value) SetEnumListByLabels(labels []string) bool {
 }
 
 func (v *Value) SetEnum(n int) bool {
-	if n < len(v.Type.Enumeration) {
+	en := v.Type.Enumeration()
+	if n < len(en) {
 		v.Int = n
-		v.Str = v.Type.Enumeration[n]
+		v.Str = en[n]
 		return true
 	}
 	return false
 }
 
 func (v *Value) SetEnumByLabel(label string) bool {
-	for i, n := range v.Type.Enumeration {
+	for i, n := range v.Type.Enumeration() {
 		if n == label {
 			v.Int = i
 			v.Str = label
@@ -118,7 +121,7 @@ func (v *Value) SetEnumByLabel(label string) bool {
 }
 
 func (v *Value) String() string {
-	switch v.Type.Format {
+	switch v.Type.Format() {
 	case schema.FMT_BOOLEAN:
 		if v.Bool {
 			return "true"
@@ -154,7 +157,7 @@ func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
 	}
 	reflectVal := reflect.ValueOf(val)
 	v := &Value{Type: typ}
-	switch typ.Format {
+	switch typ.Format() {
 	case schema.FMT_BOOLEAN:
 		v.Bool = reflectVal.Bool()
 	case schema.FMT_BOOLEAN_LIST:
@@ -257,7 +260,7 @@ func InterfaceToIntlist(o interface{}) (intlist []int) {
 }
 
 func (v *Value) CoerseStrValue(s string) error {
-	switch v.Type.Format {
+	switch v.Type.Format() {
 	case schema.FMT_BOOLEAN:
 		v.Bool = s == "true"
 	case schema.FMT_INT64:

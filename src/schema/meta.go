@@ -1,10 +1,5 @@
 package schema
 
-import (
-	"strconv"
-	"strings"
-)
-
 ///////////////////
 // Interfaces
 //////////////////
@@ -535,6 +530,12 @@ type Leaf struct {
 	DataType *DataType
 }
 
+func NewLeaf(ident string, dataType string) *Leaf {
+	l := &Leaf{Ident: ident}
+	l.DataType = NewDataType(l, dataType)
+	return l
+}
+
 // Distinguishes the concrete type in choice-cases
 func (y *Leaf) Leaf() Meta {
 	return y
@@ -569,7 +570,7 @@ func (y *Leaf) SetSibling(sibling Meta) {
 
 // HasDataType
 func (y *Leaf) GetDataType() *DataType {
-	return y.DataType.Resolve()
+	return y.DataType
 }
 func (y *Leaf) SetDataType(dataType *DataType) {
 	y.DataType = dataType
@@ -586,6 +587,12 @@ type LeafList struct {
 	MetaBase
 	details  Details
 	DataType *DataType
+}
+
+func NewLeafList(ident string, dataType string) *LeafList {
+	l := &LeafList{Ident: ident}
+	l.DataType = NewDataType(l, dataType)
+	return l
 }
 
 // Identifiable
@@ -620,15 +627,11 @@ func (y *LeafList) GetDataType() *DataType {
 	return y.DataType
 }
 func (y *LeafList) SetDataType(dataType *DataType) {
-	if dataType != nil && dataType.Format < FMT_BINARY_LIST {
-		dataType.Format = dataType.Format + 1024
-	}
 	y.DataType = dataType
 }
 func (y *LeafList) Details() *Details {
 	return &y.details
 }
-
 
 ////////////////////////////////////////////////////
 
@@ -636,12 +639,12 @@ type Any struct {
 	Ident       string
 	Description string
 	MetaBase
-	details  Details
-	Type *DataType
+	details Details
+	Type    *DataType
 }
 
 func NewAny(ident string) *Any {
-	any := &Any{Ident:ident}
+	any := &Any{Ident: ident}
 	any.Type = NewDataType(any, "any")
 	return any
 }
@@ -1031,73 +1034,11 @@ func (y *Typedef) SetSibling(sibling Meta) {
 
 // HasDataType
 func (y *Typedef) GetDataType() *DataType {
-	return y.DataType.Resolve()
+	return y.DataType
 }
 
 func (y *Typedef) SetDataType(dataType *DataType) {
 	y.DataType = dataType
-}
-
-type DataType struct {
-	Parent		HasDataType
-	Ident       string
-	Format      DataFormat
-	Range       string
-	Enumeration []string
-	MinLength   int
-	MaxLength   int
-	Path        string
-	Pattern     string
-	Default     string
-	resolved 	*DataType
-	/*
-		FractionDigits
-		Bit
-		Base
-		RequireInstance
-		Type?!  subtype?
-	*/
-}
-
-func NewDataType(Parent HasDataType, ident string) (t *DataType) {
-	t = &DataType{Parent: Parent, Ident: ident}
-	// if not found, then not internal type and Resolve should
-	// determine type
-	t.Format = DataTypeImplicitFormat(ident)
-	return
-}
-
-func (y *DataType) Resolve() *DataType {
-	if y.resolved == nil {
-		// TODO: Will look into hierarchy and overlay constraints
-		if y.Format == FMT_EMPTY {
-			y.resolved = y
-		} else if y.Format == FMT_LEAFREF || y.Format == FMT_LEAFREF_LIST {
-			resolvedMeta := FindByPath(y.Parent.GetParent(), y.Path)
-			if resolvedMeta == nil {
-				panic("Leafref path did not resolve " + y.Path)
-			}
-			y.resolved = resolvedMeta.(HasDataType).GetDataType()
-		} else {
-			y.resolved = y
-			//panic("not implemented yet")
-		}
-	}
-
-	return y.resolved
-}
-
-func (y *DataType) DecodeLength(encoded string) (err error) {
-	/* TODO: Support multiple lengths using "|" */
-	segments := strings.Split(encoded, "..")
-	if len(segments) == 2 {
-		if y.MinLength, err = strconv.Atoi(segments[0]); err == nil {
-			y.MaxLength, err = strconv.Atoi(segments[1])
-		}
-	} else {
-		y.MaxLength, err = strconv.Atoi(segments[0])
-	}
-	return
 }
 
 ////////////////////////////////////////////////////

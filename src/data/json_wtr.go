@@ -191,12 +191,12 @@ func (json *JsonWriter) endContainer() (err error) {
 
 func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 	json.writeIdent(meta.GetIdent())
-	if schema.IsListFormat(v.Type.Format) {
+	if schema.IsListFormat(v.Type.Format()) {
 		if _, err = json.out.WriteRune('['); err != nil {
 			return
 		}
 	}
-	switch v.Type.Format {
+	switch v.Type.Format() {
 	case schema.FMT_BOOLEAN:
 		err = json.writeBool(v.Bool)
 	case schema.FMT_ANYDATA:
@@ -260,7 +260,7 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 			}
 		}
 	}
-	if schema.IsListFormat(v.Type.Format) {
+	if schema.IsListFormat(v.Type.Format()) {
 		if _, err = json.out.WriteRune(']'); err != nil {
 			return
 		}

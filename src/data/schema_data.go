@@ -109,14 +109,36 @@ func (self *SchemaData) selectRevision(rev *schema.Revision) (Node) {
 }
 
 func (self *SchemaData) selectType(typeData *schema.DataType) (Node) {
-	return &Extend{
-		Node:MarshalContainer(typeData),
-		OnWrite: func(parent Node, state *Selection, meta schema.HasDataType, val *Value) error {
+	return &MyNode{
+		OnRead: func(sel *Selection, meta schema.HasDataType) (*Value, error) {
+			switch meta.GetIdent()  {
+			case "ident":
+				return SetValue(meta.GetDataType(), typeData.Ident)
+			case "minLength":
+				return SetValue(meta.GetDataType(), typeData.MinLength())
+			case "maxLength":
+				return SetValue(meta.GetDataType(), typeData.MaxLength())
+			case "path":
+				return SetValue(meta.GetDataType(), typeData.Path())
+			case "enumeration":
+				return SetValue(meta.GetDataType(), typeData.Enumeration())
+			}
+			return nil, nil
+		},
+		OnWrite: func(state *Selection, meta schema.HasDataType, val *Value) error {
 			switch meta.GetIdent() {
 			case "ident":
-				typeData.Format = schema.DataTypeImplicitFormat(val.Str)
+				typeData.SetFormat(schema.DataTypeImplicitFormat(val.Str))
+			case "minLength":
+				typeData.SetMinLength(val.Int)
+			case "maxLength":
+				typeData.SetMaxLength(val.Int)
+			case "path":
+				typeData.SetPath(val.Str)
+			case "enumeration":
+				typeData.SetEnumeration(val.Strlist)
 			}
-			return parent.Write(state, meta, val)
+			return nil
 		},
 	}
 }
@@ -416,12 +438,7 @@ func (i *listIterator) iterate(sel *Selection, meta *schema.List, keys []*Value,
 			if i.data == nil {
 				panic(fmt.Sprintf("Bad iterator at %s, item number %d", sel.String(), i.temp))
 			}
-			sel.State.SetKey([]*Value{
-				&Value{
-					Str:  i.data.GetIdent(),
-					Type: &schema.DataType{Format: schema.FMT_STRING},
-				},
-			})
+			sel.State.SetKey(SetValues(meta.KeyMeta(), i.data.GetIdent()))
 		}
 		i.temp++
 	}

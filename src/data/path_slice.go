@@ -2,10 +2,10 @@ package data
 
 import (
 	"strings"
-	"errors"
 	"bytes"
 	"net/url"
 	"schema"
+	"conf2"
 )
 
 type PathSlice struct {
@@ -76,10 +76,10 @@ func ParsePath(path string, meta schema.MetaList) (*PathSlice, error) {
 		m := schema.FindByIdentExpandChoices(p.meta, ident)
 		var notLeaf bool
 		if m == nil {
-			return nil, errors.New(ident + " not found in " + p.meta.GetIdent())
+			return nil, conf2.NewErrC(ident + " not found in " + p.meta.GetIdent(), conf2.NotFound)
 		}
 		if seg.meta, notLeaf = m.(schema.MetaList); ! notLeaf {
-			return nil, errors.New("paths cannot contain leaf types:" + ident)
+			return nil, conf2.NewErr("paths cannot contain leaf types:" + ident)
 		}
 		if len(keyStrs) > 0 {
 			if seg.key, err = CoerseKeys(seg.meta.(*schema.List), keyStrs); err != nil {
