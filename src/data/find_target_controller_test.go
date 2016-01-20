@@ -7,6 +7,7 @@ import (
 	"schema/yang"
 	"strings"
 	"testing"
+	"net/url"
 )
 
 func TestFindTargetIterator(t *testing.T) {
@@ -53,7 +54,6 @@ module m {
 	node.OnSelect = func(*Selection, schema.MetaList, bool) (Node, error) {
 		return node, nil
 	}
-	var selection *Selection
 	tests := [][]string {
 		{"", "m"},
 		{"a","m/a"},
@@ -63,12 +63,13 @@ module m {
 	}
 	for _, test := range tests {
 		t.Log(test[0])
-		root := NewSelection(node, module)
-		selection, err = WalkPath(root, NewPathSlice(test[0], module))
-		if selection == nil {
+		found, foundErr := NewSelection(module, node).Find(test[0])
+		if foundErr != nil {
+			t.Error(foundErr)
+		} else if found == nil {
 			t.Errorf("Target for %s not found", test[0])
 		} else {
-			actual := selection.State.path.String()
+			actual := found.path.String()
 			if test[1] != actual {
 				t.Errorf("Wrong state path\nExpected:%s\n  Actual:%s", test[1], actual)
 			}
@@ -121,21 +122,19 @@ module json-test {
 			{"birding/reference", `{"name":"Peterson's Guide"}`},
 		}
 
-		var in *Selection
 		var rdr Node
 		for i, test := range tests {
 			rdr = NewJsonReader(strings.NewReader(json)).Node()
-			in = NewSelection(rdr, module)
-			if err != nil {
+			found, foundErr := NewSelection(module, rdr).Find(test.path)
+			if foundErr != nil {
 				t.Error(err)
-			}
-			p := NewPathSlice(test.path, module)
-			if in, err = WalkPath(in, p); err != nil {
-				t.Error(err)
+			} else if found == nil {
+				t.Error("path not found " + test.path)
 			}
 			var actualBuff bytes.Buffer
 			out := NewJsonWriter(&actualBuff).Node()
-			err = SelectionToNode(in, out).ControlledUpsert(LimitedWalk(p.Head.Params()))
+			pathParsed, _ := url.Parse(test.path)
+			err = found.Push(out).ControlledUpsert(LimitedWalk(pathParsed.Query()))
 			if err != nil {
 				t.Error(err)
 			} else {

@@ -12,7 +12,7 @@ func Config(operational Node, config Node) Node {
 			if err != nil || operChild == nil {
 				return nil, err
 			}
-			if ! sel.IsConfig() {
+			if ! sel.IsConfig(meta) {
 				return operChild, nil
 			}
 			configChild, storeErr := config.Select(sel, meta, new)
@@ -35,7 +35,7 @@ func Config(operational Node, config Node) Node {
 			if err != nil || operChild == nil {
 				return nil, err
 			}
-			if ! sel.IsConfig() {
+			if ! sel.IsConfig(meta) {
 				return operChild, nil
 			}
 			configChild, storeErr := config.Next(sel, meta, new, key, first)
@@ -72,6 +72,7 @@ func Config(operational Node, config Node) Node {
 		OnChoose : operational.Choose,
 		OnAction : operational.Action,
 		OnFind : operational.Find,
+		OnPeek: operational.Peek,
 	}
 	if storeAware, ok := operational.(ChangeAwareNode); ok {
 		storeAware.DirectChanges(n)

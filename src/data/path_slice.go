@@ -73,7 +73,7 @@ func ParsePath(path string, meta schema.MetaList) (*PathSlice, error) {
 				return nil, err
 			}
 		}
-		m := schema.FindByIdentExpandChoices(p.meta, ident)
+		m := schema.FindByIdentExpandChoices(p.meta.(schema.MetaList), ident)
 		var notLeaf bool
 		if m == nil {
 			return nil, conf2.NewErrC(ident + " not found in " + p.meta.GetIdent(), conf2.NotFound)

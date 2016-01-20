@@ -33,7 +33,7 @@ module m {
 	var obj TestMessage
 	c := MarshalContainer(&obj)
 	r := NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
-	if err = NodeToNode(r, c, m).Upsert(); err != nil {
+	if err = NewSelection(m, c).Pull(r).Upsert(); err != nil {
 		t.Fatal(err)
 	}
 	if obj.Message.Hello != "bob" {
@@ -73,14 +73,10 @@ module m {
 			return MarshalContainer(item)
 		},
 	}
-	d := NewJsonReader(strings.NewReader(`{"messages":[{"id":"bob"},{"id":"barb"}]}`)).Handle(m)
-	sel, selErr := WalkDataPath(d, "messages")
-	if selErr != nil {
-		t.Fatal(selErr)
-	}
-	editErr := SelectionToNode(sel, marshaller.Node()).Upsert()
-	if editErr != nil {
-		t.Fatal(editErr)
+	d := NewJsonReader(strings.NewReader(`{"messages":[{"id":"bob"},{"id":"barb"}]}`)).Node()
+	sel := NewSelection(m, d).Require("messages")
+	if err = sel.Push(marshaller.Node()).Upsert(); err != nil {
+		t.Fatal(err)
 	}
 	if objs["bob"].Id != "bob" {
 		t.Fatal("Not inserted")

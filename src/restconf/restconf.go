@@ -98,13 +98,9 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var err error
-	var path *data.PathSlice
 	var payload data.Node
-	if path, err = data.ParsePath(r.URL.Path, reg.browser.Schema()); err == nil {
-		path.SetParams(map[string][]string(r.URL.Query()))
-		root := data.NewSelection(reg.browser.Node(), reg.browser.Schema())
-		var sel *data.Selection
-		sel, err = data.WalkPath(root, path)
+	sel := reg.browser.Select()
+	if sel, err = sel.FindUrl(r.URL); err == nil {
 		if sel == nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
@@ -115,27 +111,25 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		switch r.Method {
 		case "DELETE":
-			err = data.Delete(sel)
+			err = sel.Delete()
 		case "GET":
 			w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
 			output := data.NewJsonWriter(w).Node()
-			err = data.SelectionToNode(sel, output).ControlledInsert(data.LimitedWalk(path.Params()))
+			err = sel.Push(output).ControlledInsert(data.LimitedWalk(r.URL.Query()))
 		case "PUT":
-			payload = data.NewJsonReader(r.Body).Node()
-			err = data.NodeToSelection(payload, sel).Upsert()
+			err = sel.Pull(data.NewJsonReader(r.Body).Node()).Upsert()
 		case "POST":
-			if schema.IsAction(sel.State.Position()) {
-				rpc := sel.State.Position().(*schema.Rpc)
+			if schema.IsAction(sel.Meta()) {
 				input := data.NewJsonReader(r.Body).Node()
-				var output data.Node
-				if rpc.Output != nil {
+				var outputSel *data.Selection
+				outputSel, err = sel.Action(input)
+				if outputSel != nil {
 					w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
-					output = data.NewJsonWriter(w).Node()
+					err = outputSel.Push(data.NewJsonWriter(w).Node()).Insert()
 				}
-				err = data.SelectionAction(sel, input, output)
 			} else {
 				payload = data.NewJsonReader(r.Body).Node()
-				err = data.NodeToSelection(payload, sel).Insert()
+				err = sel.Pull(payload).Insert()
 			}
 		default:
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -152,7 +146,7 @@ type docRootImpl struct {
 }
 
 func (service *Service) RegisterBrowser(browser data.Data) error {
-	ident := browser.Schema().GetIdent()
+	ident := browser.Select().Meta().GetIdent()
 	return service.RegisterBrowserWithName(browser, ident)
 }
 

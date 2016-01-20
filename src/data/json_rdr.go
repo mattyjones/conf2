@@ -18,13 +18,6 @@ func NewJsonReader(in io.Reader) *JsonReader {
 	return r
 }
 
-func (self *JsonReader) Handle(meta schema.MetaList) (Data) {
-	return &DataHandle{
-		Hnd: self.Node(),
-		Meta: meta,
-	}
-}
-
 func (self *JsonReader) Node() (Node) {
 	var err error
 	if self.values == nil {
@@ -126,7 +119,7 @@ func JsonListReader(list []interface{}) Node {
 				for ; i < len(list); i++ {
 					candidate := list[i].(map[string]interface{})
 					if jsonKeyMatches(keyFields, candidate, key) {
-						sel.State.SetKey(key)
+						sel.path.key = key
 						return JsonContainerReader(candidate), nil
 					}
 				}
@@ -141,15 +134,9 @@ func JsonListReader(list []interface{}) Node {
 				container := list[i].(map[string]interface{})
 				if len(meta.Keys) > 0 {
 					// TODO: compound keys
-					keyData, hasKey := container[meta.Keys[0]]
-					// Key may legitimately not exist when inserting new data
-					if hasKey {
-						keyValue, keyErr := SetValue(meta.KeyMeta()[0].GetDataType(), keyData)
-						if keyErr != nil {
-							return nil, keyErr
-						}
-						key := []*Value{keyValue}
-						sel.State.SetKey(key)
+					if keyData, hasKey := container[meta.Keys[0]]; hasKey {
+						// Key may legitimately not exist when inserting new data
+						sel.path.key = SetValues(meta.KeyMeta(), keyData)
 					}
 				}
 				return JsonContainerReader(container), nil

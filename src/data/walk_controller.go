@@ -7,7 +7,8 @@ import (
 type WalkController interface {
 	ListIterator(selection *Selection, first bool) (next *Selection, err error)
 	ContainerIterator(selection *Selection) (schema.MetaIterator, error)
-	VisitAction(selection *Selection) error
+    VisitContainer(sel *Selection, meta schema.MetaList) (child *Selection, err error)
+	VisitAction(selection *Selection, rpc *schema.Rpc) (*Selection, error)
 	CloseSelection(s *Selection) error
 }
 

@@ -42,22 +42,18 @@ func TestEditListItem(t *testing.T) {
 	// needs to leave walkstate in a position for WalkTarget controller to make the edit
 	// on the right item.
 	log.Println("Testing edit\n")
-	if edit, err = NodeToPath(json, bd, "fruits=apple"); err == nil {
-		err = edit.Update()
+	if err = bd.Select().Require("fruits=apple").Pull(json).Update(); err != nil {
+		t.Fatal(err)
 	}
-	if err != nil {
-		t.Error(err)
-	} else {
-		actual := MapValue(bd.Root, "fruits.1.origin.country")
-		if actual != "Canada" {
-			t.Error("Edit failed", actual)
-		}
+	actual := MapValue(bd.Root, "fruits.1.origin.country")
+	if actual != "Canada" {
+		t.Error("Edit failed", actual)
 	}
 
 	// INSERT
 	log.Println("Testing insert\n")
 	json = NewJsonReader(strings.NewReader(`{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`)).Node()
-	if edit, err = NodeToPath(json, bd, "fruits"); err == nil {
+	if err = bd.Select().Require("fruits").Pull(json).Insert(); err == nil {
 		err = edit.Insert()
 	}
 	actual, found := bd.Root["fruits"]

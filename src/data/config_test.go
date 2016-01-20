@@ -55,23 +55,23 @@ module m {
 	if m, err = yang.LoadModuleFromByteArray([]byte(mstr), nil); err != nil {
 		t.Fatal(err)
 	}
-	oper := NewBufferStore()
-	operNode := NewStoreData(m, oper).Node()
+	operStore := NewBufferStore()
+	oper := NewStoreData(m, operStore)
 	//oper.Values["a/aa/aaa"] = &Value{Str:":hello"}
-	config := NewBufferStore()
-	configNode := NewStoreData(m, config).Node()
+	persistStore := NewBufferStore()
+	persist := NewStoreData(m, persistStore)
 	//oper.Values["a/aa/aaa"] = &Value{Str:":hello"}
 	edit := `{"a":{"aa":{"aaa":"hello"}}}`
-	in := NewJsonReader(strings.NewReader(edit)).Node()
-	err = NodeToNode(in, Config(configNode, operNode), m).Insert()
-	if err != nil {
+
+	sel := oper.Select().Fork(Config(persist.Node(), oper.Node()))
+	if err = sel.Pull(NewJsonReader(strings.NewReader(edit)).Node()).Insert(); err != nil {
 		t.Error(err)
 	}
-	if len(oper.Values) != 1 {
-		t.Error(len(oper.Values))
+	if len(operStore.Values) != 1 {
+		t.Error(len(operStore.Values))
 	}
-	if len(config.Values) != 1 {
-		t.Error(len(config.Values))
+	if len(persistStore.Values) != 1 {
+		t.Error(len(persistStore.Values))
 	}
 }
 

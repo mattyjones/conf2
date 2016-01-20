@@ -44,10 +44,9 @@ module json-test {
 	if err != nil {
 		t.Fatal("bad module", err)
 	}
-	b := NewSchemaData(m, false)
+	b := NewSchemaData(m, false).Select()
 	var actual bytes.Buffer
-	json := NewJsonWriter(&actual).Node()
-	if err = NodeToNode(b.Node(), json, b.Schema()).Insert(); err != nil {
+	if err = b.Push(NewJsonWriter(&actual).Node()).Insert(); err != nil {
 		t.Error(err)
 	} else {
 		t.Log("Round Trip:", string(actual.Bytes()))
@@ -62,45 +61,14 @@ func DISABLED_TestYangWrite(t *testing.T) {
 	}
 	from := NewSchemaData(simple, false)
 	to := NewSchemaData(nil, false)
-	edit, err2 := PathToPath(from, to, "")
-	if err2 != nil {
-		t.Fatal(err2)
-	}
-	err = edit.Upsert()
+	err = from.Select().Push(to.Node()).Upsert()
 	if err != nil {
 		t.Fatal(err)
 	}
 	// dump original and clone to see if anything is missing
 	diff := Diff(from.Node(), to.Node())
+	diffSel := from.Select().Fork(diff)
 	var out bytes.Buffer
-	diffOut := NewJsonWriter(&out).Node()
-	NodeToNode(diff, diffOut, from.Schema()).Insert()
+	diffSel.Push(NewJsonWriter(&out).Node()).Insert()
 	t.Log(out.String())
-//
-//	var expected string
-//	var actual string
-//	expected, err = DumpModule(from)
-//	if err != nil {
-//		t.Error(err)
-//	}
-//	actual, err = DumpModule(to)
-//	if err != nil {
-//		t.Error(err)
-//	}
-//	if actual != expected {
-//		t.Log("Different")
-//						t.Log(expected)
-//						t.Log("Actual")
-//						t.Log(actual)
-//						t.Fail()
-//	}
-}
-
-func DumpModule(b *SchemaData) (string, error) {
-	var buff bytes.Buffer
-	err := NodeToNode(b.Node(), NewDumper(&buff).Node(), b.Schema()).Insert()
-	if err != nil {
-		return "", err
-	}
-	return string(buff.Bytes()), nil
 }

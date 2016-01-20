@@ -28,34 +28,30 @@ module json-test {
 	}
 }
 	`
-	if module, err := yang.LoadModuleFromByteArray([]byte(moduleStr), nil); err != nil {
-		t.Error("bad module", err)
-	} else {
-		json := `{"hobbies":[
+	module, err := yang.LoadModuleFromByteArray([]byte(moduleStr), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	json := `{"hobbies":[
 {"name":"birding", "favorite": {"common-name" : "towhee", "extra":"double-mint", "location":"out back"}},
 {"name":"hockey", "favorite": {"common-name" : "bruins", "location" : "Boston"}}
 ]}`
-
-		tests := []string {
-			"hobbies",
-			"hobbies=birding",
-			"hobbies=birding/favorite",
-		}
-		var in, selection *Selection
-		var rdr Node
-		for _, test := range tests {
-			rdr = NewJsonReader(strings.NewReader(json)).Node()
-			in = NewSelection(rdr, module)
-			selection, err = WalkPath(in, NewPathSlice(test, module))
-			if err != nil {
-				t.Error("failed to transmit json", err)
-			} else if selection == nil {
-				t.Error(test, "- Target not found, state nil")
-			} else {
-				actual := selection.State.Path().String()
-				if actual != "json-test/" + test {
-					t.Error("json-test/" + test, "!=", actual)
-				}
+	tests := []string {
+		"hobbies",
+		"hobbies=birding",
+		"hobbies=birding/favorite",
+	}
+	for _, test := range tests {
+		rdr := NewJsonReader(strings.NewReader(json)).Node()
+		found, selErr := NewSelection(module, rdr).Find(test)
+		if selErr != nil {
+			t.Error("failed to transmit json", err)
+		} else if found == nil {
+			t.Error(test, "- Target not found, state nil")
+		} else {
+			actual := found.Path().String()
+			if actual != "json-test/" + test {
+				t.Error("json-test/" + test, "!=", actual)
 			}
 		}
 	}

@@ -2,7 +2,6 @@ package data
 
 import (
 	"encoding/json"
-	"schema"
 	"bytes"
 )
 
@@ -27,20 +26,17 @@ func (any *AnyJson) String() (string, error) {
 	return string(bytes), nil
 }
 
-type AnyNode struct {
-	Any  Node
-	Meta schema.MetaList
+type AnySelection struct {
+	Selection *Selection
 }
 
-func (any *AnyNode) Node() Node {
-	return any.Any
+func (any *AnySelection) Node() Node {
+	return any.Selection.Node()
 }
 
-func (any *AnyNode) String() (string, error) {
+func (any *AnySelection) String() (string, error) {
 	var out bytes.Buffer
-	w := NewJsonWriter(&out)
-	err := NodeToNode(any.Any, w.Node(), any.Meta).Insert()
-	if err != nil {
+	if err := any.Selection.Push(NewJsonWriter(&out).Node()).Insert(); err != nil {
 		return "", err
 	}
 	return out.String(), nil

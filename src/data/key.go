@@ -7,15 +7,15 @@ import (
 )
 
 func ReadKeys(sel *Selection) (values []*Value, err error) {
-	if len(sel.State.Key()) > 0 {
-		return sel.State.Key(), nil
+	if len(sel.path.key) > 0 {
+		return sel.path.key, nil
 	}
-	list := sel.State.SelectedMeta().(*schema.List)
+	list := sel.path.meta.(*schema.List)
 	values = make([]*Value, len(list.Keys))
 	var key *Value
 	for i, keyIdent := range list.Keys {
-		keyMeta := schema.FindByIdent2(sel.State.SelectedMeta(), keyIdent).(schema.HasDataType)
-		if key, err = sel.Node.Read(sel, keyMeta); err != nil {
+		keyMeta := schema.FindByIdent2(sel.path.meta, keyIdent).(schema.HasDataType)
+		if key, err = sel.node.Read(sel, keyMeta); err != nil {
 			return nil, err
 		}
 		if key == nil {

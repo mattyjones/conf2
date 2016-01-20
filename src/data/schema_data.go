@@ -20,6 +20,10 @@ type SchemaData struct {
 	resolve bool
 }
 
+func (self *SchemaData) Select() *Selection {
+	return NewSelection(self.meta, self.Node())
+}
+
 func (self *SchemaData) Schema() schema.MetaList {
 	return self.meta
 }
@@ -298,7 +302,9 @@ func (self *SchemaData) selectMetaList(data schema.MetaList) (Node) {
 }
 
 func (self *SchemaData) selectNotifications(notifications schema.MetaList) (Node) {
-	s := &MyNode{Internal: notifications}
+	s := &MyNode{
+		Peekables: map[string]interface{} {"internal" : notifications},
+	}
 	i := listIterator{dataList: notifications, resolve: self.resolve}
 	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		var notif *schema.Notification
@@ -327,7 +333,9 @@ func (self *SchemaData) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.Leaf
 	} else {
 		leafy = any
 	}
-	s := &MyNode{Internal:leafy}
+	s := &MyNode{
+		Peekables: map[string]interface{} {"internal" : leafy},
+	}
 	details := leafy.(schema.HasDetails).Details()
 	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (Node, error) {
 		switch meta.GetIdent() {
@@ -376,7 +384,9 @@ func (self *SchemaData) selectMetaUses(data *schema.Uses) (Node) {
 }
 
 func (self *SchemaData) selectMetaCases(choice *schema.Choice) (Node) {
-	s := &MyNode{Internal:choice}
+	s := &MyNode{
+		Peekables: map[string]interface{} {"internal" : choice},
+	}
 	i := listIterator{dataList: choice, resolve: self.resolve}
 	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		var choiceCase *schema.ChoiceCase
@@ -419,15 +429,15 @@ type listIterator struct {
 	temp     int
 }
 
-func (i *listIterator) iterate(sel *Selection, meta *schema.List, keys []*Value, first bool) bool {
+func (i *listIterator) iterate(sel *Selection, meta *schema.List, key []*Value, first bool) bool {
 	i.data = nil
 	if i.dataList == nil {
 		return false
 	}
-	if len(keys) > 0 {
-		sel.State.SetKey(keys)
+	if len(key) > 0 {
+		sel.path.key = key
 		if first {
-			i.data = schema.FindByIdent2(i.dataList, keys[0].Str)
+			i.data = schema.FindByIdent2(i.dataList, key[0].Str)
 		}
 	} else {
 		if first {
@@ -438,7 +448,7 @@ func (i *listIterator) iterate(sel *Selection, meta *schema.List, keys []*Value,
 			if i.data == nil {
 				panic(fmt.Sprintf("Bad iterator at %s, item number %d", sel.String(), i.temp))
 			}
-			sel.State.SetKey(SetValues(meta.KeyMeta(), i.data.GetIdent()))
+			sel.path.key = SetValues(meta.KeyMeta(), i.data.GetIdent())
 		}
 		i.temp++
 	}
@@ -446,7 +456,9 @@ func (i *listIterator) iterate(sel *Selection, meta *schema.List, keys []*Value,
 }
 
 func (self *SchemaData) SelectDefinition(parent schema.MetaList, data schema.Meta) (Node) {
-	s := &MyNode{Internal:data}
+	s := &MyNode{
+		Peekables: map[string]interface{} {"internal" : data},
+	}
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		return self.resolveDefinitionCase(choice, data)
 	}
@@ -496,7 +508,9 @@ func (self *SchemaData) SelectDefinition(parent schema.MetaList, data schema.Met
 }
 
 func (self *SchemaData) SelectDefinitionsList(dataList schema.MetaList) (Node) {
-	s := &MyNode{Internal:dataList}
+	s := &MyNode{
+		Peekables: map[string]interface{} {"internal" : dataList},
+	}
 	i := listIterator{dataList: dataList, resolve: self.resolve}
 	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (Node, error) {
 		if new {

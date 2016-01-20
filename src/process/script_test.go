@@ -28,8 +28,7 @@ func ScriptSetup(mstr string, t *testing.T) (setup *ScriptTestSetup) {
 func (setup *ScriptTestSetup) ToString(t *testing.T) string {
 	var actualBuff bytes.Buffer
 	out := data.NewJsonWriter(&actualBuff).Node()
-	err := data.NodeToNode(setup.Data.Node(), out, setup.Data.Schema()).Insert()
-	if err != nil {
+	if err := setup.Data.Select().Push(out).Insert(); err != nil {
 		t.Error(err)
 	}
 	return actualBuff.String()

@@ -28,7 +28,7 @@ func (t *NodeTable) HasNext() (bool) {
 
 func (t *NodeTable) Next() (error) {
 	// Container
-	if ! schema.IsList(t.Corner.State.SelectedMeta()) {
+	if ! schema.IsList(t.Corner.Meta()) {
 		if t.Row == nil {
 			t.Row = t.Corner
 		} else {
@@ -38,15 +38,15 @@ func (t *NodeTable) Next() (error) {
 	}
 
 	// List
-	meta := t.Corner.State.SelectedMeta().(*schema.List)
-	rowNode, err := t.Corner.Node.Next(t.Corner, meta, t.autoCreate, data.NO_KEYS, t.Row == nil)
+	meta := t.Corner.Meta().(*schema.List)
+	rowNode, err := t.Corner.Node().Next(t.Corner, meta, t.autoCreate, data.NO_KEYS, t.Row == nil)
 	if err != nil {
 		return err
 	}
 	if rowNode == nil {
 		t.Row = nil
 	} else {
-		t.Row = t.Corner.SelectListItem(rowNode, t.Corner.State.Key())
+		t.Row = t.Corner.SelectListItem(rowNode, t.Corner.Key())
 	}
 	t.sels = make(map[string]*data.Selection)
 	t.vals = make(map[string]*data.Value)
@@ -74,7 +74,7 @@ func (t *NodeTable) getSelection(path string) (*data.Selection, error) {
 	}
 
 	// if s is a list, what do we do?  select 0th?
-	s, err := data.SelectMetaList(sel, ident, t.autoCreate)
+	s, err := sel.FindOrCreate(ident, t.autoCreate)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (t *NodeTable) Select(identPath string, autoCreate bool) (Table, error) {
 	parentSel, ident, err := t.resolveIdentPath(identPath)
 	if parentSel != nil && err == nil {
 		var sel *data.Selection
-		sel, err = data.SelectMetaList(parentSel, ident, autoCreate)
+		sel, err = parentSel.FindOrCreate(ident, autoCreate)
 		if err != nil {
 			return nil, err
 		}
@@ -129,7 +129,7 @@ func (t *NodeTable) Get(identPath string) (interface{}, error) {
 	if sel == nil {
 		return nil, err
 	}
-	if v, err = data.GetValue(sel, ident); err != nil {
+	if v, err = sel.GetValue(ident); err != nil {
 		return nil, err
 	}
 	if t.vals == nil {
@@ -150,5 +150,5 @@ func (t *NodeTable) Set(identPath string, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	return data.ChangeValue(sel, ident, v)
+	return sel.Set(ident, v)
 }

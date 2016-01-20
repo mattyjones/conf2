@@ -7,6 +7,7 @@ import (
 
 type Testing interface {
 	Fatal(args ...interface{})
+	Errorf(format string, args ...interface{})
 }
 
 type ModuleTestSetup struct {
@@ -29,12 +30,19 @@ func ModuleSetup(mstr string, t Testing) (setup *ModuleTestSetup) {
 
 func (setup *ModuleTestSetup) ToString(t Testing) string {
 	var actualBuff bytes.Buffer
-	out := NewJsonWriter(&actualBuff).Node()
-	err := NodeToNode(setup.Data.Node(), out, setup.Data.Schema()).Insert()
+	err := setup.Data.Select().Push(NewJsonWriter(&actualBuff).Node()).Insert()
 	if err != nil {
 		t.Fatal(err)
 	}
 	return actualBuff.String()
+}
+
+func AssertStrEqual(t Testing, expected string, actual string) bool {
+	if expected != actual {
+		t.Errorf("\nExpected:%s\n  Actual:%s", expected, actual)
+		return false
+	}
+	return true
 }
 
 

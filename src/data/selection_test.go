@@ -31,8 +31,7 @@ func TestSelectionEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := NewBufferStore()
-	storeData := NewStoreData(m, store)
-	sel := NewSelection(storeData.Node(), storeData.Schema())
+	sel := NewStoreData(m, store).Select()
 	var relPathFired bool
 	sel.OnPath(NEW, "m/message", func() error {
 		relPathFired = true
@@ -44,8 +43,7 @@ func TestSelectionEvents(t *testing.T) {
 		return nil
 	})
 	json := NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
-	err = NodeToSelection(json, sel).Upsert()
-	if err != nil {
+	if err = sel.Pull(json).Upsert(); err != nil {
 		t.Fatal(err)
 	}
 	if !relPathFired {
@@ -62,9 +60,11 @@ func TestSelectionPeek(t *testing.T) {
 		t.Fatal(err)
 	}
 	var expected = "Justin Bieber Fan Club Member"
-	n := &MyNode{Internal:expected}
-	sel := NewSelection(n, m)
-	actual :=  sel.Peek()
+	n := &MyNode{
+		Peekables:map[string]interface{} {"a":expected},
+	}
+	sel := NewSelection(m, n)
+	actual :=  sel.Peek("a")
 	if actual != expected {
 		t.Errorf("\nExpected:%s\n  Actual:%s", expected, actual)
 	}

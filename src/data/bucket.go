@@ -21,8 +21,8 @@ func (bb *BucketData) Node() (Node) {
 	return b.Container(bb.Root)
 }
 
-func (bb *BucketData) Schema() schema.MetaList {
-	return bb.Meta
+func (bb *BucketData) Select() *Selection {
+	return NewSelection(bb.Meta, bb.Node())
 }
 
 type Bucket struct {
@@ -110,7 +110,7 @@ func (b *Bucket) List(parent map[string]interface{}, initialList []map[string]in
 					// TODO: Support compound keys
 					if candidate[b.KeyMap(sel, meta.Keys[0])] == key[0].Value() {
 						selected = candidate
-						sel.State.SetKey(key)
+						sel.path.key = key
 						break
 					}
 				}
@@ -126,7 +126,7 @@ func (b *Bucket) List(parent map[string]interface{}, initialList []map[string]in
 				if key, err := b.ReadKey(sel, selected, meta); err != nil {
 					return nil, err
 				} else {
-					sel.State.SetKey(key)
+					sel.path.key = key
 				}
 			}
 		}

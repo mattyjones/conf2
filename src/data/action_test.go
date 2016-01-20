@@ -7,7 +7,6 @@ import (
 	"schema/yang"
 	"strings"
 	"testing"
-	"conf2"
 )
 
 func TestAction(t *testing.T) {
@@ -39,9 +38,8 @@ module m {
 	store := NewBufferStore()
 	b := NewStoreData(m, store)
 	var yourName *Value
-	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input Node) (output Node, err error) {
-		if err = NodeToNode(input, b.Container(""), meta.Input).Insert(); err != nil {
-conf2.Debug.Printf("here")
+	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input *Selection) (output Node, err error) {
+		if err = input.Push(b.Node()).Insert(); err != nil {
 			return nil, err
 		}
 		yourName = store.Values["name"]
@@ -50,14 +48,15 @@ conf2.Debug.Printf("here")
 	}
 	in := NewJsonReader(strings.NewReader(`{"name":"joe"}`)).Node()
 	var actual bytes.Buffer
-	out := NewJsonWriter(&actual).Node()
-	if err = PathAction(b, "sayHello", in, out); err != nil {
+	sel, err := b.Select().Find("sayHello")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if yourName.Str != "joe" {
-		t.Error("Your name ", yourName)
+	actionOut, actionErr := sel.Action(in)
+	if actionErr != nil {
+		t.Fatal(actionErr)
 	}
-	if actual.String() != `{"salutation":"Hello joe"}` {
-		t.Error(actual.String())
-	}
+	actionOut.Push(NewJsonWriter(&actual).Node()).Insert()
+	AssertStrEqual(t, "joe", yourName.Str)
+	AssertStrEqual(t, `{"salutation":"Hello joe"}`, actual.String())
 }

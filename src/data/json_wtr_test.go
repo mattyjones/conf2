@@ -43,7 +43,7 @@ module m {
 		}
 		b := BucketData{Meta: m, Root: root}
 		var json bytes.Buffer
-		if err = NodeToNode(b.Node(), NewJsonWriter(&json).Node(), m).Upsert(); err != nil {
+		if err = b.Select().Push(NewJsonWriter(&json).Node()).Upsert(); err != nil {
 			t.Fatal(err)
 		}
 		actual := string(json.Bytes())

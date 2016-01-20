@@ -43,6 +43,7 @@ func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj inter
 			v.SetEnum(int(value.Int()))
 		}
 	case schema.FMT_ANYDATA:
+conf2.Debug.Printf("Reading anydata %s", meta.GetIdent())
 		if anyData, isAnyData := value.Interface().(AnyData); isAnyData {
 			if value.IsNil() {
 				return nil, nil

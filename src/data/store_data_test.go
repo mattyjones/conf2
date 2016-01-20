@@ -87,8 +87,7 @@ func TestStoreBrowserKeyValueRead(t *testing.T) {
 	store.Values["a/aa/aaa"] = &Value{Str: "hi"}
 	store.Values["b=x/ba"] = &Value{Str: "x"}
 	var actualBytes bytes.Buffer
-	json := NewJsonWriter(&actualBytes).Node()
-	if err := NodeToNode(kv.Node(), json, kv.Schema()).Insert(); err != nil {
+	if err := kv.Select().Push(NewJsonWriter(&actualBytes).Node()).Insert(); err != nil {
 		t.Error(err)
 	}
 	actual := string(actualBytes.Bytes())
@@ -104,7 +103,7 @@ func TestStoreBrowserValueEdit(t *testing.T) {
 	kv := NewStoreData(m, store)
 	inputJson := `{"a":{"aa":{"aaa":"hi"}},"b":[{"ba":"x"}]}`
 	json := NewJsonReader(strings.NewReader(inputJson)).Node()
-	if err := NodeToNode(json, kv.Node(), kv.Schema()).Insert(); err != nil {
+	if err := kv.Select().Pull(json).Insert(); err != nil {
 		t.Fatal(err)
 	}
 	if len(store.Values) != 2 {
@@ -138,11 +137,7 @@ func TestStoreBrowserKeyValueEdit(t *testing.T) {
 
 	// change key
 	json := NewJsonReader(strings.NewReader(`{"ba":"y"}`)).Node()
-	edit, err := NodeToPath(json, kv, "b=x")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = edit.Update(); err != nil {
+	if err := kv.Select().Require("b=x").Pull(json).Update(); err != nil {
 		t.Fatal(err)
 	}
 	if v, newKeyExists := store.Values["b=y/ba"]; !newKeyExists {
@@ -163,7 +158,7 @@ func TestStoreBrowserReadListList(t *testing.T) {
 	store.Values["b=x/bc=y/bca"] = &Value{Str: "y"}
 	var actual bytes.Buffer
 	out := NewJsonWriter(&actual).Node()
-	if err := NodeToNode(kv.Node(), out, kv.Schema()).Upsert(); err != nil {
+	if err := kv.Select().Push(out).Upsert(); err != nil {
 		t.Error(err)
 	}
 	t.Log(actual.String())
@@ -175,11 +170,11 @@ func TestStoreRemoveAll(t *testing.T) {
 	store.Values["b=x/ba"] = &Value{Str: "x"}
 	store.Values["b=x/bc=y/bca"] = &Value{Str: "y"}
 	kv := NewStoreData(m, store)
-	sel, err := WalkDataPath(kv, "b=x/bc")
+	sel, err := kv.Select().Find("b=x/bc")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = Delete(sel); err != nil {
+	if err = sel.Delete(); err != nil {
 		t.Error(err)
 	}
 	if len(store.Values) != 1 {

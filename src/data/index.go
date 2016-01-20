@@ -90,7 +90,7 @@ func (i *StringIndex) OnNext(sel *Selection, meta *schema.List, key []*Value, fi
 			i.Position = 0
 			i.Keys = []string{key[0].Str}
 			hasMore, err = i.Builder.Select(i.Keys[0]), nil
-			sel.State.SetKey(key)
+			sel.path.key = key
 		} else {
 			hasMore = false
 		}
@@ -104,9 +104,7 @@ func (i *StringIndex) OnNext(sel *Selection, meta *schema.List, key []*Value, fi
 		if i.Position < len(i.Keys) {
 			hasMore, err = i.Builder.Select(i.Keys[i.Position]), nil
 			if hasMore {
-				var positionKey []*Value
-				positionKey, err = CoerseKeys(meta, []string{i.Keys[i.Position]})
-				sel.State.SetKey(positionKey)
+				sel.path.key, err = CoerseKeys(meta, []string{i.Keys[i.Position]})
 			}
 		} else {
 			hasMore = false

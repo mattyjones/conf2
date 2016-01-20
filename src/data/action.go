@@ -3,26 +3,15 @@ import (
 	"schema"
 )
 
-func PathAction(data Data, path string, input Node, output Node) (error) {
-	p, err := ParsePath(path, data.Schema())
-	if err != nil {
-		return  err
-	}
-	s, serr := WalkPath(NewSelection(data.Node(), data.Schema()), p)
-	if serr != nil {
-		return serr
-	}
-	return SelectionAction(s, input, output)
-}
-
-func SelectionAction(sel *Selection, input Node, output Node) (error) {
-	rpc := sel.State.Position().(*schema.Rpc)
-	rpcOutput, rerr := sel.Node.Action(sel, rpc, input)
+func (self *Selection) Action(input Node) (*Selection, error) {
+	rpc := self.path.meta.(*schema.Rpc)
+	in := NewSelection(rpc.Input, input)
+	rpcOutput, rerr := self.node.Action(self, rpc, in)
 	if rerr != nil {
-		return rerr
+		return nil, rerr
 	}
-	if rpc.Output != nil && output != nil {
-		return NodeToNode(rpcOutput, output, rpc.Output).Insert()
+	if rpcOutput != nil {
+		return NewSelection(rpc.Output, rpcOutput), nil
 	}
-	return nil
+	return nil, nil
 }

@@ -8,24 +8,24 @@ import (
 )
 
 type StoreData struct {
-	schema schema.MetaList
-	store  Store
+	Meta  schema.MetaList
+	Store Store
 }
 
 func NewStoreData(schema schema.MetaList, store Store) *StoreData {
 	return &StoreData{
-		schema: schema,
-		store:  store,
+		Meta: schema,
+		Store:  store,
 	}
 }
 
-func (kv *StoreData) Schema() schema.MetaList {
-	return kv.schema
+func (kv *StoreData) Select() *Selection {
+	return NewSelection(kv.Meta, kv.Node())
 }
 
 func (kv *StoreData) Node() (Node) {
 	var err error
-	if err = kv.store.Load(); err != nil {
+	if err = kv.Store.Load(); err != nil {
 		return ErrorNode{Err:err}
 	}
 	return kv.Container("")
@@ -34,7 +34,7 @@ func (kv *StoreData) Node() (Node) {
 func (kv *StoreData) OnEvent(sel *Selection, e Event) error {
 	switch e {
 	case END_EDIT:
-		return kv.store.Save()
+		return kv.Store.Save()
 	}
 	return nil
 }
@@ -46,8 +46,8 @@ func (kv *StoreData) List(parentPath string) Node {
 	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
 		if new {
 			var childPath string
-			if len(sel.State.Key()) > 0 {
-				childPath = kv.listPath(parentPath, sel.State.Key())
+			if len(sel.path.key) > 0 {
+				childPath = kv.listPath(parentPath, sel.path.key)
 			} else {
 				childPath = parentPath + "=unknown"
 			}
@@ -56,7 +56,7 @@ func (kv *StoreData) List(parentPath string) Node {
 		if len(key) > 0 {
 			if first {
 				path := kv.listPath(parentPath, key)
-				if hasMore := kv.store.HasValues(path); hasMore {
+				if hasMore := kv.Store.HasValues(path); hasMore {
 					return kv.Container(path), nil
 				}
 			} else {
@@ -64,7 +64,7 @@ func (kv *StoreData) List(parentPath string) Node {
 			}
 		} else {
 			if first {
-				keyList, err = kv.store.KeyList(parentPath, meta)
+				keyList, err = kv.Store.KeyList(parentPath, meta)
 				i = 0
 			} else {
 				i++
@@ -74,7 +74,7 @@ func (kv *StoreData) List(parentPath string) Node {
 				if key, err = CoerseKeys(meta, []string{keyList[i]}); err != nil {
 					return nil, err
 				}
-				sel.State.SetKey(key)
+				sel.path.key = key
 				path := kv.listPath(parentPath, key)
 				return kv.Container(path), nil
 			}
@@ -84,14 +84,14 @@ func (kv *StoreData) List(parentPath string) Node {
 	s.OnEvent = func(sel *Selection, e Event) error {
 		switch e {
 		case DELETE:
-			return kv.store.RemoveAll(parentPath)
+			return kv.Store.RemoveAll(parentPath)
 		}
 		return kv.OnEvent(sel, e)
 	}
-	s.OnAction = func(sel *Selection, rpc *schema.Rpc, input Node) (output Node, err error) {
-		path := kv.listPath(parentPath, sel.State.Key())
+	s.OnAction = func(sel *Selection, rpc *schema.Rpc, input *Selection) (output Node, err error) {
+		path := kv.listPath(parentPath, sel.path.key)
 		var action ActionFunc
-		if action, err = kv.store.Action(path); err != nil {
+		if action, err = kv.Store.Action(path); err != nil {
 			return
 		}
 		return action(sel, rpc, input)
@@ -132,7 +132,7 @@ func (kv *StoreData) Container(copy string) Node {
 			for props.HasNextMeta() {
 				prop := props.NextMeta()
 				candidatePath := kv.containerPath(copy, prop)
-				found := kv.store.HasValues(candidatePath)
+				found := kv.Store.HasValues(candidatePath)
 				if !found {
 					aligned = false
 					break
@@ -148,7 +148,7 @@ func (kv *StoreData) Container(copy string) Node {
 		return nil, errors.New(msg)
 	}
 	s.OnRead = func(sel *Selection, meta schema.HasDataType) (*Value, error) {
-		return kv.store.Value(kv.containerPath(copy, meta), meta.GetDataType()), nil
+		return kv.Store.Value(kv.containerPath(copy, meta), meta.GetDataType()), nil
 	}
 	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error) {
 		if new {
@@ -161,7 +161,7 @@ func (kv *StoreData) Container(copy string) Node {
 			}
 		}
 		childPath := kv.containerPath(copy, meta)
-		if kv.store.HasValues(childPath) {
+		if kv.Store.HasValues(childPath) {
 		if schema.IsList(meta) {
 				return kv.List(childPath), nil
 			} else {
@@ -172,29 +172,29 @@ func (kv *StoreData) Container(copy string) Node {
 	}
 	s.OnWrite = func(sel *Selection, meta schema.HasDataType, v *Value) (err error) {
 		propPath := kv.containerPath(copy, meta)
-		if err = kv.store.SetValue(propPath, v); err != nil {
+		if err = kv.Store.SetValue(propPath, v); err != nil {
 			return err
 		}
-		if schema.IsKeyLeaf(sel.State.SelectedMeta(), meta) {
+		if schema.IsKeyLeaf(sel.path.meta, meta) {
 			oldPath := copy
 			// TODO: Support compound keys
 			newKey := []*Value{v}
 			newPath := kv.listPathWithNewKey(copy, newKey)
-			kv.store.RenameKey(oldPath, newPath)
+			kv.Store.RenameKey(oldPath, newPath)
 		}
 		return
 	}
 	s.OnEvent = func(sel *Selection, e Event) error {
 		switch e {
 		case DELETE:
-			return kv.store.RemoveAll(copy)
+			return kv.Store.RemoveAll(copy)
 		}
 		return kv.OnEvent(sel, e)
     }
-	s.OnAction = func(sel *Selection, rpc *schema.Rpc, input Node) (output Node, err error) {
+	s.OnAction = func(sel *Selection, rpc *schema.Rpc, input *Selection) (output Node, err error) {
 		path := kv.containerPath(copy, rpc)
 		var action ActionFunc
-		if action, err = kv.store.Action(path); err != nil {
+		if action, err = kv.Store.Action(path); err != nil {
 			return
 		}
 		return action(sel, rpc, input)

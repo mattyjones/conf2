@@ -28,8 +28,8 @@ func NewData(restconf *Service) (rcb *Data, err error) {
 	return
 }
 
-func (rcb *Data) Schema() schema.MetaList {
-	return rcb.Meta
+func (rcb *Data) Select() *data.Selection {
+	return data.NewSelection(rcb.Meta, rcb.Node())
 }
 
 func (rcb *Data) Node() data.Node {
@@ -76,7 +76,7 @@ func SelectModule(name string, reg *registration) data.Node {
 		switch meta.GetIdent() {
 		case "module":
 			// TODO: support browsing schema at any point, not assume module
-			d := reg.browser.Schema().(*schema.Module)
+			d := reg.browser.Select().Meta().(*schema.Module)
 			browser := data.NewSchemaData(d, true)
 			return browser.SelectModule(d), nil
 		}

@@ -9,7 +9,7 @@ import (
 func MarshalContainer(Obj interface{}) Node {
 	s := &MyNode{
 		Label:"Marshal " + reflect.TypeOf(Obj).Name(),
-		Internal: Obj,
+		Peekables: map[string]interface{}{"internal": Obj},
 	}
 	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (Node, error) {
 		objType := reflect.ValueOf(Obj).Elem()
@@ -55,7 +55,7 @@ func (self *MarshalArray) Node() Node {
 	aryReflect := reflect.ValueOf(self.Array)
 	n := &MyNode{
 		Label: "Marshal " + aryReflect.Type().Name(),
-		Internal: self.Array,
+		Peekables: map[string]interface{}{"internal": self.Array},
 	}
 	n.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
 		panic("Not implemented")
@@ -74,7 +74,7 @@ func (self *MarshalMap) Node() Node {
 	mapReflect := reflect.ValueOf(self.Map)
 	n := &MyNode{
 		Label: "Marshal " + mapReflect.Type().Name(),
-		Internal: self.Map,
+		Peekables: map[string]interface{}{"internal": self.Map},
 	}
 	index := NewIndex(self.Map)
 	n.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
@@ -92,7 +92,7 @@ func (self *MarshalMap) Node() Node {
 		} else {
 			nextKey := index.NextKey(first)
 			if nextKey != NO_VALUE {
-				sel.State.SetKey(SetValues(meta.KeyMeta(), nextKey.Interface()))
+				sel.path.key = SetValues(meta.KeyMeta(), nextKey.Interface())
 				itemVal := mapReflect.MapIndex(nextKey)
 				item = itemVal.Interface()
 			}

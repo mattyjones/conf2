@@ -3,6 +3,7 @@ package data
 import (
 	"errors"
 	"schema"
+	"conf2"
 )
 
 type FindTarget struct {
@@ -10,13 +11,16 @@ type FindTarget struct {
 	position *Path
 	Target   *Selection
 	resource schema.Resource
+	autocreate bool
 }
 
 func NewFindTarget(p *PathSlice) *FindTarget {
-	return &FindTarget{
+	finder := &FindTarget{
 		path: p,
 		position: p.NextAfter(p.Head),
 	}
+	_, finder.autocreate = p.Head.Params()["autocreate"]
+	return finder
 }
 
 func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selection, err error) {
@@ -31,18 +35,29 @@ func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selec
 	if len(n.position.Key()) == 0 {
 		return nil, errors.New("Key required when navigating lists")
 	}
-	list := selection.State.SelectedMeta().(*schema.List)
+	list := selection.path.meta.(*schema.List)
 	var nextNode Node
-	if err = selection.Node.Find(selection, n.path.Tail); err != nil {
+	if err = selection.node.Find(selection, n.path.Tail); err != nil {
 		return nil, err
 	}
-	nextNode, err = selection.Node.Next(selection, list, false, n.position.Key(), true)
-	if err != nil || nextNode == nil {
+	nextNode, err = selection.node.Next(selection, list, false, n.position.Key(), true)
+	if err != nil {
 		return nil, err
+	} else if nextNode == nil {
+		if n.autocreate {
+			nextNode, err = selection.node.Next(selection, list, true, n.position.Key(), true)
+			if err != nil {
+				return nil, err
+			} else if nextNode == nil {
+				return nil, conf2.NewErr("Could not autocreate list item for " + selection.path.String())
+			}
+		} else {
+			return nil, nil
+		}
 	}
 	next = selection.SelectListItem(nextNode, n.position.Key())
 	if n.position == n.path.Tail {
-		n.setTarget(next)
+		n.setTarget(selection)
 	}
 	n.position = n.path.NextAfter(n.position)
 	return
@@ -63,9 +78,27 @@ func (n *FindTarget) setTarget(selection *Selection) {
 	//	s.Resource = nil
 }
 
-func (n *FindTarget) VisitAction(selection *Selection) error {
-	n.setTarget(selection)
-	return nil
+func (n *FindTarget) VisitAction(selection *Selection, rpc *schema.Rpc) (*Selection, error) {
+	actionSel := selection.SelectChild(rpc, selection.node)
+	n.setTarget(actionSel)
+	return actionSel, nil
+}
+
+func (n *FindTarget) VisitContainer(sel *Selection, meta schema.MetaList) (*Selection, error) {
+	childNode, err := sel.node.Select(sel, meta, false)
+	if err != nil {
+		return nil, err
+	}
+	if childNode == nil {
+		if !n.autocreate {
+			return nil, nil
+		}
+		childNode, err = sel.node.Select(sel, meta, true)
+		if err != nil || childNode == nil {
+			return nil, err
+		}
+	}
+	return sel.SelectChild(meta, childNode), nil
 }
 
 func (n *FindTarget) ContainerIterator(selection *Selection) (schema.MetaIterator, error) {
@@ -76,7 +109,7 @@ func (n *FindTarget) ContainerIterator(selection *Selection) (schema.MetaIterato
 	}
 
 	// should we shorten path to be path[position...tail] ?
-	if err = selection.Node.Find(selection, n.path.Tail); err != nil {
+	if err = selection.node.Find(selection, n.path.Tail); err != nil {
 		return nil, err
 	}
 	i := &schema.SingletonIterator{Meta: n.position.Meta()}

@@ -13,7 +13,7 @@ type Process struct {
 func NewProcess(on data.Node, m schema.MetaList) *Process {
 	return &Process{
 		table : &NodeTable{
-			Corner: data.NewSelection(on, m),
+			Corner: data.NewSelection(m, on),
 		},
 	}
 }
@@ -22,7 +22,7 @@ func (p *Process) Into(into data.Node, m schema.MetaList) *Process {
 	p.table = &Join{
 		On : p.table,
 		Into : &NodeTable{
-			Corner: data.NewSelection(into, m),
+			Corner: data.NewSelection(m, into),
 			autoCreate: true,
 		},
 	}

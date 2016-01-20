@@ -62,11 +62,9 @@ module m {
 	bData := NewStoreData(m, b).Node()
 
 	c := NewBufferStore()
-	cData := NewStoreData(m, c).Node()
-	if err = NodeToNode(Diff(bData, aData), cData, m).Insert(); err != nil {
+	if err = NewStoreData(m, c).Select().Pull(Diff(bData, aData)).Insert(); err != nil {
 		t.Error(err)
 	}
-
 	if len(c.Values) != 2 {
 		t.Error("Expected 1 value")
 	}

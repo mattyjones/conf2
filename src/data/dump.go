@@ -33,12 +33,8 @@ func NewDumper(out io.Writer) *Dumper {
 	}
 }
 
-func (self *Dumper) Schema() schema.MetaList {
-	return nil
-}
-
-func (d *Dumper) Node() Node {
-	return d.enter(0)
+func (self *Dumper) Select(meta schema.MetaList) *Selection {
+	return NewSelection(meta, self.enter(0))
 }
 
 func (d *Dumper) enter(level int) Node {
