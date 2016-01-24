@@ -6,18 +6,17 @@ import (
 	"strings"
 )
 
-
 type DataType struct {
 	Parent         HasDataType
 	Ident          string
-	formatPtr      *DataFormat
-	rangePtr       *string
-	enumeration []string
-	minLengthPtr   *int
-	maxLengthPtr   *int
-	pathPtr        *string
-	patternPtr     *string
-	defaultPtr     *string
+	FormatPtr      *DataFormat
+	RangePtr       *string
+	EnumerationRef []string
+	MinLengthPtr   *int
+	MaxLengthPtr   *int
+	PathPtr        *string
+	PatternPtr     *string
+	DefaultPtr     *string
 	resolvedPtr    **DataType
 	/*
 		FractionDigits
@@ -40,11 +39,11 @@ func (y *DataType) resolve() *DataType {
 	if y.resolvedPtr == nil {
 		var resolved *DataType
 		y.resolvedPtr = &resolved
-		if y.formatPtr != nil && (*y.formatPtr == FMT_LEAFREF || *y.formatPtr == FMT_LEAFREF_LIST) {
-			if y.pathPtr == nil {
+		if y.FormatPtr != nil && (*y.FormatPtr == FMT_LEAFREF || *y.FormatPtr == FMT_LEAFREF_LIST) {
+			if y.PathPtr == nil {
 				panic("Missing 'path' on leafref " + y.Ident)
 			}
-			resolvedMeta := FindByPath(y.Parent.GetParent(), *y.pathPtr)
+			resolvedMeta := FindByPath(y.Parent.GetParent(), *y.PathPtr)
 			if resolvedMeta == nil {
 				panic("Could not resolve 'path' on leafref " + y.Ident)
 			}
@@ -58,13 +57,13 @@ func (y *DataType) resolve() *DataType {
 
 func (y *DataType) SetFormat(format DataFormat) {
 	if format > 0 {
-		y.formatPtr = &format
+		y.FormatPtr = &format
 	}
 }
 
 func (y *DataType) Format() (format DataFormat) {
-	if y.formatPtr != nil && *y.formatPtr != FMT_LEAFREF && *y.formatPtr != FMT_LEAFREF_LIST {
-		format = *y.formatPtr
+	if y.FormatPtr != nil && *y.FormatPtr != FMT_LEAFREF && *y.FormatPtr != FMT_LEAFREF_LIST {
+		format = *y.FormatPtr
 	} else if resolved := y.resolve(); resolved != nil {
 		format = resolved.Format()
 	}
@@ -75,12 +74,12 @@ func (y *DataType) Format() (format DataFormat) {
 }
 
 func (y *DataType) SetPath(path string) {
-	y.pathPtr = &path
+	y.PathPtr = &path
 }
 
 func (y *DataType) Path() string {
-	if y.pathPtr != nil {
-		return *y.pathPtr
+	if y.PathPtr != nil {
+		return *y.PathPtr
 	}
 	if resolved := y.resolve(); resolved != nil {
 		return resolved.Path()
@@ -89,12 +88,12 @@ func (y *DataType) Path() string {
 }
 
 func (y *DataType) SetMinLength(len int) {
-	y.minLengthPtr = &len
+	y.MinLengthPtr = &len
 }
 
 func (y *DataType) MinLength() int {
-	if y.minLengthPtr != nil {
-		return *y.minLengthPtr
+	if y.MinLengthPtr != nil {
+		return *y.MinLengthPtr
 	}
 	if resolved := y.resolve(); resolved != nil {
 		return resolved.MinLength()
@@ -103,12 +102,12 @@ func (y *DataType) MinLength() int {
 }
 
 func (y *DataType) SetMaxLength(len int) {
-	y.maxLengthPtr = &len
+	y.MaxLengthPtr = &len
 }
 
 func (y *DataType) MaxLength() int {
-	if y.maxLengthPtr != nil {
-		return *y.maxLengthPtr
+	if y.MaxLengthPtr != nil {
+		return *y.MaxLengthPtr
 	}
 	if resolved := y.resolve(); resolved != nil {
 		resolved.MaxLength()
@@ -123,25 +122,25 @@ func (y *DataType) DecodeLength(encoded string) error {
 		if minLength, minErr := strconv.Atoi(segments[0]); minErr != nil {
 			return minErr
 		} else {
-			y.minLengthPtr = &minLength
+			y.MinLengthPtr = &minLength
 		}
 		if maxLength, maxErr := strconv.Atoi(segments[1]); maxErr != nil {
 			return maxErr
 		} else {
-			y.maxLengthPtr = &maxLength
+			y.MaxLengthPtr = &maxLength
 		}
 	} else {
 		if maxLength, maxErr := strconv.Atoi(segments[0]); maxErr != nil {
 			return maxErr
 		} else {
-			y.maxLengthPtr = &maxLength
+			y.MaxLengthPtr = &maxLength
 		}
 	}
 	return nil
 }
 
 func (y *DataType) HasDefault() bool {
-	if y.defaultPtr != nil {
+	if y.DefaultPtr != nil {
 		return true
 	}
 	if resolved := y.resolve(); resolved != nil {
@@ -151,12 +150,12 @@ func (y *DataType) HasDefault() bool {
 }
 
 func (y *DataType) SetDefault(def string) {
-	y.defaultPtr = &def
+	y.DefaultPtr = &def
 }
 
 func (y *DataType) Default() string {
-	if y.defaultPtr != nil {
-		return *y.defaultPtr
+	if y.DefaultPtr != nil {
+		return *y.DefaultPtr
 	}
 	if resolved := y.resolve(); resolved != nil {
 		return resolved.Default()
@@ -165,24 +164,23 @@ func (y *DataType) Default() string {
 }
 
 func (y *DataType) AddEnumeration(e string) {
-	if len(y.enumeration) == 0 {
-		y.enumeration = []string{ e }
+	if len(y.EnumerationRef) == 0 {
+		y.EnumerationRef = []string{e}
 	} else {
-		y.enumeration = append(y.enumeration, e)
+		y.EnumerationRef = append(y.EnumerationRef, e)
 	}
 }
 
 func (y *DataType) SetEnumeration(en []string) {
-	y.enumeration = en
+	y.EnumerationRef = en
 }
 
 func (y *DataType) Enumeration() []string {
-	if len(y.enumeration) > 0 {
-		return y.enumeration
+	if len(y.EnumerationRef) > 0 {
+		return y.EnumerationRef
 	}
 	if resolved := y.resolve(); resolved != nil {
 		return resolved.Enumeration()
 	}
-	return y.enumeration
+	return y.EnumerationRef
 }
-

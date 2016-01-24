@@ -446,10 +446,10 @@ type List struct {
 	Description string
 	MetaBase
 	ListBase
-	Groupings MetaContainer
-	Typedefs  MetaContainer
-	details   Details
-	Keys      []string
+	Groupings   MetaContainer
+	Typedefs    MetaContainer
+	details     Details
+	Key         []string
 }
 
 // Identifiable
@@ -513,8 +513,8 @@ func (y *List) Details() *Details {
 
 // List
 func (y *List) KeyMeta() (keyMeta []HasDataType) {
-	keyMeta = make([]HasDataType, len(y.Keys))
-	for i, keyIdent := range y.Keys {
+	keyMeta = make([]HasDataType, len(y.Key))
+	for i, keyIdent := range y.Key {
 		keyMeta[i] = FindByIdent2(y, keyIdent).(HasDataType)
 	}
 	return

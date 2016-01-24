@@ -6,6 +6,7 @@ import (
 	"schema"
 	"schema/yang"
 	"testing"
+	"os"
 )
 
 func printMeta(m schema.Meta, level string) {
@@ -54,7 +55,7 @@ module json-test {
 }
 
 // TODO: support typedefs - simpleyang datatypes that use typedefs return format=0
-func DISABLED_TestYangWrite(t *testing.T) {
+func TestYangWrite(t *testing.T) {
 	simple, err := yang.LoadModuleFromByteArray([]byte(yang.TestDataSimpleYang), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -65,6 +66,17 @@ func DISABLED_TestYangWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	os.Stdout.WriteString("\n*********** O R I G I N A L **********\n")
+	orig, _ := os.Create("original.json")
+	defer orig.Close()
+	from.Select().Push(NewJsonWriter(orig).Node()).Insert()
+
+	os.Stdout.WriteString("\n*********** C O P Y **********\n")
+	new, _ := os.Create("new.json")
+	defer new.Close()
+	to.Select().Push(NewJsonWriter(new).Node()).Insert()
+
 	// dump original and clone to see if anything is missing
 	diff := Diff(from.Node(), to.Node())
 	diffSel := from.Select().Fork(diff)

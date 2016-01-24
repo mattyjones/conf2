@@ -11,9 +11,9 @@ func ReadKeys(sel *Selection) (values []*Value, err error) {
 		return sel.path.key, nil
 	}
 	list := sel.path.meta.(*schema.List)
-	values = make([]*Value, len(list.Keys))
+	values = make([]*Value, len(list.Key))
 	var key *Value
-	for i, keyIdent := range list.Keys {
+	for i, keyIdent := range list.Key {
 		keyMeta := schema.FindByIdent2(sel.path.meta, keyIdent).(schema.HasDataType)
 		if key, err = sel.node.Read(sel, keyMeta); err != nil {
 			return nil, err

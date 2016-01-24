@@ -115,7 +115,7 @@ func JsonListReader(list []interface{}) Node {
 		}
 		if len(key) > 0 {
 			if first {
-				keyFields := meta.Keys
+				keyFields := meta.Key
 				for ; i < len(list); i++ {
 					candidate := list[i].(map[string]interface{})
 					if jsonKeyMatches(keyFields, candidate, key) {
@@ -132,9 +132,9 @@ func JsonListReader(list []interface{}) Node {
 			}
 			if i < len(list) {
 				container := list[i].(map[string]interface{})
-				if len(meta.Keys) > 0 {
+				if len(meta.Key) > 0 {
 					// TODO: compound keys
-					if keyData, hasKey := container[meta.Keys[0]]; hasKey {
+					if keyData, hasKey := container[meta.Key[0]]; hasKey {
 						// Key may legitimately not exist when inserting new data
 						sel.path.key = SetValues(meta.KeyMeta(), keyData)
 					}

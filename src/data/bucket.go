@@ -108,7 +108,7 @@ func (b *Bucket) List(parent map[string]interface{}, initialList []map[string]in
 				// looping not very efficient, but we do not have an index
 				for _, candidate := range list {
 					// TODO: Support compound keys
-					if candidate[b.KeyMap(sel, meta.Keys[0])] == key[0].Value() {
+					if candidate[b.KeyMap(sel, meta.Key[0])] == key[0].Value() {
 						selected = candidate
 						sel.path.key = key
 						break

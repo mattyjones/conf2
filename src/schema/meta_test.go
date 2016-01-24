@@ -25,7 +25,7 @@ func TestMetaIsConfig(t *testing.T) {
 	if ! l.Details().Config(path) {
 		t.Error("Should be config")
 	}
-	c.details.ConfigFlag = SET_FALSE
+	c.details.SetConfig(false)
 	if l.Details().Config(path) {
 		t.Errorf(" %s should not be config", path.String())
 	}

@@ -56,6 +56,30 @@ module yang {
         }
     }
 
+    grouping actions {
+        list actions {
+            key "ident";
+            uses def-header;
+            container input {
+                uses groupings-typedefs;
+                uses containers-lists-leafs-uses-choice;
+            }
+            container output {
+                uses groupings-typedefs;
+                uses containers-lists-leafs-uses-choice;
+            }
+        }
+    }
+
+    grouping notifications {
+        list notifcations {
+            key "ident";
+            uses def-header;
+            uses groupings-typedefs;
+            uses containers-lists-leafs-uses-choice;
+        }
+    }
+
     grouping containers-lists-leafs-uses-choice {
         list definitions {
             key "ident";
@@ -68,16 +92,20 @@ module yang {
                         uses def-header;
                         uses groupings-typedefs;
                         uses containers-lists-leafs-uses-choice;
+                        uses notifications;
+                        uses actions;
                     }
                 }
                 case list {
                     container list {
-                        uses def-header;
-                        leaf-list keys {
+                        leaf-list key {
                             type string;
                         }
+                        uses def-header;
                         uses groupings-typedefs;
                         uses containers-lists-leafs-uses-choice;
+                        uses notifications;
+                        uses actions;
                     }
                 }
                 case leaf {
@@ -169,12 +197,7 @@ module yang {
                 uses containers-lists-leafs-uses-choice;
             }
         }
-        list notifications {
-            key "ident";
-            uses def-header;
-            uses groupings-typedefs;
-            uses containers-lists-leafs-uses-choice;
-        }
+        uses notifications;
         uses groupings-typedefs;
         uses containers-lists-leafs-uses-choice;
     }

@@ -325,6 +325,7 @@ container_body_stmts :
 container_body_stmt :
     description token_semi
     | config_stmt
+    | mandatory_stmt
     | body_stmt
 
 uses_stmt :
@@ -451,6 +452,7 @@ notification_body_stmts :
 notification_body_stmt :
     description token_semi
     | config_stmt
+    | mandatory_stmt
     | body_stmt;
 
 grouping_stmt :
@@ -502,13 +504,14 @@ list_body_stmt :
     description token_semi
     | kywd_max_elements token_int token_semi
     | config_stmt
+    | mandatory_stmt
     | key_stmt
     | kywd_unique token_string token_semi
     | body_stmt
 
 key_stmt: kywd_key token_string token_semi {
      if list, valid := yylval.stack.Peek().(*schema.List); valid {
-       list.Keys = strings.Split(tokenString($2), " ")
+       list.Key = strings.Split(tokenString($2), " ")
      } else {
         yylex.Error("expected a list for key statement")
         goto ret1
@@ -551,8 +554,17 @@ leaf_body_stmt :
     type_stmt
     | description token_semi
     | config_stmt
+    | mandatory_stmt
     | default_stmt
-    | kywd_mandatory token_string token_semi
+
+mandatory_stmt : kywd_mandatory token_string token_semi {
+      if hasDetails, valid := yylval.stack.Peek().(schema.HasDetails); valid {
+         hasDetails.Details().SetMandatory("true" == $2)
+      } else {
+         yylex.Error("expected mandatory statement on schema supporting details")
+         goto ret1
+      }
+ };
 
 config_stmt : kywd_config token_string token_semi {
      if hasDetails, valid := yylval.stack.Peek().(schema.HasDetails); valid {
@@ -561,7 +573,7 @@ config_stmt : kywd_config token_string token_semi {
         yylex.Error("expected config statement on schema supporting details")
         goto ret1
      }
-}
+};
 
 /* TODO: when, if, units, must, status, reference, min, max */
 leaf_list_stmt :

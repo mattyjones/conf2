@@ -261,12 +261,13 @@ func (json *JsonWriter) writeValue(meta schema.Meta, v *Value) (err error) {
 	return
 }
 
-func (json *JsonWriter) writeBool(b bool) error {
+func (json *JsonWriter) writeBool(b bool) (err error) {
 	if b {
-		return json.writeString("true")
+		_, err = json.out.WriteString("true")
 	} else {
-		return json.writeString("false")
+		_, err = json.out.WriteString("false")
 	}
+	return
 }
 
 func (json *JsonWriter) writeFloat(f float64) (err error) {
