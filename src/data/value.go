@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 	"schema"
+	"conf2"
 )
 
 type Value struct {
@@ -277,8 +278,17 @@ func (v *Value) CoerseStrValue(s string) error {
 		}
 	case schema.FMT_STRING:
 		v.Str = s
+	case schema.FMT_ENUMERATION:
+		eid, err := strconv.Atoi(s)
+		if err == nil {
+			v.SetEnum(eid)
+			return nil
+		}
+		if ! v.SetEnumByLabel(s) {
+			return conf2.NewErr("Not an allowed enumation: " + s)
+		}
 	default:
-		panic("Coersion not supported from this data format")
+		panic(fmt.Sprintf("Coersion not supported from data format " + v.Type.Format().String()))
 	}
 	return nil
 }

@@ -47,6 +47,15 @@ const (
 	FMT_ANYDATA_LIST
 )
 
+func (f DataFormat) String() string {
+	for name, candidate := range internalTypes {
+		if f == candidate {
+			return name
+		}
+	}
+	return "?unknown?"
+}
+
 func IsListFormat(f DataFormat) bool {
 	return f >= FMT_BINARY_LIST && f <= FMT_UNION_LIST
 }
