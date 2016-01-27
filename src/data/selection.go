@@ -71,11 +71,15 @@ func (sel *Selection) SelectChild(meta schema.MetaList, node Node) *Selection {
 }
 
 func (sel *Selection) SelectListItem(node Node, key []*Value) *Selection {
+	var parentPath *Path
+	if sel.parent != nil {
+		parentPath = sel.parent.path
+	}
 	child := &Selection{
 		parent:     sel.parent, // NOTE: list item's parent is list's parent, not list!
 		events:     sel.events,
 		node:       node,
-		path:		&Path{parent:sel.parent.path, meta: sel.path.meta, key: key},
+		path:		&Path{parent:parentPath, meta: sel.path.meta, key: key},
 		insideList: true,
 	}
 	return child
