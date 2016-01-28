@@ -72,7 +72,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line parser.y:164
+//line parser.y:170
 
 //line yacctab:1
 var yyExca = [...]int{
@@ -81,68 +81,69 @@ var yyExca = [...]int{
 	-2, 0,
 }
 
-const yyNprod = 33
+const yyNprod = 35
 const yyPrivate = 57344
 
 var yyTokenNames []string
 var yyStates []string
 
-const yyLast = 56
+const yyLast = 60
 
 var yyAct = [...]int{
 
-	31, 21, 40, 12, 10, 11, 27, 32, 33, 34,
-	30, 26, 53, 22, 25, 24, 36, 52, 43, 12,
-	10, 9, 41, 38, 7, 37, 28, 4, 39, 29,
-	15, 13, 2, 20, 5, 19, 18, 42, 17, 16,
-	14, 46, 8, 44, 50, 45, 6, 47, 3, 1,
-	35, 48, 51, 49, 54, 23,
+	34, 22, 11, 12, 10, 43, 29, 35, 36, 37,
+	32, 28, 25, 23, 27, 26, 39, 57, 56, 47,
+	9, 12, 10, 44, 7, 41, 40, 31, 33, 15,
+	42, 13, 30, 4, 21, 20, 45, 46, 2, 19,
+	5, 18, 17, 48, 50, 49, 16, 51, 54, 14,
+	8, 6, 3, 55, 1, 38, 52, 53, 58, 24,
 }
 var yyPact = [...]int{
 
-	23, 23, -1000, 13, 11, -1000, 13, -1000, -3, -1000,
+	29, 29, -1000, 15, 13, -1000, 15, -1000, -3, -1000,
 	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, -6, 22, -5, 3, 21, 19, 3, -10, -1000,
-	18, 11, -1000, -1000, -1000, -1000, 9, 11, -1000, 11,
-	3, 11, -1000, 3, -1000, -1000, 11, -1000, 7, 1,
-	-1000, -1000, -1000, 3, -1000,
+	-1000, -1000, -6, 28, -5, 24, 3, 22, 21, 3,
+	-7, -1000, 19, 13, 13, -1000, -1000, -1000, -1000, 10,
+	13, -1000, 13, 3, 13, -1000, -1000, 3, -1000, -1000,
+	13, -1000, 8, 6, -1000, -1000, -1000, 3, -1000,
 }
 var yyPgo = [...]int{
 
-	0, 55, 53, 51, 0, 50, 49, 32, 48, 46,
-	24, 42, 40, 39, 38, 36, 35, 33, 5, 21,
+	0, 59, 57, 56, 0, 55, 54, 38, 52, 51,
+	24, 50, 49, 46, 42, 41, 39, 35, 34, 2,
+	20,
 }
 var yyR1 = [...]int{
 
 	0, 6, 6, 7, 9, 9, 10, 12, 12, 12,
-	12, 12, 18, 13, 14, 16, 17, 1, 15, 15,
-	4, 4, 4, 4, 5, 3, 3, 2, 2, 19,
-	11, 11, 8,
+	12, 12, 12, 19, 13, 14, 17, 18, 1, 15,
+	15, 16, 4, 4, 4, 4, 5, 3, 3, 2,
+	2, 20, 11, 11, 8,
 }
 var yyR2 = [...]int{
 
 	0, 1, 2, 2, 1, 2, 2, 1, 1, 1,
-	1, 1, 1, 4, 5, 3, 3, 2, 2, 4,
-	1, 1, 1, 1, 4, 0, 1, 1, 3, 1,
-	1, 2, 2,
+	1, 1, 1, 1, 4, 5, 3, 3, 2, 2,
+	4, 3, 1, 1, 1, 1, 4, 0, 1, 1,
+	3, 1, 1, 2, 2,
 }
 var yyChk = [...]int{
 
-	-1000, -6, -7, -8, 4, -7, -9, -10, -11, -19,
-	7, -18, 8, -10, -12, -19, -13, -14, -15, -16,
-	-17, 4, 16, -1, 18, 17, 14, 12, 4, -18,
-	15, -4, 4, 5, 6, -5, 13, 4, 4, -4,
-	12, 4, -18, 9, -18, -18, -4, -18, -3, -2,
-	-4, -18, 10, 11, -4,
+	-1000, -6, -7, -8, 4, -7, -9, -10, -11, -20,
+	7, -19, 8, -10, -12, -20, -13, -14, -15, -16,
+	-17, -18, 4, 16, -1, 15, 18, 17, 14, 12,
+	4, -19, 15, 4, -4, 4, 5, 6, -5, 13,
+	4, 4, -4, 12, 4, -19, -19, 9, -19, -19,
+	-4, -19, -3, -2, -4, -19, 10, 11, -4,
 }
 var yyDef = [...]int{
 
-	0, -2, 1, 0, 0, 2, 3, 4, 0, 30,
-	29, 32, 12, 5, 6, 31, 7, 8, 9, 10,
-	11, 0, 0, 0, 0, 0, 0, 0, 0, 18,
-	0, 0, 20, 21, 22, 23, 0, 0, 17, 0,
-	0, 0, 15, 25, 16, 13, 0, 19, 0, 26,
-	27, 14, 24, 0, 28,
+	0, -2, 1, 0, 0, 2, 3, 4, 0, 32,
+	31, 34, 13, 5, 6, 33, 7, 8, 9, 10,
+	11, 12, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 19, 0, 0, 0, 22, 23, 24, 25, 0,
+	0, 18, 0, 0, 0, 21, 16, 27, 17, 14,
+	0, 20, 0, 28, 29, 15, 26, 0, 30,
 }
 var yyTok1 = [...]int{
 
@@ -497,69 +498,76 @@ yydefault:
 	// dummy call; replaced with literal code
 	switch yynt {
 
-	case 12:
+	case 13:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:75
+		//line parser.y:76
 		{
 			yylval.stack.nextDepth = 0
 		}
-	case 13:
+	case 14:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:80
+		//line parser.y:81
 		{
 			op := &process.Set{Name: yyDollar[1].token, Expression: yyDollar[3].expr}
 			yylval.stack.Push(op)
 		}
-	case 14:
+	case 15:
 		yyDollar = yyS[yypt-5 : yypt+1]
-		//line parser.y:86
+		//line parser.y:87
 		{
 			op := &process.Let{Name: yyDollar[2].token, Expression: yyDollar[4].expr}
 			yylval.stack.Push(op)
 		}
-	case 15:
+	case 16:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:92
+		//line parser.y:93
 		{
 			op := &process.If{Expression: yyDollar[2].expr}
 			yylval.stack.Push(op)
 		}
-	case 16:
+	case 17:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:98
+		//line parser.y:99
 		{
 			op := &process.Goto{Script: yyDollar[2].token}
 			yylval.stack.Push(op)
 		}
-	case 17:
+	case 18:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:104
+		//line parser.y:105
 		{
 			op := &process.Select{On: yyDollar[2].token}
 			yylval.stack.Push(op)
 			yyVAL.sel = op
 		}
-	case 19:
+	case 20:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:112
+		//line parser.y:113
 		{
 			yyDollar[1].sel.Into = yyDollar[3].token
 		}
-	case 20:
-		yyDollar = yyS[yypt-1 : yypt+1]
+	case 21:
+		yyDollar = yyS[yypt-3 : yypt+1]
 		//line parser.y:117
 		{
-			yyVAL.expr = &process.Primative{Var: yyDollar[1].token}
-		}
-	case 21:
-		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:120
-		{
-			yyVAL.expr = &process.Primative{Str: yyDollar[1].token[1 : len(yyDollar[1].token)-1]}
+			op := &process.Select{Into: yyDollar[2].token}
+			yylval.stack.Push(op)
 		}
 	case 22:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		//line parser.y:123
+		{
+			yyVAL.expr = &process.Primative{Var: yyDollar[1].token}
+		}
+	case 23:
+		yyDollar = yyS[yypt-1 : yypt+1]
+		//line parser.y:126
+		{
+			yyVAL.expr = &process.Primative{Str: yyDollar[1].token[1 : len(yyDollar[1].token)-1]}
+		}
+	case 24:
+		yyDollar = yyS[yypt-1 : yypt+1]
+		//line parser.y:129
 		{
 			n, err := strconv.Atoi("-42")
 			if err != nil {
@@ -568,40 +576,40 @@ yydefault:
 			}
 			yyVAL.expr = &process.Primative{Num: n}
 		}
-	case 24:
+	case 26:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		//line parser.y:134
+		//line parser.y:140
 		{
 			yyVAL.expr = &process.Function{Name: yyDollar[1].token, Arguments: yyDollar[3].args}
 		}
-	case 25:
+	case 27:
 		yyDollar = yyS[yypt-0 : yypt+1]
-		//line parser.y:139
+		//line parser.y:145
 		{
 			yyVAL.args = []process.Expression{}
 		}
-	case 27:
+	case 29:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:145
+		//line parser.y:151
 		{
 			yyVAL.args = []process.Expression{yyDollar[1].expr}
 		}
-	case 28:
+	case 30:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		//line parser.y:148
+		//line parser.y:154
 		{
 			yyVAL.args = append(yyDollar[1].args, yyDollar[3].expr)
 		}
-	case 29:
+	case 31:
 		yyDollar = yyS[yypt-1 : yypt+1]
-		//line parser.y:152
+		//line parser.y:158
 		{
 			yylval.stack.depth = yylval.stack.nextDepth
 			yylval.stack.nextDepth++
 		}
-	case 32:
+	case 34:
 		yyDollar = yyS[yypt-2 : yypt+1]
-		//line parser.y:160
+		//line parser.y:166
 		{
 			s := &process.Script{Name: yyDollar[1].token}
 			yylval.stack.PushScript(s)

@@ -59,8 +59,8 @@ func (selct *Select) join(table Table) (*Join, error) {
 	}
 
 	return &Join{
-		Into: into,
 		On: on,
+		Into: into,
 	}, nil
 }
 

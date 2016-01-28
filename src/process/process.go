@@ -1,7 +1,6 @@
 package process
 import (
 	"data"
-	"schema"
 	"conf2"
 	"fmt"
 )
@@ -10,19 +9,19 @@ type Process struct {
 	table Table
 }
 
-func NewProcess(on data.Node, m schema.MetaList) *Process {
+func NewProcess(sel *data.Selection) *Process {
 	return &Process{
 		table : &NodeTable{
-			Corner: data.NewSelection(m, on),
+			Corner: sel,
 		},
 	}
 }
 
-func (p *Process) Into(into data.Node, m schema.MetaList) *Process {
+func (p *Process) Into(into *data.Selection) *Process {
 	p.table = &Join{
 		On : p.table,
 		Into : &NodeTable{
-			Corner: data.NewSelection(m, into),
+			Corner: into,
 			autoCreate: true,
 		},
 	}

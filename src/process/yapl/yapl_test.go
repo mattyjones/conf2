@@ -45,7 +45,7 @@ func TestYaplExec(t *testing.T) {
 	}
 	for i, test := range tests {
 		aIn := data.NewJsonReader(strings.NewReader(test.aData))
-		p := process.NewProcess(aIn.Node(), a.Module).Into(z.Data.Node(), z.Module)
+		p := process.NewProcess(data.NewSelection(a.Module, aIn.Node())).Into(z.Data.Select())
 		z.Store.Clear()
 		err := p.Run(scripts, "main")
 		if err != nil {

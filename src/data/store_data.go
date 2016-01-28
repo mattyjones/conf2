@@ -43,7 +43,7 @@ func (kv *StoreData) List(parentPath string) Node {
 	s := &MyNode{Label:"StoreData List"}
 	var keyList []string
 	var i int
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (Node, error) {
 		if new {
 			var childPath string
 			if len(key) > 0 {
@@ -63,8 +63,11 @@ func (kv *StoreData) List(parentPath string) Node {
 				return nil, nil
 			}
 		} else {
+			var err error
 			if first {
-				keyList, err = kv.Store.KeyList(parentPath, meta)
+				if keyList, err = kv.Store.KeyList(parentPath, meta); err != nil {
+					return nil, err
+				}
 				i = 0
 			} else {
 				i++
@@ -79,7 +82,7 @@ func (kv *StoreData) List(parentPath string) Node {
 				return kv.Container(path), nil
 			}
 		}
-		return
+		return nil, nil
 	}
 	s.OnEvent = func(sel *Selection, e Event) error {
 		switch e {

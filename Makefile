@@ -44,12 +44,12 @@ PKGS = \
 all : generate driver-java build test install
 
 .PHONY: generate driver-java build test install
-generate : generate-yang-parser generate-data-parser
+generate : generate-yang-parser generate-yapl-parser
 
 generate-yang-parser :
 	go generate schema/yang
 
-generate-data-parser :
+generate-yapl-parser :
 	go generate process/yapl
 
 build :

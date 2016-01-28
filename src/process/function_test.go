@@ -1,7 +1,7 @@
 package process
 import "testing"
 
-func sayHello(name string) string {
+func sayHello(stack *Stack, table Table, name string) string {
 	return "hello " + name
 }
 

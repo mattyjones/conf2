@@ -415,6 +415,16 @@ func lexBegin(l *lexer) stateFunc {
 		return lexExpression
 	}
 
+	if l.acceptToken(kywd_into) {
+		if ! l.acceptToken(token_ident) {
+			return l.error("Expected identifier after 'into'")
+		}
+		if ! l.acceptToken(token_eol) {
+			return l.error("Expected end of statement")
+		}
+		return lexBegin
+	}
+
 	if l.acceptToken(kywd_select) {
 		if ! l.acceptToken(token_ident) {
 			return l.error("Expected identifier after 'select'")

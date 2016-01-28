@@ -41,6 +41,8 @@ func (v *Value) Value() interface{} {
 		return v.Str
 	case schema.FMT_STRING_LIST:
 		return v.Strlist
+	case schema.FMT_ANYDATA:
+		return v.Data
 	default:
 		panic("Not implemented")
 	}
@@ -198,6 +200,8 @@ func SetValue(typ *schema.DataType, val interface{}) (*Value, error) {
 		}
 	case schema.FMT_STRING_LIST:
 		v.Strlist = InterfaceToStrlist(reflectVal.Interface())
+	case schema.FMT_ANYDATA:
+		v.Data = reflectVal.Interface().(AnyData)
 	default:
 		panic(fmt.Sprintf("Format code %d not implemented", typ.Format))
 	}

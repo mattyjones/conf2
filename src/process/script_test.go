@@ -68,7 +68,7 @@ func TestScriptExec(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		p := NewProcess(a.Data.Node(), a.Module).Into(z.Data.Node(), z.Module)
+		p := NewProcess(a.Data.Select()).Into(z.Data.Select())
 		a.Store.Clear()
 		z.Store.Clear()
 		a.Store.Values[test.aPath] = test.aValue

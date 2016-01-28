@@ -69,6 +69,7 @@ operation_stmt :
     set
     | let
     | select
+    | into
     | if
     | goto
 
@@ -112,6 +113,11 @@ select :
     | select_def kywd_into token_ident eol {
         $1.Into = $3
     }
+
+into : kywd_into token_ident eol {
+    op := &process.Select{Into:$2}
+    yylval.stack.Push(op)
+}
 
 expression :
     token_ident {

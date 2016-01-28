@@ -149,6 +149,7 @@ func JsonListReader(list []interface{}) Node {
 
 func JsonContainerReader(container map[string]interface{}) Node {
 	s := &MyNode{Label: "JSON Read Container"}
+	var divertedList Node
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		// go thru each case and if there are any properties in the data that are not
 		// part of the schema, that disqualifies that case and we move onto next case
@@ -196,6 +197,9 @@ func JsonContainerReader(container map[string]interface{}) Node {
 		return
 	}
 	s.OnNext = func(sel *Selection, meta *schema.List, create bool, key []*Value, first bool) (Node, error) {
+		if divertedList != nil {
+			return nil, nil
+		}
 		// divert to list handler
 		foundValues, found := container[meta.GetIdent()]
 		list, ok := foundValues.([]interface{})
@@ -203,7 +207,8 @@ func JsonContainerReader(container map[string]interface{}) Node {
 			msg := fmt.Sprintf("Expected { %s: [] }", meta.GetIdent())
 			return nil, errors.New(msg)
 		}
-		return JsonListReader(list), nil
+		divertedList = JsonListReader(list)
+		return divertedList.Next(sel, meta, create, key, first)
 	}
 	return s
 }
