@@ -3,11 +3,39 @@ package data
 import (
 	"encoding/json"
 	"bytes"
+	"strings"
+	"io"
+	"io/ioutil"
 )
 
 type AnyData interface {
 	String() (string, error)
 	Node() Node
+}
+
+type AnyReader struct {
+	Reader io.Reader
+}
+
+func (any *AnyReader) Node() Node {
+	return NewJsonReader(any.Reader).Node()
+}
+
+func (any *AnyReader) String() (string, error) {
+	b, err := ioutil.ReadAll(any.Reader)
+	return string(b), err
+}
+
+type AnyJsonString struct {
+	Json string
+}
+
+func (any *AnyJsonString) Node() Node {
+	return NewJsonReader(strings.NewReader(any.Json)).Node()
+}
+
+func (any *AnyJsonString) String() (string, error) {
+	return any.Json, nil
 }
 
 type AnyJson struct {
