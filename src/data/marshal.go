@@ -23,7 +23,7 @@ func MarshalContainer(Obj interface{}) Node {
 				return marshal.Node(), nil
 			} else {
 				marshal := &MarshalArray{
-					Array: value.Interface(),
+					ArrayValue: &value,
 				}
 				return marshal.Node(), nil
 			}
@@ -46,19 +46,48 @@ func MarshalContainer(Obj interface{}) Node {
 }
 
 type MarshalArray struct {
-	Array        interface{}
+	ArrayValue   *reflect.Value
 	OnNewItem    func() interface{}
 	OnSelectItem func(item interface{}) Node
 }
 
 func (self *MarshalArray) Node() Node {
-	aryReflect := reflect.ValueOf(self.Array)
+	//aryReflect := reflect.ValueOf(self.Array)
+	var i int
 	n := &MyNode{
-		Label: "Marshal " + aryReflect.Type().Name(),
-		Peekables: map[string]interface{}{"internal": self.Array},
+		Label: "Marshal " + self.ArrayValue.Type().Name(),
+		Peekables: map[string]interface{}{"internal": self.ArrayValue.Interface()},
 	}
 	n.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
-		panic("Not implemented")
+		var item interface{}
+		if new {
+			var itemValue reflect.Value
+			if self.OnNewItem != nil {
+				item = self.OnNewItem()
+				itemValue = reflect.ValueOf(item)
+			} else {
+				itemValue = reflect.New(self.ArrayValue.Type().Elem().Elem())
+				item = itemValue.Interface()
+			}
+			self.ArrayValue.Set(reflect.Append(*self.ArrayValue, itemValue))
+		} else if len(key) > 0 {
+			panic("Keys only implemented on MarshalMap, not MarshalArray")
+		} else {
+			if first {
+				i = 0
+			} else {
+				i++
+			}
+			if i < self.ArrayValue.Len() {
+				item = self.ArrayValue.Index(i).Interface()
+			}
+		}
+		if item != nil {
+			if self.OnSelectItem != nil {
+				return self.OnSelectItem(item), nil
+			}
+			return MarshalContainer(item), nil
+		}
 		return nil, nil
 	}
 	return n
