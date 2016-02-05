@@ -127,6 +127,14 @@ func ListToArray(l MetaList) []Meta {
 	return meta
 }
 
+func GetPath(m Meta) string {
+	s := m.GetIdent()
+	if p := m.GetParent(); p != nil {
+		return GetPath(p) + "/" + s
+	}
+	return s
+}
+
 func FindByPathWithoutResolvingProxies(root MetaList, path string) Meta {
 	c := find(root, path, false)
 	return c
