@@ -7,6 +7,15 @@ module conf2-management {
         leaf port {
             type string;
         }
+        /* looks at first ip address for iface, use callbackAddress to explicitly set callback */
+        leaf iface {
+            type string;
+            default "eth0";
+        }
+        /* optional, will determine callback automatically based on iface ip */
+        leaf callbackAddress {
+            type string;
+        }
         leaf docRoot {
             type string;
         }
@@ -17,6 +26,20 @@ module conf2-management {
         leaf-list registrations {
             type string;
             config "false";
+        }
+        container controller {
+            leaf addr {
+                type string;
+            }
+            leaf endpointId {
+                type string;
+            }
+            list registrations {
+                key "id";
+                leaf id {
+                    type string;
+                }
+            }
         }
 	}
 }

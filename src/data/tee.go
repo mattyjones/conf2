@@ -52,7 +52,6 @@ func (self *Tee)  Next(sel *Selection, meta *schema.List, new bool, key []*Value
 		return &next, nil
 	}
 	return nil, nil
-
 }
 
 func (self *Tee) Read(sel *Selection, meta schema.HasDataType) (*Value, error) {

@@ -42,6 +42,13 @@ func SelectManagement(service *Service) data.Node {
 		switch meta.GetIdent() {
 		case "modules":
 			return SelectModules(service.registrations), nil
+		case "controller":
+			if new {
+				service.Controller = &ControllerRegistry{}
+			}
+			if service.Controller != nil {
+				return service.Controller.Manage(), nil
+			}
 		}
 		return
 	}

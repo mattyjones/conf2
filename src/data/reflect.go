@@ -15,7 +15,8 @@ func ReadFieldWithFieldName(fieldName string, meta schema.HasDataType, obj inter
 	objType := reflect.ValueOf(obj).Elem()
 	value := objType.FieldByName(fieldName)
 	if ! value.IsValid() {
-		return nil, conf2.NewErr("Field not found:" + meta.GetIdent())
+		panic("Field not found:" + meta.GetIdent())
+		//return nil, conf2.NewErr("Field not found:" + meta.GetIdent())
 	}
 	v = &Value{Type: meta.GetDataType()}
 	switch v.Type.Format() {

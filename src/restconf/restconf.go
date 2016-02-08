@@ -2,13 +2,13 @@ package restconf
 
 import (
 	"conf2"
+	"data"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
 	"path/filepath"
 	"schema"
-	"data"
 	"time"
 )
 
@@ -34,16 +34,44 @@ func NewService() *Service {
 }
 
 type Service struct {
-	Path          string
-	registrations map[string]*registration
-	mux           *http.ServeMux
-	docrootSource *docRootImpl
-	DocRoot		  string
-	Port          string
+	Path            string
+	registrations   map[string]*registration
+	mux             *http.ServeMux
+	docrootSource   *docRootImpl
+	DocRoot         string
+	Port            string
+	Iface           string
+	CallbackAddress string
+	Controller      *ControllerRegistry
+}
+
+func (service *Service) EffectiveCallbackAddress() string {
+	if len(service.CallbackAddress) > 0 {
+		return service.CallbackAddress
+	}
+	if len(service.Iface) == 0 {
+		panic("No iface given for management port")
+	}
+	ip := conf2.GetIpForIface(service.Iface)
+	return fmt.Sprintf("http://%s%s/restconf", ip, service.Port)
 }
 
 func (service *Service) Manage() data.Node {
 	s := &data.MyNode{}
+	s.OnSelect = func(sel *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
+		switch meta.GetIdent() {
+		case "controller":
+			if new {
+				service.Controller = &ControllerRegistry{
+					CallbackAddress: service.EffectiveCallbackAddress(),
+				}
+			}
+			if service.Controller != nil {
+				return service.Controller.Manage(), nil
+			}
+		}
+		return nil, nil
+	}
 	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
 		switch meta.GetIdent() {
 		case "registrations":
@@ -53,7 +81,7 @@ func (service *Service) Manage() data.Node {
 				strlist[i] = name
 				i++
 			}
-			return &data.Value{Strlist:strlist}, nil
+			return &data.Value{Strlist: strlist}, nil
 		default:
 			return data.ReadField(meta, service)
 		}
@@ -63,7 +91,7 @@ func (service *Service) Manage() data.Node {
 		switch meta.GetIdent() {
 		case "docRoot":
 			service.DocRoot = v.Str
-			service.SetDocRoot(&schema.FileStreamSource{Root:service.DocRoot})
+			service.SetDocRoot(&schema.FileStreamSource{Root: service.DocRoot})
 		}
 		return data.WriteField(meta, service, v)
 	}
@@ -156,6 +184,15 @@ func (service *Service) RegisterBrowserWithName(browser data.Data, ident string)
 	fullPath := fmt.Sprint(service.Path, ident, "/")
 	conf2.Info.Println("registering browser at path ", fullPath)
 	service.mux.Handle(fullPath, http.StripPrefix(fullPath, reg))
+	if service.Controller != nil {
+		// TODO: Controller register should have background service that refreshes
+		// registration on it's own.  Do it once for now.
+		go func() {
+			if remoteRegErr := service.Controller.Register(browser); remoteRegErr != nil {
+				conf2.Err.Fatal(remoteRegErr)
+			}
+		}()
+	}
 	return nil
 }
 

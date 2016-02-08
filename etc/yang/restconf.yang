@@ -1,19 +1,27 @@
 module restconf {
 	namespace "http://org.conf2/ns/modules";
 	prefix "modules";
-	revision 0000-00-00 {
-		description "initial ver";
-	}
-	container management {
-        container service {
-            leaf port {
+	import conf2-management;
+	revision 0;
+
+    container controllerRegistry {
+        leaf addr {
+            type string;
+        }
+        leaf endpointId {
+            type string;
+        }
+        leaf callbackAddr {
+            type string;
+        }
+        list registrations {
+            key "id";
+            leaf id {
                 type string;
             }
-            leaf docroot {
-                type string;
-            }
-	    }
-	}
+        }
+    }
+
 	list modules {
 		key "name";
 		config "false";
