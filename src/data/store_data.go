@@ -33,7 +33,7 @@ func (kv *StoreData) Node() (Node) {
 
 func (kv *StoreData) OnEvent(sel *Selection, e Event) error {
 	switch e {
-	case END_EDIT:
+	case END_TREE_EDIT:
 		return kv.Store.Save()
 	}
 	return nil

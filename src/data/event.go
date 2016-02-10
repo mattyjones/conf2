@@ -9,9 +9,17 @@ type Event int
 
 const (
 	NEW Event = iota + 1
-	BEGIN_EDIT
-	END_EDIT
-	UNDO_EDIT
+
+	// TODO: Consider making these event propagate up tree until handler cancel's
+	// propagation (like w3c DOM mouse click events)
+	START_TREE_EDIT
+	END_TREE_EDIT
+
+	// TODO: Consider using this to replace Find node method, it too would be
+	// event the propagated up tree until handler canceled.
+	// FETCH_TREE
+
+	LEAVE_EDIT
 	LEAVE
 	DELETE
 	UNSELECT
@@ -19,9 +27,10 @@ const (
 var eventNames = []string {
 	"N/A",
 	"NEW",
-	"BEGIN_EDIT",
-	"END_EDIT",
-	"UNDO_EDIT",
+	"START_TREE_EDIT",
+	"END_TREE_EDIT",
+	// "FETCH_TREE",
+	"LEAVE_EDIT",
 	"LEAVE",
 	"DELETE",
 	"UNSELECT",

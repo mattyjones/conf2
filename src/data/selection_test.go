@@ -38,7 +38,7 @@ func TestSelectionEvents(t *testing.T) {
 		return nil
 	})
 	var regexFired bool
-	sel.OnRegex(END_EDIT, regexp.MustCompile(".*"), func() error {
+	sel.OnRegex(LEAVE_EDIT, regexp.MustCompile(".*"), func() error {
 		regexFired = true
 		return nil
 	})

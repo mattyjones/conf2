@@ -25,17 +25,20 @@ func (err *restconfError) HttpCode() int {
 	return err.Code
 }
 
-func NewService() *Service {
-	service := &Service{Path: "/restconf/"}
-	service.registrations = make(map[string]*registration, 5)
-	service.mux = http.NewServeMux()
+func NewService(root data.Data) *Service {
+	service := &Service{
+		Path: "/restconf/",
+		Root: root,
+		mux:  http.NewServeMux(),
+	}
 	service.mux.HandleFunc("/.well-known/host-meta", service.resources)
+	service.mux.Handle("/restconf/", http.StripPrefix("/restconf/", service))
 	return service
 }
 
 type Service struct {
 	Path            string
-	registrations   map[string]*registration
+	Root            data.Data
 	mux             *http.ServeMux
 	docrootSource   *docRootImpl
 	DocRoot         string
@@ -57,7 +60,7 @@ func (service *Service) EffectiveCallbackAddress() string {
 }
 
 func (service *Service) Manage() data.Node {
-	s := &data.MyNode{}
+	s := &data.MyNode{Peekables: map[string]interface{}{"internal": service}}
 	s.OnSelect = func(sel *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
 		switch meta.GetIdent() {
 		case "controller":
@@ -73,19 +76,7 @@ func (service *Service) Manage() data.Node {
 		return nil, nil
 	}
 	s.OnRead = func(state *data.Selection, meta schema.HasDataType) (*data.Value, error) {
-		switch meta.GetIdent() {
-		case "registrations":
-			strlist := make([]string, len(service.registrations))
-			i := 0
-			for name, _ := range service.registrations {
-				strlist[i] = name
-				i++
-			}
-			return &data.Value{Strlist: strlist}, nil
-		default:
-			return data.ReadField(meta, service)
-		}
-		return nil, nil
+		return data.ReadField(meta, service)
 	}
 	s.OnWrite = func(sel *data.Selection, meta schema.HasDataType, v *data.Value) (err error) {
 		switch meta.GetIdent() {
@@ -95,21 +86,6 @@ func (service *Service) Manage() data.Node {
 		}
 		return data.WriteField(meta, service, v)
 	}
-	s.OnEvent = func(sel *data.Selection, e data.Event) (err error) {
-		switch e {
-		case data.NEW:
-			rcb, err := NewData(service)
-			if err != nil {
-				return err
-			}
-			// always add browser for restconf server itself
-			if err = service.RegisterBrowser(rcb); err != nil {
-				return err
-			}
-		}
-		return
-	}
-
 	return s
 }
 
@@ -117,7 +93,7 @@ type registration struct {
 	browser data.Data
 }
 
-func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (service *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handleError := func(err error) {
 		if httpErr, ok := err.(data.HttpError); ok {
 			http.Error(w, httpErr.Error(), httpErr.HttpCode())
@@ -127,8 +103,8 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var err error
 	var payload data.Node
-	sel := reg.browser.Select()
-	if sel, err = sel.FindUrl(r.URL); err == nil {
+	var sel *data.Selection
+	if sel, err = service.Root.Select().FindUrl(r.URL); err == nil {
 		if sel == nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
@@ -171,29 +147,6 @@ func (reg *registration) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type docRootImpl struct {
 	docroot schema.StreamSource
-}
-
-func (service *Service) RegisterBrowser(browser data.Data) error {
-	ident := browser.Select().Meta().GetIdent()
-	return service.RegisterBrowserWithName(browser, ident)
-}
-
-func (service *Service) RegisterBrowserWithName(browser data.Data, ident string) error {
-	reg := &registration{browser}
-	service.registrations[ident] = reg
-	fullPath := fmt.Sprint(service.Path, ident, "/")
-	conf2.Info.Println("registering browser at path ", fullPath)
-	service.mux.Handle(fullPath, http.StripPrefix(fullPath, reg))
-	if service.Controller != nil {
-		// TODO: Controller register should have background service that refreshes
-		// registration on it's own.  Do it once for now.
-		go func() {
-			if remoteRegErr := service.Controller.Register(browser); remoteRegErr != nil {
-				conf2.Err.Fatal(remoteRegErr)
-			}
-		}()
-	}
-	return nil
 }
 
 func (service *Service) SetDocRoot(docroot schema.StreamSource) {

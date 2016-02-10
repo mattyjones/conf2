@@ -64,16 +64,11 @@ func (e *Editor) ControlledUpdate(cntrl WalkController) (err error) {
 }
 
 func (self *Selection) Delete() (err error) {
-	if err = self.Fire(BEGIN_EDIT); err != nil {
-		return err
-	}
-	if err = self.Fire(DELETE); err != nil {
-		if suberr := self.Fire(UNDO_EDIT); suberr != nil {
-			conf2.Err.Printf("Could not roll back edit, err=" + suberr.Error())
+	if err = self.Fire(START_TREE_EDIT); err == nil {
+		if err = self.Fire(DELETE); err == nil {
+			err = self.Fire(END_TREE_EDIT)
 		}
-		return err
 	}
-	err = self.Fire(END_EDIT)
 	return
 }
 
@@ -84,17 +79,15 @@ func (e *Editor) Edit(strategy Strategy, controller WalkController) (err error) 
 	} else {
 		n, err = e.container(e.from, e.to, false, strategy)
 	}
+	if err != nil {
+		return err
+	}
 	// we could fork "from" or "to", shouldn't matter
 	s := e.from.Fork(n)
-	if err == nil {
-		if err = e.to.Fire(BEGIN_EDIT); err == nil {
-			if err = s.Walk(controller); err == nil {
-				err = e.to.Fire(END_EDIT)
-			} else {
-				// TODO: guard against panics not calling undo
-				if suberr := e.to.Fire(UNDO_EDIT); suberr != nil {
-					conf2.Err.Printf("Could not roll back edit, err=" + suberr.Error())
-				}
+	if err = e.to.Fire(START_TREE_EDIT); err == nil {
+		if err = s.Walk(controller); err == nil {
+			if err = e.to.Fire(LEAVE_EDIT); err == nil {
+				err = e.to.Fire(END_TREE_EDIT)
 			}
 		}
 	}
@@ -244,8 +237,13 @@ func (e *Editor) container(from *Selection, to *Selection, new bool, strategy St
 }
 
 func (e *Editor) handleEvent(sel *Selection, from *Selection, to *Selection, new bool, event Event) (err error) {
-	if event == LEAVE && new {
-		if err = to.Fire(NEW); err != nil {
+	if event == LEAVE {
+		if new {
+			if err = to.Fire(NEW); err != nil {
+				return
+			}
+		}
+		if err = to.Fire(LEAVE_EDIT); err != nil {
 			return
 		}
 	}

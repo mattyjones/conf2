@@ -58,7 +58,7 @@ func (json *JsonWriter) Node() Node {
 		OnEvent:func(p Node, s *Selection, e Event) error {
 			var err error
 			switch e {
-			case END_EDIT:
+			case END_TREE_EDIT:
 				if closer != nil {
 					if err = closer(); err != nil {
 						return err

@@ -30,7 +30,6 @@ module food {
 
 func TestEditListItem(t *testing.T) {
 	var err error
-	var edit *Editor
 	var bd *BucketData
 	if bd, err = LoadEditTestData(); err != nil {
 		t.Fatal(err)
@@ -53,8 +52,8 @@ func TestEditListItem(t *testing.T) {
 	// INSERT
 	log.Println("Testing insert\n")
 	json = NewJsonReader(strings.NewReader(`{"fruits":[{"name":"pear","origin":{"country":"Columbia"}}]}`)).Node()
-	if err = bd.Select().Require("fruits").Pull(json).Insert(); err == nil {
-		err = edit.Insert()
+	if err = bd.Select().Require("fruits").Pull(json).Insert(); err != nil {
+		t.Fatal(err)
 	}
 	actual, found := bd.Root["fruits"]
 	if !found {
