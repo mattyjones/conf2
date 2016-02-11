@@ -3,23 +3,46 @@ module conf2-management {
 	prefix "conf2";
 	revision 0;
 
-    leaf port {
-        type string;
-    }
-    /* looks at first ip address for iface, use callbackAddress to explicitly set callback */
-    leaf iface {
-        type string;
-        default "eth0";
-    }
-    /* optional, will determine callback automatically based on iface ip */
-    leaf callbackAddress {
-        type string;
-    }
-    leaf docRoot {
-        type string;
-    }
-    leaf path {
-        type string;
-        default "/restconf/";
+    grouping management {
+        leaf port {
+            type string;
+        }
+        /* looks at first ip address for iface, use callbackAddress to explicitly set callback */
+        leaf iface {
+            type string;
+            default "eth0";
+        }
+        /* optional, will determine callback automatically based on iface ip */
+        leaf callbackAddress {
+            type string;
+        }
+        leaf docRoot {
+            type string;
+        }
+        leaf path {
+            type string;
+            default "/restconf/";
+        }
+        container callHome {
+            leaf controllerAddress {
+                type string;
+            }
+            /*
+             optional, will determine automatically otherwise based on
+             restconf's ip address and port
+            */
+            leaf endpointAddress {
+                type string;
+            }
+            leaf endpointId {
+                type string;
+            }
+            container registration {
+                config "false";
+                leaf id {
+                    type string;
+                }
+            }
+        }
     }
 }

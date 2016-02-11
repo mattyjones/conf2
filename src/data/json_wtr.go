@@ -57,7 +57,7 @@ func (json *JsonWriter) Node() Node {
 		},
 		OnEvent:func(p Node, s *Selection, e Event) error {
 			var err error
-			switch e {
+			switch e.Type {
 			case END_TREE_EDIT:
 				if closer != nil {
 					if err = closer(); err != nil {
@@ -106,7 +106,7 @@ func (json *JsonWriter) Container(closer closerFunc) Node {
 		return json.Container(json.endContainer), nil
 	}
 	s.OnEvent = func(sel *Selection, e Event) (err error) {
-		switch e {
+		switch e.Type {
 		case LEAVE:
 			err = closer()
 		}

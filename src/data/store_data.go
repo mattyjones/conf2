@@ -32,7 +32,7 @@ func (kv *StoreData) Node() (Node) {
 }
 
 func (kv *StoreData) OnEvent(sel *Selection, e Event) error {
-	switch e {
+	switch e.Type {
 	case END_TREE_EDIT:
 		return kv.Store.Save()
 	}
@@ -85,7 +85,7 @@ func (kv *StoreData) List(parentPath string) Node {
 		return nil, nil
 	}
 	s.OnEvent = func(sel *Selection, e Event) error {
-		switch e {
+		switch e.Type {
 		case DELETE:
 			return kv.Store.RemoveAll(parentPath)
 		}
@@ -188,7 +188,7 @@ func (kv *StoreData) Container(copy string) Node {
 		return
 	}
 	s.OnEvent = func(sel *Selection, e Event) error {
-		switch e {
+		switch e.Type {
 		case DELETE:
 			return kv.Store.RemoveAll(copy)
 		}

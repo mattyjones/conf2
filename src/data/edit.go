@@ -64,9 +64,9 @@ func (e *Editor) ControlledUpdate(cntrl WalkController) (err error) {
 }
 
 func (self *Selection) Delete() (err error) {
-	if err = self.Fire(START_TREE_EDIT); err == nil {
-		if err = self.Fire(DELETE); err == nil {
-			err = self.Fire(END_TREE_EDIT)
+	if err = self.Fire(START_TREE_EDIT.New()); err == nil {
+		if err = self.Fire(DELETE.New()); err == nil {
+			err = self.Fire(END_TREE_EDIT.New())
 		}
 	}
 	return
@@ -84,10 +84,10 @@ func (e *Editor) Edit(strategy Strategy, controller WalkController) (err error) 
 	}
 	// we could fork "from" or "to", shouldn't matter
 	s := e.from.Fork(n)
-	if err = e.to.Fire(START_TREE_EDIT); err == nil {
+	if err = e.to.Fire(START_TREE_EDIT.New()); err == nil {
 		if err = s.Walk(controller); err == nil {
-			if err = e.to.Fire(LEAVE_EDIT); err == nil {
-				err = e.to.Fire(END_TREE_EDIT)
+			if err = e.to.Fire(LEAVE_EDIT.New()); err == nil {
+				err = e.to.Fire(END_TREE_EDIT.New())
 			}
 		}
 	}
@@ -115,7 +115,7 @@ func (e *Editor) list(from *Selection, to *Selection, new bool, strategy Strateg
 		switch strategy {
 		case UPDATE:
 			if toNextNode == nil {
-				msg := fmt.Sprint("No item found with given key in list ", sel.String())
+				msg := fmt.Sprintf("'%v' not found in '%s' list node ", key, sel.String())
 				return nil, conf2.NewErrC(msg, conf2.NotFound)
 			}
 		case UPSERT:
@@ -176,7 +176,8 @@ func (e *Editor) container(from *Selection, to *Selection, new bool, strategy St
 		switch strategy {
 		case INSERT:
 			if toChildNode != nil {
-				return nil, conf2.NewErrC("Found existing container " + sel.String(), conf2.Conflict)
+				msg := fmt.Sprintf("'%s' not found in '%s' container node ", meta.GetIdent(), sel.String())
+				return nil, conf2.NewErrC(msg, conf2.Conflict)
 			}
 			if toChildNode, err = to.node.Select(to, meta, true); err != nil {
 				return nil, err
@@ -191,7 +192,8 @@ func (e *Editor) container(from *Selection, to *Selection, new bool, strategy St
 			}
 		case UPDATE:
 			if toChildNode == nil {
-				return nil, conf2.NewErrC("Container not found in list " + sel.String(), conf2.NotFound)
+				msg := fmt.Sprintf("'%s' not found in '%s' container node ", meta.GetIdent(), sel.String())
+				return nil, conf2.NewErrC(msg, conf2.NotFound)
 			}
 		default:
 			return nil, conf2.NewErrC("Stratgey not implemented", conf2.NotImplemented)
@@ -200,7 +202,8 @@ func (e *Editor) container(from *Selection, to *Selection, new bool, strategy St
 		if err != nil {
 			return nil, err
 		} else if toChildNode == nil {
-			return nil, conf2.NewErr("Could not create destination container node " + to.String())
+			msg := fmt.Sprintf("'%s' could not create '%s' container node ", to.String(), meta.GetIdent())
+			return nil, conf2.NewErr(msg)
 		}
 		// we always switch to upsert strategy because if there were any conflicts, it would have been
 		// discovered in top-most level.
@@ -237,13 +240,13 @@ func (e *Editor) container(from *Selection, to *Selection, new bool, strategy St
 }
 
 func (e *Editor) handleEvent(sel *Selection, from *Selection, to *Selection, new bool, event Event) (err error) {
-	if event == LEAVE {
+	if event.Type == LEAVE {
 		if new {
-			if err = to.Fire(NEW); err != nil {
+			if err = to.Fire(NEW.New()); err != nil {
 				return
 			}
 		}
-		if err = to.Fire(LEAVE_EDIT); err != nil {
+		if err = to.Fire(LEAVE_EDIT.New()); err != nil {
 			return
 		}
 	}

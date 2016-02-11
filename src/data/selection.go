@@ -97,22 +97,22 @@ func (sel *Selection) Fire(e Event) (err error) {
 	return sel.events.Fire(sel.path, e)
 }
 
-func (sel *Selection) On(e Event, listener ListenFunc) *Listener {
+func (sel *Selection) On(e EventType, listener ListenFunc) *Listener {
 	return sel.OnPath(e, sel.Path().String(), listener)
 }
 
-func (sel *Selection) OnPath(e Event, path string, handler ListenFunc) *Listener {
+func (sel *Selection) OnPath(e EventType, path string, handler ListenFunc) *Listener {
 	listener := &Listener{event: e, path: path, handler: handler}
 	sel.events.AddListener(listener)
 	return listener
 }
 
-func (sel *Selection) OnChild(e Event, meta schema.MetaList, listener ListenFunc) *Listener {
+func (sel *Selection) OnChild(e EventType, meta schema.MetaList, listener ListenFunc) *Listener {
 	fullPath := sel.path.String() + "/" + meta.GetIdent()
 	return sel.OnPath(e, fullPath, listener)
 }
 
-func (sel *Selection) OnRegex(e Event, regex *regexp.Regexp, handler ListenFunc) *Listener {
+func (sel *Selection) OnRegex(e EventType, regex *regexp.Regexp, handler ListenFunc) *Listener {
 	listener := &Listener{event: e, regex: regex, handler: handler}
 	sel.events.AddListener(listener)
 	return listener
@@ -238,7 +238,7 @@ func (self *Selection) IsConfig(meta schema.Meta) bool {
 }
 
 func (sel *Selection) ClearAll() error {
-	return sel.node.Event(sel, DELETE)
+	return sel.node.Event(sel, DELETE.New())
 }
 
 func (sel *Selection) FindOrCreate(ident string, autoCreate bool) (*Selection, error) {

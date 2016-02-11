@@ -45,7 +45,7 @@ type Service struct {
 	Port            string
 	Iface           string
 	CallbackAddress string
-	Controller      *ControllerRegistry
+	CallHome        *CallHome
 }
 
 func (service *Service) EffectiveCallbackAddress() string {
@@ -63,14 +63,15 @@ func (service *Service) Manage() data.Node {
 	s := &data.MyNode{Peekables: map[string]interface{}{"internal": service}}
 	s.OnSelect = func(sel *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
 		switch meta.GetIdent() {
-		case "controller":
+		case "callHome":
 			if new {
-				service.Controller = &ControllerRegistry{
-					CallbackAddress: service.EffectiveCallbackAddress(),
+				service.CallHome = &CallHome{
+					EndpointAddress: service.EffectiveCallbackAddress(),
+					Module: service.Root.Select().Meta().(*schema.Module),
 				}
 			}
-			if service.Controller != nil {
-				return service.Controller.Manage(), nil
+			if service.CallHome != nil {
+				return service.CallHome.Manage(), nil
 			}
 		}
 		return nil, nil

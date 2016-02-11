@@ -171,7 +171,7 @@ func (bridge *apiNodeBridge) node(selectionHnd *ApiHandle) (data.Node) {
 	s.OnWrite = func(state *data.Selection, meta schema.HasDataType, val *schema.Value) error {
 		return bridge.edit(meta, selectionHnd, val)
 	}
-	s.OnEvent = func(state *data.Selection, e data.Event) error {
+	s.OnEvent = func(state *data.Selection, e data.EventType) error {
 		return bridge.event(selectionHnd, e)
 	}
 	s.OnChoose = func(state *data.Selection, m *schema.Choice) (schema.Meta, error) {
@@ -311,7 +311,7 @@ func (cb *apiNodeBridge) find(nodeHnd *ApiHandle, path *schema.Path) (err error)
 	return
 }
 
-func (cb *apiNodeBridge) event(nodeHnd *ApiHandle, e data.Event) (err error) {
+func (cb *apiNodeBridge) event(nodeHnd *ApiHandle, e data.EventType) (err error) {
 	errPtr := unsafe.Pointer(&err)
 	C.conf2_browse_event(cb.browser.event_impl, nodeHnd.ID, C.int(e), errPtr)
 	return

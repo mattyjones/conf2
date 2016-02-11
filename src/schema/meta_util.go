@@ -135,6 +135,14 @@ func GetPath(m Meta) string {
 	return s
 }
 
+func GetModule(m Meta) *Module {
+	candidate := m
+	for candidate.GetParent() != nil {
+		candidate = candidate.GetParent()
+	}
+	return candidate.(*Module)
+}
+
 func FindByPathWithoutResolvingProxies(root MetaList, path string) Meta {
 	c := find(root, path, false)
 	return c

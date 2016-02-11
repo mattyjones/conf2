@@ -18,19 +18,19 @@ import (
 // which may or may-not be part of the final draft.  Client-initiated registration at first
 // glance appears to be more useful, but this may proved to be a wrong assumption on my part.
 //
-type ControllerRegistry struct {
-	Root            data.Data
-	CallbackAddress string
-	Addr            string
-	EndpointId      string
-	Registration    *ControllerRegistration
+type CallHome struct {
+	Module            *schema.Module
+	ControllerAddress string
+	EndpointAddress   string
+	EndpointId        string
+	Registration      *Registration
 }
 
-type ControllerRegistration struct {
+type Registration struct {
 	Id string
 }
 
-func (self *ControllerRegistry) Manage() data.Node {
+func (self *CallHome) Manage() data.Node {
 	return &data.Extend{
 		Node: data.MarshalContainer(self),
 		OnSelect: func(p data.Node, sel *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
@@ -43,38 +43,25 @@ func (self *ControllerRegistry) Manage() data.Node {
 			return nil, nil
 		},
 		OnEvent: func(p data.Node, sel *data.Selection, e data.Event) error {
-			switch e {
+			switch e.Type {
 			case data.LEAVE_EDIT:
-				return self.Register()
+				return self.Call()
 			}
 			return p.Event(sel, e)
 		},
 	}
 }
 
-func (self *ControllerRegistry) moduleNames(modules schema.MetaList) []string {
-	names := make([]string, 0)
-	i := schema.NewMetaListIterator(modules, false)
-	for i.HasNextMeta() {
-		switch mod := i.NextMeta().(type) {
-		case *schema.Module:
-			names = append(names, mod.GetIdent())
-		}
-	}
-	return names
-}
-
-func (self *ControllerRegistry) Register() (err error) {
+func (self *CallHome) Call() (err error) {
 	var req *http.Request
-	conf2.Info.Printf("Registering controller %s", self.Addr)
-	if req, err = http.NewRequest("POST", self.Addr, nil); err != nil {
+	conf2.Info.Printf("Registering controller %s", self.ControllerAddress)
+	if req, err = http.NewRequest("POST", self.ControllerAddress, nil); err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	modules := strings.Join(self.moduleNames(self.Root.Select().Meta()), ",")
-	payload := fmt.Sprintf(`{"modules":["%s"],"endpointId":"%s","callbackAddress":"%s"}`, modules, self.EndpointId,
-		self.CallbackAddress)
+	payload := fmt.Sprintf(`{"module":"%s","endpointId":"%s","endpointAddress":"%s"}`, self.Module.GetIdent(),
+		self.EndpointId, self.EndpointAddress)
 	req.Body = ioutil.NopCloser(strings.NewReader(payload))
 	client := http.DefaultClient
 	resp, getErr := client.Do(req)
@@ -90,7 +77,7 @@ func (self *ControllerRegistry) Register() (err error) {
 	if err = json.Unmarshal(respBytes, &rc); err != nil {
 		return err
 	}
-	self.Registration = &ControllerRegistration{
+	self.Registration = &Registration{
 		Id: rc["id"].(string),
 	}
 	return nil

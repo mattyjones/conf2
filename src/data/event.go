@@ -1,14 +1,44 @@
 package data
+
 import (
-	"regexp"
 	"conf2"
 	"fmt"
+	"regexp"
 )
 
-type Event int
+type EventType int
+
+type eventState struct {
+	propagate bool
+}
+
+type Event struct {
+	Type  EventType
+	state *eventState
+}
+
+func (self Event) String() string {
+	return self.Type.String()
+}
+
+func (self EventType) New() Event {
+	return Event{Type: self}
+}
+
+func (self EventType) Bubbles() bool {
+	switch self {
+	case START_TREE_EDIT, END_TREE_EDIT, FETCH_TREE:
+		return true
+	}
+	return false
+}
+
+func (self Event) StopPropagation() {
+	self.state.propagate = false
+}
 
 const (
-	NEW Event = iota + 1
+	NEW EventType = iota + 1
 
 	// TODO: Consider making these event propagate up tree until handler cancel's
 	// propagation (like w3c DOM mouse click events)
@@ -17,19 +47,20 @@ const (
 
 	// TODO: Consider using this to replace Find node method, it too would be
 	// event the propagated up tree until handler canceled.
-	// FETCH_TREE
+	FETCH_TREE
 
 	LEAVE_EDIT
 	LEAVE
 	DELETE
 	UNSELECT
 )
-var eventNames = []string {
+
+var eventNames = []string{
 	"N/A",
 	"NEW",
 	"START_TREE_EDIT",
 	"END_TREE_EDIT",
-	// "FETCH_TREE",
+	"FETCH_TREE",
 	"LEAVE_EDIT",
 	"LEAVE",
 	"DELETE",
@@ -49,14 +80,14 @@ type EventsImpl struct {
 
 type ListenFunc func() error
 
-func (e Event) String() string {
+func (e EventType) String() string {
 	return eventNames[e]
 }
 
 type Listener struct {
-	path string
-	regex *regexp.Regexp
-	event   Event
+	path    string
+	regex   *regexp.Regexp
+	event   EventType
 	handler ListenFunc
 }
 
@@ -80,7 +111,7 @@ func (impl *EventsImpl) AddListener(l *Listener) {
 func (impl *EventsImpl) RemoveListener(l *Listener) {
 	for i, candidate := range impl.listeners {
 		if l == candidate {
-			impl.listeners = append(impl.listeners[:i], impl.listeners[i + 1:]...)
+			impl.listeners = append(impl.listeners[:i], impl.listeners[i+1:]...)
 			break
 		}
 	}
@@ -90,13 +121,13 @@ func (impl *EventsImpl) Fire(path *Path, e Event) (err error) {
 	if len(impl.listeners) > 0 {
 		pathStr := path.String()
 		for _, l := range impl.listeners {
-			if l.event == e {
+			if l.event == e.Type {
 				if len(l.path) > 0 {
 					if l.path != pathStr {
 						continue
 					}
 				} else if l.regex != nil {
-					if ! l.regex.MatchString(pathStr) {
+					if !l.regex.MatchString(pathStr) {
 						continue
 					}
 				}

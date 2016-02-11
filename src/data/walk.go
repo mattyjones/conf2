@@ -14,7 +14,7 @@ func (self *Selection) Walk(controller WalkController) (err error) {
 			if err = next.Walk(controller); err != nil {
 				return
 			}
-			if err = next.Fire(LEAVE); err != nil {
+			if err = next.Fire(LEAVE.New()); err != nil {
 				return err
 			}
 			if next, err = controller.ListIterator(self, false); err != nil {
@@ -57,7 +57,7 @@ func (self *Selection) Walk(controller WalkController) (err error) {
 					if err = childSel.Walk(controller); err != nil {
 						return
 					}
-					if err = childSel.Fire(LEAVE); err != nil {
+					if err = childSel.Fire(LEAVE.New()); err != nil {
 						return err
 					}
 				}
