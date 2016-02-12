@@ -54,6 +54,12 @@ module m {
 	node.OnSelect = func(*Selection, schema.MetaList, bool) (Node, error) {
 		return node, nil
 	}
+	node.OnEvent = func(sel *Selection, e Event) error {
+		if e.Type == FETCH_TREE {
+			e.StopPropagation()
+		}
+		return nil
+	}
 	tests := [][]string {
 		{"", "m"},
 		{"a","m/a"},

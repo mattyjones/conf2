@@ -68,10 +68,14 @@ func Config(operational Node, config Node) Node {
 			}
 			return nil
 		},
-		OnRead : operational.Read,
+		OnRead : func(sel *Selection, meta schema.HasDataType) (*Value, error) {
+			if meta.(schema.HasDetails).Details().Config(sel.Path()) {
+				return config.Read(sel, meta)
+			}
+			return operational.Read(sel, meta)
+		},
 		OnChoose : operational.Choose,
 		OnAction : operational.Action,
-		OnFind : operational.Find,
 		OnPeek: operational.Peek,
 	}
 	if storeAware, ok := operational.(ChangeAwareNode); ok {

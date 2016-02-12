@@ -90,9 +90,19 @@ func (sel *Selection) Path() *Path {
 }
 
 func (sel *Selection) Fire(e Event) (err error) {
-	err = sel.node.Event(sel, e)
-	if err != nil {
-		return err
+	target := sel
+	for {
+		err = target.node.Event(target, e)
+		if err != nil {
+			return err
+		}
+		if e.Type.Bubbles() && ! e.state.propagationStopped {
+			if target.parent != nil {
+				target = target.parent
+				continue
+			}
+		}
+		break
 	}
 	return sel.events.Fire(sel.path, e)
 }

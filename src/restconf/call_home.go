@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"schema"
 	"strings"
+	"time"
 )
 
 // Implements RFC Draft in spirit-only
@@ -45,7 +46,11 @@ func (self *CallHome) Manage() data.Node {
 		OnEvent: func(p data.Node, sel *data.Selection, e data.Event) error {
 			switch e.Type {
 			case data.LEAVE_EDIT:
-				return self.Call()
+				time.AfterFunc(1 * time.Second, func() {
+					if err := self.Call(); err != nil {
+						conf2.Err.Print(err)
+					}
+				})
 			}
 			return p.Event(sel, e)
 		},

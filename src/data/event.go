@@ -9,12 +9,17 @@ import (
 type EventType int
 
 type eventState struct {
-	propagate bool
+	propagationStopped bool
 }
 
 type Event struct {
 	Type  EventType
+	Details interface{}
 	state *eventState
+}
+
+type FetchDetails struct {
+	Path *Path
 }
 
 func (self Event) String() string {
@@ -22,7 +27,11 @@ func (self Event) String() string {
 }
 
 func (self EventType) New() Event {
-	return Event{Type: self}
+	return Event{Type: self, state : &eventState{}}
+}
+
+func (self EventType) NewWithDetails(details interface{}) Event {
+	return Event{Type: self, Details: details, state : &eventState{}}
 }
 
 func (self EventType) Bubbles() bool {
@@ -34,7 +43,7 @@ func (self EventType) Bubbles() bool {
 }
 
 func (self Event) StopPropagation() {
-	self.state.propagate = false
+	self.state.propagationStopped = true
 }
 
 const (

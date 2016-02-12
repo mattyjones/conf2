@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"schema"
 	"time"
+	"strings"
 )
 
 type restconfError struct {
@@ -33,6 +34,7 @@ func NewService(root data.Data) *Service {
 	}
 	service.mux.HandleFunc("/.well-known/host-meta", service.resources)
 	service.mux.Handle("/restconf/", http.StripPrefix("/restconf/", service))
+	service.mux.HandleFunc("/schema/", service.schema)
 	return service
 }
 
@@ -56,7 +58,7 @@ func (service *Service) EffectiveCallbackAddress() string {
 		panic("No iface given for management port")
 	}
 	ip := conf2.GetIpForIface(service.Iface)
-	return fmt.Sprintf("http://%s%s/restconf", ip, service.Port)
+	return fmt.Sprintf("http://%s%s/", ip, service.Port)
 }
 
 func (service *Service) Manage() data.Node {
@@ -94,14 +96,15 @@ type registration struct {
 	browser data.Data
 }
 
-func (service *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	handleError := func(err error) {
-		if httpErr, ok := err.(data.HttpError); ok {
-			http.Error(w, httpErr.Error(), httpErr.HttpCode())
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+func (service *Service) handleError(err error, w http.ResponseWriter) {
+	if httpErr, ok := err.(data.HttpError); ok {
+		http.Error(w, httpErr.Error(), httpErr.HttpCode())
+	} else {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (service *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var payload data.Node
 	var sel *data.Selection
@@ -111,7 +114,7 @@ func (service *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err != nil {
-			handleError(err)
+			service.handleError(err, w)
 			return
 		}
 		switch r.Method {
@@ -142,7 +145,7 @@ func (service *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		handleError(err)
+		service.handleError(err, w)
 	}
 }
 
@@ -195,6 +198,35 @@ func (service *docRootImpl) ServeHTTP(wtr http.ResponseWriter, req *http.Request
 		}
 		// Eventually support this but need file seeker to do that.
 		// http.ServeContent(wtr, req, path, time.Now(), &ReaderPeeker{rdr})
+	}
+}
+
+func (service *Service) schema(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
+	if p := strings.TrimPrefix(r.URL.Path, "/schema/"); len(p) < len(r.URL.Path) {
+		r.URL.Path = p
+	} else {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+	m := service.Root.Select().Meta().(*schema.Module)
+	sch := data.NewSchemaData(m, false)
+	if sel, err := sch.Select().FindUrl(r.URL); err != nil {
+		service.handleError(err, w)
+		return
+	} else if sel == nil {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	} else {
+		w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
+		output := data.NewJsonWriter(w).Node()
+		err = sel.Push(output).ControlledInsert(data.LimitedWalk(r.URL.Query()))
+		if err != nil {
+			service.handleError(err, w)
+			return
+		}
 	}
 }
 

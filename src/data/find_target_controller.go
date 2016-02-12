@@ -1,22 +1,23 @@
 package data
 
 import (
+	"conf2"
 	"errors"
 	"schema"
-	"conf2"
 )
 
 type FindTarget struct {
-	path     *PathSlice
-	position *Path
-	Target   *Selection
-	resource schema.Resource
+	path       *PathSlice
+	position   *Path
+	Target     *Selection
+	resource   schema.Resource
 	autocreate bool
+	firedFind  bool
 }
 
 func NewFindTarget(p *PathSlice) *FindTarget {
 	finder := &FindTarget{
-		path: p,
+		path:     p,
 		position: p.NextAfter(p.Head),
 	}
 	_, finder.autocreate = p.Head.Params()["autocreate"]
@@ -37,7 +38,7 @@ func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selec
 	}
 	list := selection.path.meta.(*schema.List)
 	var nextNode Node
-	if err = selection.node.Find(selection, n.path.Tail); err != nil {
+	if err = n.fireFindOnFirst(selection); err != nil {
 		return nil, err
 	}
 	nextNode, err = selection.node.Next(selection, list, false, n.position.Key(), true)
@@ -61,6 +62,15 @@ func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selec
 	}
 	n.position = n.path.NextAfter(n.position)
 	return
+}
+
+func (p *FindTarget) fireFindOnFirst(sel *Selection) error {
+	if p.firedFind {
+		return nil
+	}
+	// should we shorten path to be path[position...tail] ?
+	p.firedFind = true
+	return sel.Fire(FETCH_TREE.NewWithDetails(&FetchDetails{Path: p.path.Tail}))
 }
 
 func (p *FindTarget) CloseSelection(s *Selection) error {
@@ -108,12 +118,12 @@ func (n *FindTarget) ContainerIterator(selection *Selection) (schema.MetaIterato
 		return schema.EmptyInterator(0), nil
 	}
 
-	// should we shorten path to be path[position...tail] ?
-	if err = selection.node.Find(selection, n.path.Tail); err != nil {
+	if err = n.fireFindOnFirst(selection); err != nil {
 		return nil, err
 	}
+
 	i := &schema.SingletonIterator{Meta: n.position.Meta()}
-	if ! schema.IsList(n.position.Meta()) {
+	if !schema.IsList(n.position.Meta()) {
 		n.position = n.path.NextAfter(n.position)
 	}
 	return i, nil

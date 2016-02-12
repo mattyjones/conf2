@@ -32,13 +32,6 @@ func (self *Tee) Select(sel *Selection, meta schema.MetaList, new bool) (Node, e
 	return nil, nil
 }
 
-func (self *Tee) Find(sel *Selection, path *Path) (err error) {
-	if err = self.Primary.Find(sel, path); err == nil {
-		err = self.Secondary.Find(sel, path)
-	}
-	return
-}
-
 func (self *Tee)  Next(sel *Selection, meta *schema.List, new bool, key []*Value, isFirst bool) (Node, error) {
 	var err error
 	var next Tee

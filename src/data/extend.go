@@ -16,7 +16,6 @@ type Extend struct {
 	OnWrite  ExtendWriteFunc
 	OnChoose ExtendChooseFunc
 	OnAction ExtendActionFunc
-	OnFind   ExtendFindFunc
 	OnEvent  ExtendEventFunc
 	OnExtend ExtendFunc
 	OnPeek ExtendPeekFunc
@@ -38,7 +37,7 @@ func (e *Extend) Select(sel *Selection, meta schema.MetaList, new bool) (Node, e
 		return child, err
 	}
 	if e.OnExtend != nil {
-		child, err = e.OnExtend(e, sel, child)
+		child, err = e.OnExtend(e, sel, meta, child)
 	}
 	return child, err
 }
@@ -55,7 +54,7 @@ func (e *Extend) Next(sel *Selection, meta *schema.List, new bool, key []*Value,
 		return child, err
 	}
 	if e.OnExtend != nil {
-		child, err = e.OnExtend(e, sel, child)
+		child, err = e.OnExtend(e, sel, meta, child)
 	}
 	return child, err
 }
@@ -106,14 +105,6 @@ func (e *Extend) Event(sel *Selection, event Event) (err error) {
 	}
 }
 
-func (e *Extend) Find(sel *Selection, p *Path) (err error) {
-	if e.OnFind == nil {
-		return e.Node.Find(sel, p)
-	} else {
-		return e.OnFind(e.Node, sel, p)
-	}
-}
-
 func (e *Extend) Peek(sel *Selection, peekId string) interface{} {
 	if e.OnPeek == nil {
 		if found := e.Node.Peek(sel, peekId); found != nil {
@@ -129,7 +120,6 @@ type ExtendReadFunc func(parent Node, sel *Selection, meta schema.HasDataType) (
 type ExtendWriteFunc func(parent Node, sel *Selection, meta schema.HasDataType, val *Value) error
 type ExtendChooseFunc func(parent Node, sel *Selection, choice *schema.Choice) (m schema.Meta, err error)
 type ExtendActionFunc func(parent Node, sel *Selection, rpc *schema.Rpc, input *Selection) (output Node, err error)
-type ExtendFindFunc func(parent Node, sel *Selection, path *Path) error
 type ExtendEventFunc func(parent Node, sel *Selection, e Event) error
-type ExtendFunc func(e *Extend, sel *Selection, child Node) (Node, error)
+type ExtendFunc func(e *Extend, sel *Selection, meta schema.MetaList, child Node) (Node, error)
 type ExtendPeekFunc func(parent Node, sel *Selection, peekId string) interface{}

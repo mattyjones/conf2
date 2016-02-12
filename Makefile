@@ -39,8 +39,7 @@ PKGS = \
 	comm \
 	process \
 	process/yapl \
-	restconf \
-	app
+	restconf
 
 all : generate driver-java build test install
 

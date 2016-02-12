@@ -64,11 +64,23 @@ func (path *Path) Params() map[string][]string {
 	return nil
 }
 
+func (seg *Path) StringNoModule() string {
+	return seg.str(false)
+}
+
 func (seg *Path) String() string {
-	strs := make([]string, seg.Len())
+	return seg.str(true)
+}
+
+func (seg *Path) str(showModule bool) string {
+	l := seg.Len()
+	if ! showModule {
+		l--
+	}
+	strs := make([]string, l)
 	p := seg
 	var b bytes.Buffer
-	for i := len(strs) - 1; i >= 0; i-- {
+	for i := l - 1; i >= 0; i-- {
 		b.Reset()
 		p.toBuffer(&b)
 		strs[i] = b.String()

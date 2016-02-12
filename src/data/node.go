@@ -9,7 +9,7 @@ import (
 type Node interface {
 	fmt.Stringer
 	Select(sel *Selection, meta schema.MetaList, new bool) (child Node, err error)
-	Find(sel *Selection, path *Path) error
+//	Find(sel *Selection, path *Path) error
 	Next(sel *Selection, meta *schema.List, new bool, keys []*Value, isFirst bool) (next Node, err error)
 	Read(sel *Selection, meta schema.HasDataType) (*Value, error)
 	Write(sel *Selection, meta schema.HasDataType, val *Value) error
@@ -36,7 +36,7 @@ type MyNode struct {
 	OnChoose     ChooseFunc
 	OnAction     ActionFunc
 	OnEvent      EventFunc
-	OnFind       FindFunc
+//	OnFind       FindFunc
 	OnPeek       PeekFunc
 	Resource     schema.Resource
 }
@@ -134,12 +134,12 @@ func (s *MyNode) Event(sel *Selection, e Event) (err error) {
 	return nil
 }
 
-func (s *MyNode) Find(sel *Selection, p *Path) (err error) {
-	if s.OnFind != nil {
-		return s.OnFind(sel, p)
-	}
-	return nil
-}
+//func (s *MyNode) Find(sel *Selection, p *Path) (err error) {
+//	if s.OnFind != nil {
+//		return s.OnFind(sel, p)
+//	}
+//	return nil
+//}
 
 func (s *MyNode) Peek(sel *Selection, peekId string) interface{} {
 	if s.OnPeek != nil {
@@ -194,9 +194,9 @@ func (e ErrorNode) Action(*Selection, *schema.Rpc, *Selection) (Node, error) {
 	return nil, e.Err
 }
 
-func (e ErrorNode) Find(*Selection, *Path) error {
-	return e.Err
-}
+//func (e ErrorNode) Find(*Selection, *Path) error {
+//	return e.Err
+//}
 
 func (e ErrorNode) Peek(sel *Selection, peekId string) interface{} {
 	return nil
@@ -208,6 +208,6 @@ type ReadFunc func(sel *Selection, meta schema.HasDataType) (*Value, error)
 type WriteFunc func(sel *Selection, meta schema.HasDataType, val *Value) error
 type ChooseFunc func(sel *Selection, choice *schema.Choice) (m schema.Meta, err error)
 type ActionFunc func(sel *Selection, rpc *schema.Rpc, input *Selection) (output Node, err error)
-type FindFunc func(sel *Selection, path *Path) error
+//type FindFunc func(sel *Selection, path *Path) error
 type EventFunc func(sel *Selection, e Event) error
 type PeekFunc func(sel *Selection, peekId string) interface{}

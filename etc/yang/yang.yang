@@ -169,7 +169,7 @@ module yang {
         }
     }
 
-    grouping module {
+    container module {
         uses def-header;
         leaf namespace {
             type string;
