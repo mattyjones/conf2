@@ -36,7 +36,7 @@ func (self EventType) NewWithDetails(details interface{}) Event {
 
 func (self EventType) Bubbles() bool {
 	switch self {
-	case START_TREE_EDIT, END_TREE_EDIT, FETCH_TREE:
+	case START_TREE_EDIT, END_TREE_EDIT:
 		return true
 	}
 	return false
@@ -53,10 +53,6 @@ const (
 	// propagation (like w3c DOM mouse click events)
 	START_TREE_EDIT
 	END_TREE_EDIT
-
-	// TODO: Consider using this to replace Find node method, it too would be
-	// event the propagated up tree until handler canceled.
-	FETCH_TREE
 
 	LEAVE_EDIT
 	LEAVE
