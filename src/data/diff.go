@@ -2,18 +2,17 @@ package data
 
 import (
 	"schema"
-	"conf2"
 )
 
 func Diff(a Node, b Node) Node {
 	n := &MyNode{}
-	n.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (n Node, err error) {
-conf2.Debug.Printf("OnSelect %s", meta.GetIdent())
+	n.OnSelect = func(sel *Selection, r ContainerRequest) (n Node, err error) {
 		var aNode, bNode Node
-		if aNode, err = a.Select(sel, meta, false); err != nil {
+		r.New = false
+		if aNode, err = a.Select(sel, r); err != nil {
 			return nil, err
 		}
-		if bNode, err = b.Select(sel, meta, false); err != nil {
+		if bNode, err = b.Select(sel, r); err != nil {
 			return nil, err
 		}
 		if aNode == nil {
@@ -25,7 +24,6 @@ conf2.Debug.Printf("OnSelect %s", meta.GetIdent())
 		return Diff(aNode, bNode), nil
 	}
 	n.OnRead = func(sel *Selection, meta schema.HasDataType) (changedValue *Value, err error) {
-conf2.Debug.Printf("OnRead %s", meta.GetIdent())
 		var aVal, bVal *Value
 		if aVal, err = a.Read(sel, meta); err != nil {
 			return nil, err

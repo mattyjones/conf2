@@ -28,17 +28,17 @@ func (json *JsonWriter) Node() Node {
 	return &Extend{
 		Label: "JSON",
 		Node: json.Container(json.endContainer),
-		OnSelect: func(p Node, sel *Selection, meta schema.MetaList, new bool) (child Node, err error) {
+		OnSelect: func(p Node, sel *Selection, r ContainerRequest) (child Node, err error) {
 			if closer == nil {
 				json.beginObject()
 				closer = json.endContainer
 			}
-			return p.Select(sel, meta, new)
+			return p.Select(sel, r)
 		},
-		OnNext: func(p Node, sel *Selection, meta *schema.List, new bool, keys []*Value, first bool) (next Node, err error) {
+		OnNext: func(p Node, sel *Selection, r ListRequest) (next Node, key []*Value, err error) {
 			if closer == nil {
 				json.beginObject()
-				json.beginList(meta.GetIdent())
+				json.beginList(r.Meta.GetIdent())
 				closer = func() (closeErr error) {
 					if closeErr = json.endList(); closeErr == nil {
 						closeErr = json.endContainer()
@@ -46,7 +46,7 @@ func (json *JsonWriter) Node() Node {
 					return closeErr
 				}
 			}
-			return p.Next(sel, meta, new, keys, first)
+			return p.Next(sel, r)
 		},
 		OnWrite: func(p Node, sel *Selection, meta schema.HasDataType, v *Value) (err error) {
 			if closer == nil {
@@ -86,21 +86,21 @@ func (json *JsonWriter) Container(closer closerFunc) Node {
 		return
 	}
 	s := &MyNode{Label: "JSON Write"}
-	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error) {
-		if ! new {
+	s.OnSelect = func(sel *Selection, r ContainerRequest) (child Node, err error) {
+		if ! r.New {
 			return nil, nil
 		}
 		if err = delim(); err != nil {
 			return nil, err
 		}
-		if schema.IsList(meta) {
-			if err = json.beginList(meta.GetIdent()); err != nil {
+		if schema.IsList(r.Meta) {
+			if err = json.beginList(r.Meta.GetIdent()); err != nil {
 				return nil, err
 			}
 			return json.Container(json.endList), nil
 
 		}
-		if err = json.beginContainer(meta.GetIdent()); err != nil {
+		if err = json.beginContainer(r.Meta.GetIdent()); err != nil {
 			return nil, err
 		}
 		return json.Container(json.endContainer), nil
@@ -119,17 +119,17 @@ func (json *JsonWriter) Container(closer closerFunc) Node {
 		err = json.writeValue(meta, v)
 		return
 	}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (next Node, err error) {
-		if ! new {
-			return nil, nil
+	s.OnNext = func(state *Selection, r ListRequest) (next Node, key []*Value, err error) {
+		if ! r.New {
+			return
 		}
 		if err = delim(); err != nil {
-			return nil, err
+			return
 		}
 		if err = json.beginObject(); err != nil {
-			return nil, err
+			return
 		}
-		return json.Container(json.endContainer), nil
+		return json.Container(json.endContainer), r.Key, nil
 	}
 	return s
 }

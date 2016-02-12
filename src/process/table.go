@@ -26,30 +26,35 @@ func (t *NodeTable) HasNext() (bool) {
 	return t.Row != nil
 }
 
-func (t *NodeTable) Next() (error) {
+func (self *NodeTable) Next() (error) {
 	// Container
-	if ! schema.IsList(t.Corner.Meta()) {
-		if t.Row == nil {
-			t.Row = t.Corner
+	if ! schema.IsList(self.Corner.Meta()) {
+		if self.Row == nil {
+			self.Row = self.Corner
 		} else {
-			t.Row = nil
+			self.Row = nil
 		}
 		return nil
 	}
 
 	// List
-	meta := t.Corner.Meta().(*schema.List)
-	rowNode, err := t.Corner.Node().Next(t.Corner, meta, t.autoCreate, data.NO_KEYS, t.Row == nil)
+	r := data.ListRequest{
+		Meta: self.Corner.Meta().(*schema.List),
+		First: self.Row == nil,
+		New : self.autoCreate,
+	}
+	r.New = self.autoCreate
+	rowNode, key, err := self.Corner.Node().Next(self.Corner, r)
 	if err != nil {
 		return err
 	}
 	if rowNode == nil {
-		t.Row = nil
+		self.Row = nil
 	} else {
-		t.Row = t.Corner.SelectListItem(rowNode, t.Corner.Key())
+		self.Row = self.Corner.SelectListItem(rowNode, key)
 	}
-	t.sels = make(map[string]*data.Selection)
-	t.vals = make(map[string]*data.Value)
+	self.sels = make(map[string]*data.Selection)
+	self.vals = make(map[string]*data.Value)
 	return nil
 }
 

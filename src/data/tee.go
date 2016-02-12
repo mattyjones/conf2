@@ -17,13 +17,13 @@ func (self *Tee) String() string {
 	return fmt.Sprintf("Tee(%s,%s)", self.Primary.String(), self.Secondary.String())
 }
 
-func (self *Tee) Select(sel *Selection, meta schema.MetaList, new bool) (Node, error) {
+func (self *Tee) Select(sel *Selection, r ContainerRequest) (Node, error) {
 	var err error
 	var child Tee
-	if child.Primary, err = self.Primary.Select(sel, meta, new); err != nil {
+	if child.Primary, err = self.Primary.Select(sel, r); err != nil {
 		return nil, err
 	}
-	if child.Secondary, err = self.Secondary.Select(sel, meta, new); err != nil {
+	if child.Secondary, err = self.Secondary.Select(sel, r); err != nil {
 		return nil, err
 	}
 	if child.Primary != nil && child.Secondary != nil {
@@ -32,19 +32,20 @@ func (self *Tee) Select(sel *Selection, meta schema.MetaList, new bool) (Node, e
 	return nil, nil
 }
 
-func (self *Tee)  Next(sel *Selection, meta *schema.List, new bool, key []*Value, isFirst bool) (Node, error) {
+func (self *Tee)  Next(sel *Selection, r ListRequest) (Node, []*Value, error) {
 	var err error
 	var next Tee
-	if next.Primary, err = self.Primary.Next(sel, meta, new, key, isFirst); err != nil {
-		return nil, err
+	key := r.Key
+	if next.Primary, key, err = self.Primary.Next(sel, r); err != nil {
+		return nil, nil, err
 	}
-	if next.Secondary, err = self.Secondary.Next(sel, meta, new, key, isFirst); err != nil {
-		return nil, err
+	if next.Secondary, _, err = self.Secondary.Next(sel, r); err != nil {
+		return nil, nil, err
 	}
 	if next.Primary != nil && next.Secondary != nil {
-		return &next, nil
+		return &next, key, nil
 	}
-	return nil, nil
+	return nil, nil, nil
 }
 
 func (self *Tee) Read(sel *Selection, meta schema.HasDataType) (*Value, error) {

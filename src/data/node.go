@@ -8,9 +8,8 @@ import (
 
 type Node interface {
 	fmt.Stringer
-	Select(sel *Selection, meta schema.MetaList, new bool) (child Node, err error)
-//	Find(sel *Selection, path *Path) error
-	Next(sel *Selection, meta *schema.List, new bool, keys []*Value, isFirst bool) (next Node, err error)
+	Select(sel *Selection, r ContainerRequest) (child Node, err error)
+	Next(sel *Selection, r ListRequest) (next Node, key []*Value, err error)
 	Read(sel *Selection, meta schema.HasDataType) (*Value, error)
 	Write(sel *Selection, meta schema.HasDataType, val *Value) error
 	Choose(sel *Selection, choice *schema.Choice) (m schema.Meta, err error)
@@ -36,7 +35,6 @@ type MyNode struct {
 	OnChoose     ChooseFunc
 	OnAction     ActionFunc
 	OnEvent      EventFunc
-//	OnFind       FindFunc
 	OnPeek       PeekFunc
 	Resource     schema.Resource
 }
@@ -66,24 +64,24 @@ func (s *MyNode) Close() (err error) {
 	return
 }
 
-func (s *MyNode) Select(sel *Selection, meta schema.MetaList, new bool) (Node, error) {
+func (s *MyNode) Select(sel *Selection, r ContainerRequest) (Node, error) {
 	if s.OnSelect == nil {
 		return nil, &browseError{
 			Code: http.StatusNotImplemented,
 			Msg:  fmt.Sprint("Select not implemented on node ", sel.String()),
 		}
 	}
-	return s.OnSelect(sel, meta, new)
+	return s.OnSelect(sel, r)
 }
 
-func (s *MyNode) Next(sel *Selection, meta *schema.List, new bool, keys []*Value, isFirst bool) (Node, error) {
+func (s *MyNode) Next(sel *Selection, r ListRequest) (Node, []*Value, error) {
 	if s.OnNext == nil {
-		return nil, &browseError{
+		return nil, nil, &browseError{
 			Code: http.StatusNotImplemented,
 			Msg:  fmt.Sprint("Next not implemented on node ", sel.String()),
 		}
 	}
-	return s.OnNext(sel, meta, new, keys, isFirst)
+	return s.OnNext(sel, r)
 }
 
 func (s *MyNode) Read(sel *Selection, meta schema.HasDataType) (*Value, error) {
@@ -103,7 +101,6 @@ func (s *MyNode) Write(sel *Selection, meta schema.HasDataType, val *Value) erro
 			Msg:  fmt.Sprint("Write not implemented on node ", sel.String()),
 		}
 	}
-	//fmt.Printf("select OnWrite - %s %s\n", op.String(), sel.String())
 	return s.OnWrite(sel, meta, val)
 }
 
@@ -134,13 +131,6 @@ func (s *MyNode) Event(sel *Selection, e Event) (err error) {
 	return nil
 }
 
-//func (s *MyNode) Find(sel *Selection, p *Path) (err error) {
-//	if s.OnFind != nil {
-//		return s.OnFind(sel, p)
-//	}
-//	return nil
-//}
-
 func (s *MyNode) Peek(sel *Selection, peekId string) interface{} {
 	if s.OnPeek != nil {
 		return s.OnPeek(sel, peekId)
@@ -166,12 +156,12 @@ func (e ErrorNode) String() string {
 	return e.Error()
 }
 
-func (e ErrorNode) Select(sel *Selection, meta schema.MetaList, new bool) (Node, error) {
+func (e ErrorNode) Select(sel *Selection, r ContainerRequest) (Node, error) {
 	return nil, e.Err
 }
 
-func (e ErrorNode) Next(*Selection, *schema.List, bool, []*Value, bool) (Node, error) {
-	return nil, e.Err
+func (e ErrorNode) Next(*Selection, ListRequest) (Node, []*Value, error) {
+	return nil, nil, e.Err
 }
 
 func (e ErrorNode) Read(*Selection, schema.HasDataType) (*Value, error) {
@@ -194,20 +184,15 @@ func (e ErrorNode) Action(*Selection, *schema.Rpc, *Selection) (Node, error) {
 	return nil, e.Err
 }
 
-//func (e ErrorNode) Find(*Selection, *Path) error {
-//	return e.Err
-//}
-
 func (e ErrorNode) Peek(sel *Selection, peekId string) interface{} {
 	return nil
 }
 
-type NextFunc func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error)
-type SelectFunc func(sel *Selection, meta schema.MetaList, new bool) (child Node, err error)
+type NextFunc func(sel *Selection, r ListRequest) (next Node, key []*Value, err error)
+type SelectFunc func(sel *Selection, r ContainerRequest) (child Node, err error)
 type ReadFunc func(sel *Selection, meta schema.HasDataType) (*Value, error)
 type WriteFunc func(sel *Selection, meta schema.HasDataType, val *Value) error
 type ChooseFunc func(sel *Selection, choice *schema.Choice) (m schema.Meta, err error)
 type ActionFunc func(sel *Selection, rpc *schema.Rpc, input *Selection) (output Node, err error)
-//type FindFunc func(sel *Selection, path *Path) error
 type EventFunc func(sel *Selection, e Event) error
 type PeekFunc func(sel *Selection, peekId string) interface{}

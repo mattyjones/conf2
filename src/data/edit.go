@@ -97,54 +97,61 @@ func (e *Editor) Edit(strategy Strategy, controller WalkController) (err error) 
 func (e *Editor) list(from *Selection, to *Selection, new bool, strategy Strategy) (Node, error) {
 	s := &MyNode{Label: fmt.Sprint("Edit list ", from.node.String(), "=>", to.node.String())}
 	// List Edit - See "List Edit State Machine" diagram for additional documentation
-	s.OnNext = func(sel *Selection, meta *schema.List, _ bool, key []*Value, first bool) (next Node, err error) {
+	s.OnNext = func(sel *Selection, r ListRequest) (next Node, key []*Value, err error) {
 		var created bool
 		var fromNextNode Node
-		fromNextNode, err = from.node.Next(from, meta, false, key, first)
+		fromRequest := r
+		fromRequest.New = false
+		fromNextNode, key, err = from.node.Next(from, fromRequest)
 		if err != nil || fromNextNode == nil {
-			return nil, err
+			return
 		}
 
-		sel.path.key = from.path.key
+		toRequest := r
+		toRequest.First = true
 		var toNextNode Node
-		if len(sel.path.key) > 0 {
-			if toNextNode, err = to.node.Next(to, meta, false, sel.path.key, true); err != nil {
-				return nil, err
+		if len(key) > 0 {
+			toRequest.Key = key
+			toRequest.New = false
+			if toNextNode, _, err = to.node.Next(to, toRequest); err != nil {
+				return
 			}
 		}
+		toRequest.New = true
 		switch strategy {
 		case UPDATE:
 			if toNextNode == nil {
 				msg := fmt.Sprintf("'%v' not found in '%s' list node ", key, sel.String())
-				return nil, conf2.NewErrC(msg, conf2.NotFound)
+				return nil, nil, conf2.NewErrC(msg, conf2.NotFound)
 			}
 		case UPSERT:
 			if toNextNode == nil {
-				if toNextNode, err = to.node.Next(to, meta, true, sel.path.key, true); err != nil {
-					return nil, err
+				if toNextNode, _, err = to.node.Next(to, toRequest); err != nil {
+					return
 				}
 				created = true
 			}
 		case INSERT:
 			if toNextNode != nil {
 				msg := fmt.Sprint("Duplicate item found with same key in list ", sel.String())
-				return nil, conf2.NewErrC(msg, conf2.Conflict)
+				return nil, nil, conf2.NewErrC(msg, conf2.Conflict)
 			}
-			if toNextNode, err = to.node.Next(to, meta, true, sel.path.key, true); err != nil {
-				return nil, err
+			if toNextNode, _, err = to.node.Next(to, toRequest); err != nil {
+				return
 			}
 			created = true
 		default:
-			return nil, conf2.NewErrC("Stratgey not implmented", conf2.NotImplemented)
+			return nil, nil, conf2.NewErrC("Stratgey not implmented", conf2.NotImplemented)
 		}
 		if err != nil {
-			return nil, err
+			return
 		} else  if toNextNode == nil {
-			return nil, conf2.NewErr("Could not create destination list node " + to.String())
+			return nil, nil, conf2.NewErr("Could not create destination list node " + to.String())
 		}
-		fromChild := from.SelectListItem(fromNextNode, sel.path.key)
-		toChild := to.SelectListItem(toNextNode, sel.path.key)
-		return e.container(fromChild, toChild, created, UPSERT)
+		fromChild := from.SelectListItem(fromNextNode, key)
+		toChild := to.SelectListItem(toNextNode, key)
+		next, err = e.container(fromChild, toChild, created, UPSERT)
+		return
 	}
 	s.OnEvent = func(sel *Selection, event Event) (err error) {
 		return e.handleEvent(sel, from, to, new, event)
@@ -157,42 +164,47 @@ func (e *Editor) container(from *Selection, to *Selection, new bool, strategy St
 	s.OnChoose = func(sel *Selection, choice *schema.Choice) (schema.Meta, error) {
 		return from.node.Choose(from, choice)
 	}
-	s.OnSelect = func(sel *Selection, meta schema.MetaList, _ bool) (Node, error) {
+	s.OnSelect = func(sel *Selection, r ContainerRequest) (Node, error) {
 		var created bool
 		var err error
 		var fromChildNode Node
-		fromChildNode, err = from.node.Select(from, meta, false)
+		fromRequest := r
+		fromRequest.New = false
+		fromChildNode, err = from.node.Select(from, fromRequest)
 		if err != nil || fromChildNode == nil {
 			return nil, err
 		}
 
 		var toChildNode Node
-		toChildNode, err = to.node.Select(to, meta, false)
+		toRequest := r
+		toRequest.New = false
+		toChildNode, err = to.node.Select(to, toRequest)
 		if err != nil {
 			return nil, err
 		}
-		isList := schema.IsList(meta)
+		isList := schema.IsList(r.Meta)
+		toRequest.New = true
 
 		switch strategy {
 		case INSERT:
 			if toChildNode != nil {
-				msg := fmt.Sprintf("'%s' not found in '%s' container node ", meta.GetIdent(), sel.String())
+				msg := fmt.Sprintf("'%s' not found in '%s' container node ", r.Meta.GetIdent(), sel.String())
 				return nil, conf2.NewErrC(msg, conf2.Conflict)
 			}
-			if toChildNode, err = to.node.Select(to, meta, true); err != nil {
+			if toChildNode, err = to.node.Select(to, toRequest); err != nil {
 				return nil, err
 			}
 			created = true
 		case UPSERT:
 			if toChildNode == nil {
-				if toChildNode, err = to.node.Select(to, meta, true); err != nil {
+				if toChildNode, err = to.node.Select(to, toRequest); err != nil {
 					return nil, err
 				}
 				created = true
 			}
 		case UPDATE:
 			if toChildNode == nil {
-				msg := fmt.Sprintf("'%s' not found in '%s' container node ", meta.GetIdent(), sel.String())
+				msg := fmt.Sprintf("'%s' not found in '%s' container node ", r.Meta.GetIdent(), sel.String())
 				return nil, conf2.NewErrC(msg, conf2.NotFound)
 			}
 		default:
@@ -202,13 +214,13 @@ func (e *Editor) container(from *Selection, to *Selection, new bool, strategy St
 		if err != nil {
 			return nil, err
 		} else if toChildNode == nil {
-			msg := fmt.Sprintf("'%s' could not create '%s' container node ", to.String(), meta.GetIdent())
+			msg := fmt.Sprintf("'%s' could not create '%s' container node ", to.String(), r.Meta.GetIdent())
 			return nil, conf2.NewErr(msg)
 		}
 		// we always switch to upsert strategy because if there were any conflicts, it would have been
 		// discovered in top-most level.
-		fromChild := from.SelectChild(meta, fromChildNode)
-		toChild := to.SelectChild(meta, toChildNode)
+		fromChild := from.SelectChild(r.Meta, fromChildNode)
+		toChild := to.SelectChild(r.Meta, toChildNode)
 		if isList {
 			return e.list(fromChild, toChild, created, UPSERT)
 		}

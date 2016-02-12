@@ -7,20 +7,21 @@ import (
 func Config(operational Node, config Node) Node {
 	n := &MyNode{
 		Label: "Persist",
-		OnSelect: func(sel *Selection, meta schema.MetaList, new bool) (Node, error) {
-			operChild, err := operational.Select(sel, meta, new)
+		OnSelect: func(sel *Selection, r ContainerRequest) (Node, error) {
+			operChild, err := operational.Select(sel, r)
 			if err != nil || operChild == nil {
 				return nil, err
 			}
-			if ! sel.IsConfig(meta) {
+			if ! sel.IsConfig(r.Meta) {
 				return operChild, nil
 			}
-			configChild, storeErr := config.Select(sel, meta, new)
+			configChild, storeErr := config.Select(sel, r)
 			if storeErr != nil {
 				return nil, err
 			}
-			if configChild == nil && ! new {
-				configChild, storeErr = config.Select(sel, meta, true)
+			if configChild == nil && ! r.New {
+				r.New = true
+				configChild, storeErr = config.Select(sel, r)
 				if storeErr != nil {
 					return nil, err
 				}
@@ -30,28 +31,28 @@ func Config(operational Node, config Node) Node {
 			}
 			return Config(operChild, configChild), nil
 		},
-		OnNext: func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
-			operChild, err := operational.Next(sel, meta, new, key, first)
-			if err != nil || operChild == nil {
-				return nil, err
+		OnNext: func(sel *Selection, r ListRequest) (next Node, key []*Value, err error) {
+			var operChild, configChild Node
+			if operChild, key, err = operational.Next(sel, r); err != nil || operChild == nil {
+				return
 			}
-			if ! sel.IsConfig(meta) {
-				return operChild, nil
+			if ! sel.IsConfig(r.Meta) {
+				return operChild, key, nil
 			}
-			configChild, storeErr := config.Next(sel, meta, new, key, first)
-			if storeErr != nil {
-				return nil, err
+			r.Key = key
+			if configChild, _, err = config.Next(sel, r); err != nil {
+				return
 			}
-			if configChild == nil && ! new {
-				configChild, storeErr = config.Next(sel, meta, true, key, first)
-				if storeErr != nil {
-					return nil, err
+			if configChild == nil && ! r.New {
+				r.New = true
+				if configChild, _, err = config.Next(sel, r); err != nil {
+					return
 				}
 				if configChild == nil {
-					return nil, errors.New("Could not create storage node for " + sel.String())
+					return nil, nil, errors.New("Could not create storage node for " + sel.String())
 				}
 			}
-			return Config(operChild, configChild), nil
+			return Config(operChild, configChild), key, nil
 		},
 		OnWrite: func(sel *Selection, meta schema.HasDataType, val *Value) error {
 			if err := operational.Write(sel, meta, val); err != nil {

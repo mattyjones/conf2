@@ -27,9 +27,9 @@ func (self *Dumper) Select(meta schema.MetaList) *Selection {
 func (d *Dumper) enter(level int) Node {
 	row := 0
 	s := &MyNode{}
-	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (child Node, err error) {
-		if ! new {
-			return nil, nil
+	s.OnSelect = func(state *Selection, r ContainerRequest) (child Node, err error) {
+		if ! r.New {
+			return
 		}
 		return d.enter(level + 1), nil
 	}
@@ -37,13 +37,13 @@ func (d *Dumper) enter(level int) Node {
 		d.dumpValue(v, level)
 		return
 	}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, keys []*Value, first bool) (next Node, err error) {
-		if ! new {
-			return nil, nil
+	s.OnNext = func(state *Selection, r ListRequest) (next Node, key []*Value, err error) {
+		if ! r.New {
+			return
 		}
-		d.out.WriteString(fmt.Sprintf("%sITERATE row=%d, first=%v\n", Padding[:level], row, first))
+		d.out.WriteString(fmt.Sprintf("%sITERATE row=%d, first=%v\n", Padding[:level], row, r.First))
 		row++
-		return s, nil
+		return s, r.Key, nil
 	}
 	return s
 }

@@ -24,29 +24,31 @@ func NewFindTarget(p *PathSlice) *FindTarget {
 	return finder
 }
 
-func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selection, err error) {
+func (self *FindTarget) ListIterator(selection *Selection, first bool) (next *Selection, err error) {
 	if !first {
 		// when we're finding targets, we never iterate more than one item in a list
 		return nil, nil
 	}
-	if n.position == n.path.Tail && len(n.position.Key()) == 0 {
-		n.setTarget(selection)
+	if self.position == self.path.Tail && len(self.position.Key()) == 0 {
+		self.setTarget(selection)
 		return nil, nil
 	}
-	if len(n.position.Key()) == 0 {
+	if len(self.position.Key()) == 0 {
 		return nil, errors.New("Key required when navigating lists")
 	}
-	list := selection.path.meta.(*schema.List)
 	var nextNode Node
-	if err = n.fireFindOnFirst(selection); err != nil {
-		return nil, err
+	r := ListRequest{
+		First: true,
+		Meta: selection.path.meta.(*schema.List),
+		Key: self.position.Key(),
 	}
-	nextNode, err = selection.node.Next(selection, list, false, n.position.Key(), true)
+	nextNode, selection.path.key, err = selection.node.Next(selection, r)
 	if err != nil {
 		return nil, err
 	} else if nextNode == nil {
-		if n.autocreate {
-			nextNode, err = selection.node.Next(selection, list, true, n.position.Key(), true)
+		if self.autocreate {
+			r.New = true
+			nextNode, selection.path.key, err = selection.node.Next(selection, r)
 			if err != nil {
 				return nil, err
 			} else if nextNode == nil {
@@ -56,54 +58,49 @@ func (n *FindTarget) ListIterator(selection *Selection, first bool) (next *Selec
 			return nil, nil
 		}
 	}
-	next = selection.SelectListItem(nextNode, n.position.Key())
-	if n.position == n.path.Tail {
-		n.setTarget(selection)
+	next = selection.SelectListItem(nextNode, self.position.Key())
+	if self.position == self.path.Tail {
+		self.setTarget(selection)
 	}
-	n.position = n.path.NextAfter(n.position)
+	self.position = self.path.NextAfter(self.position)
 	return
 }
 
-func (p *FindTarget) fireFindOnFirst(sel *Selection) error {
-	if p.firedFind {
-		return nil
-	}
-	// should we shorten path to be path[position...tail] ?
-	p.firedFind = true
-	return sel.Fire(FETCH_TREE.NewWithDetails(&FetchDetails{Path: p.path.Tail}))
-}
-
-func (p *FindTarget) CloseSelection(s *Selection) error {
-	if s != p.Target {
+func (self *FindTarget) CloseSelection(s *Selection) error {
+	if s != self.Target {
 		return schema.CloseResource(s)
 	}
 	return nil
 }
 
-func (n *FindTarget) setTarget(selection *Selection) {
-	n.Target = selection
+func (self *FindTarget) setTarget(selection *Selection) {
+	self.Target = selection
 
 	// we take ownership of resource so it's not released until target is used
 	//	n.resource = s.Resource
 	//	s.Resource = nil
 }
 
-func (n *FindTarget) VisitAction(selection *Selection, rpc *schema.Rpc) (*Selection, error) {
+func (self *FindTarget) VisitAction(selection *Selection, rpc *schema.Rpc) (*Selection, error) {
 	actionSel := selection.SelectChild(rpc, selection.node)
-	n.setTarget(actionSel)
+	self.setTarget(actionSel)
 	return actionSel, nil
 }
 
-func (n *FindTarget) VisitContainer(sel *Selection, meta schema.MetaList) (*Selection, error) {
-	childNode, err := sel.node.Select(sel, meta, false)
+func (self *FindTarget) VisitContainer(sel *Selection, meta schema.MetaList) (*Selection, error) {
+	r := ContainerRequest{
+		Meta: meta,
+	}
+	childNode, err := sel.node.Select(sel, r)
 	if err != nil {
 		return nil, err
 	}
 	if childNode == nil {
-		if !n.autocreate {
+		if !self.autocreate {
 			return nil, nil
 		}
-		childNode, err = sel.node.Select(sel, meta, true)
+		r.New = true
+		childNode, err = sel.node.Select(sel, r)
 		if err != nil || childNode == nil {
 			return nil, err
 		}
@@ -111,20 +108,15 @@ func (n *FindTarget) VisitContainer(sel *Selection, meta schema.MetaList) (*Sele
 	return sel.SelectChild(meta, childNode), nil
 }
 
-func (n *FindTarget) ContainerIterator(selection *Selection) (schema.MetaIterator, error) {
-	var err error
-	if n.position == nil {
-		n.setTarget(selection)
+func (self *FindTarget) ContainerIterator(selection *Selection) (schema.MetaIterator, error) {
+	if self.position == nil {
+		self.setTarget(selection)
 		return schema.EmptyInterator(0), nil
 	}
 
-	if err = n.fireFindOnFirst(selection); err != nil {
-		return nil, err
-	}
-
-	i := &schema.SingletonIterator{Meta: n.position.Meta()}
-	if !schema.IsList(n.position.Meta()) {
-		n.position = n.path.NextAfter(n.position)
+	i := &schema.SingletonIterator{Meta: self.position.Meta()}
+	if !schema.IsList(self.position.Meta()) {
+		self.position = self.path.NextAfter(self.position)
 	}
 	return i, nil
 }

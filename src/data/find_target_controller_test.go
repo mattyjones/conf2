@@ -3,7 +3,6 @@ package data
 import (
 	"bytes"
 	"fmt"
-	"schema"
 	"schema/yang"
 	"strings"
 	"testing"
@@ -48,10 +47,10 @@ module m {
 		t.Fatal(err)
 	}
 	node := &MyNode{}
-	node.OnNext = func(*Selection, *schema.List, bool, []*Value, bool) (Node, error) {
-		return node, nil
+	node.OnNext = func(*Selection, ListRequest) (Node, []*Value, error) {
+		return node, nil, nil
 	}
-	node.OnSelect = func(*Selection, schema.MetaList, bool) (Node, error) {
+	node.OnSelect = func(*Selection, ContainerRequest) (Node, error) {
 		return node, nil
 	}
 	node.OnEvent = func(sel *Selection, e Event) error {

@@ -63,10 +63,10 @@ func (service *Service) EffectiveCallbackAddress() string {
 
 func (service *Service) Manage() data.Node {
 	s := &data.MyNode{Peekables: map[string]interface{}{"internal": service}}
-	s.OnSelect = func(sel *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
-		switch meta.GetIdent() {
+	s.OnSelect = func(sel *data.Selection, r data.ContainerRequest) (data.Node, error) {
+		switch r.Meta.GetIdent() {
 		case "callHome":
-			if new {
+			if r.New {
 				service.CallHome = &CallHome{
 					EndpointAddress: service.EffectiveCallbackAddress(),
 					Module: service.Root.Select().Meta().(*schema.Module),

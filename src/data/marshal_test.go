@@ -82,17 +82,20 @@ module m {
 		t.Fatal("Not inserted")
 	}
 	n := marshaller.Node()
-	messagesMeta := m.DataDefs().GetFirstMeta().(*schema.List)
-	key := SetValues(messagesMeta.KeyMeta(), "bob")
-	foundByKeyNode, nextByKeyErr := n.Next(sel, messagesMeta, false, key, true)
+	r := ListRequest{
+		Meta: m.DataDefs().GetFirstMeta().(*schema.List),
+		First: true,
+	}
+	r.Key = SetValues(r.Meta.KeyMeta(), "bob")
+	foundByKeyNode, _, nextByKeyErr := n.Next(sel, r)
 	if nextByKeyErr != nil {
 		t.Fatal(nextByKeyErr)
 	}
 	if foundByKeyNode == nil {
 		t.Error("lookup by key failed")
 	}
-
-	foundFirstNode, nextFirstErr := n.Next(sel, messagesMeta, false, []*Value{}, true)
+	r.Key = []*Value{}
+	foundFirstNode, _, nextFirstErr := n.Next(sel, r)
 	if nextFirstErr != nil {
 		t.Fatal(nextFirstErr)
 	}

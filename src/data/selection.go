@@ -44,10 +44,6 @@ func (sel *Selection) Key() []*Value {
 	return sel.path.key
 }
 
-func (sel *Selection) SetKey(key []*Value) {
-	sel.path.key = key
-}
-
 func (sel *Selection) String() string {
 	return fmt.Sprint(sel.node.String(), ":", sel.path.String())
 }
@@ -256,18 +252,21 @@ func (sel *Selection) FindOrCreate(ident string, autoCreate bool) (*Selection, e
 	var err error
 	var child Node
 	if m != nil {
-		ml := m.(schema.MetaList)
-		child, err = sel.node.Select(sel, ml, false)
+		r := ContainerRequest{
+			Meta: m.(schema.MetaList),
+		}
+		child, err = sel.node.Select(sel, r)
 		if err != nil {
 			return nil, err
 		} else if child == nil && autoCreate {
-			child, err = sel.node.Select(sel, ml, true)
+			r.New = true
+			child, err = sel.node.Select(sel, r)
 			if err != nil {
 				return nil, err
 			}
 		}
 		if child != nil {
-			return sel.SelectChild(ml, child), nil
+			return sel.SelectChild(r.Meta, child), nil
 		}
 	}
 	return nil, nil

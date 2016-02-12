@@ -43,20 +43,20 @@ func DefaultKeyMapper(sel *Selection, ident string) (key string) {
 
 func (b *Bucket) Container(container map[string]interface{}) (Node) {
 	s := &MyNode{}
-	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (Node, error) {
+	s.OnSelect = func(sel *Selection, r ContainerRequest) (Node, error) {
 		var data interface{}
-		if new {
-			if schema.IsList(meta) {
+		if r.New {
+			if schema.IsList(r.Meta) {
 				data = make([]map[string]interface{}, 0, 10)
 			} else {
 				data = make(map[string]interface{})
 			}
-			container[b.KeyMap(sel, meta.GetIdent())] = data
+			container[b.KeyMap(sel, r.Meta.GetIdent())] = data
 		} else {
-			data = container[b.KeyMap(sel, meta.GetIdent())]
+			data = container[b.KeyMap(sel, r.Meta.GetIdent())]
 		}
 		if data != nil {
-			if schema.IsList(meta) {
+			if schema.IsList(r.Meta) {
 				return b.List(container, data.([]map[string]interface{})), nil
 			} else {
 				// TODO: Silently ignoring unexpected format. We should be *less*
@@ -93,29 +93,28 @@ func (b *Bucket) List(parent map[string]interface{}, initialList []map[string]in
 	list := initialList
 	s := &MyNode{}
 	var selected map[string]interface{}
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, isFirst bool) (Node, error) {
+	s.OnNext = func(sel *Selection, r ListRequest) (Node, []*Value, error) {
 		selected = nil
-		if new {
+		if r.New {
 			selection := make(map[string]interface{})
 			list = append(list, selection)
-			parent[b.KeyMap(sel, meta.GetIdent())] = list
-			return b.Container(selection), nil
+			parent[b.KeyMap(sel, r.Meta.GetIdent())] = list
+			return b.Container(selection), r.Key, nil
 		} else {
-			if len(key) > 0 {
-				if !isFirst {
-					return nil, nil
+			if len(r.Key) > 0 {
+				if !r.First {
+					return nil, nil, nil
 				}
 				// looping not very efficient, but we do not have an index
 				for _, candidate := range list {
 					// TODO: Support compound keys
-					if candidate[b.KeyMap(sel, meta.Key[0])] == key[0].Value() {
+					if candidate[b.KeyMap(sel, r.Meta.Key[0])] == r.Key[0].Value() {
 						selected = candidate
-						sel.path.key = key
 						break
 					}
 				}
 			} else {
-				if isFirst {
+				if r.First {
 					i = 0
 				} else {
 					i++
@@ -123,17 +122,16 @@ func (b *Bucket) List(parent map[string]interface{}, initialList []map[string]in
 				if i < len(list) {
 					selected = list[i]
 				}
-				if key, err := b.ReadKey(sel, selected, meta); err != nil {
-					return nil, err
-				} else {
-					sel.path.key = key
+				var err error
+				if r.Key, err = b.ReadKey(sel, selected, r.Meta); err != nil {
+					return nil, nil, err
 				}
 			}
 		}
 		if selected != nil {
-			return b.Container(selected), nil
+			return b.Container(selected), r.Key, nil
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 	s.OnWrite = func(sel *Selection, meta schema.HasDataType, val *Value) error {
 		return b.UpdateLeaf(sel, selected, meta.(schema.HasDataType), val)

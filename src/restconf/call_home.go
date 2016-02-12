@@ -34,8 +34,8 @@ type Registration struct {
 func (self *CallHome) Manage() data.Node {
 	return &data.Extend{
 		Node: data.MarshalContainer(self),
-		OnSelect: func(p data.Node, sel *data.Selection, meta schema.MetaList, new bool) (data.Node, error) {
-			switch meta.GetIdent() {
+		OnSelect: func(p data.Node, sel *data.Selection, r data.ContainerRequest) (data.Node, error) {
+			switch r.Meta.GetIdent() {
 			case "registration":
 				if self.Registration != nil {
 					return data.MarshalContainer(self.Registration), nil

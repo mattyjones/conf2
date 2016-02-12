@@ -21,56 +21,62 @@ func FullWalk() *ControlledWalk {
 	return &ControlledWalk{MaxDepth: 32}
 }
 
-func (p *ControlledWalk) parseQuery(params map[string][]string) (err error) {
+func (self *ControlledWalk) parseQuery(params map[string][]string) (err error) {
 	if depth, found := params["depth"]; found {
-		if p.MaxDepth, err = strconv.Atoi(depth[0]); err != nil {
+		if self.MaxDepth, err = strconv.Atoi(depth[0]); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (p *ControlledWalk) CloseSelection(s *Selection) error {
+func (self *ControlledWalk) CloseSelection(s *Selection) error {
 	return schema.CloseResource(s)
 }
 
-func (e *ControlledWalk) maxedLevel(selection *Selection) bool {
+func (self *ControlledWalk) maxedLevel(selection *Selection) bool {
 	level := selection.path.Len()
-	if e.finalDepth == 0 {
-		e.finalDepth = level + e.MaxDepth
+	if self.finalDepth == 0 {
+		self.finalDepth = level + self.MaxDepth
 	}
-	return level >= e.finalDepth
+	return level >= self.finalDepth
 }
 
-func (n *ControlledWalk) VisitAction(state *Selection, rpc *schema.Rpc) (*Selection, error) {
+func (self *ControlledWalk) VisitAction(state *Selection, rpc *schema.Rpc) (*Selection, error) {
 	// Not sure what a full walk would do when hitting an action, so do nothing
 	return nil, nil
 }
 
-func (n *ControlledWalk) VisitContainer(sel *Selection, meta schema.MetaList) (*Selection, error) {
-	childNode, err := sel.node.Select(sel, meta, false)
+func (self *ControlledWalk) VisitContainer(sel *Selection, meta schema.MetaList) (*Selection, error) {
+	r := ContainerRequest{
+		Meta: meta,
+	}
+	childNode, err := sel.node.Select(sel, r)
 	if err == nil && childNode != nil {
 		return sel.SelectChild(meta, childNode), nil
 	}
 	return nil, err
 }
 
-func (e *ControlledWalk) ListIterator(selection *Selection, first bool) (next *Selection, err error) {
-	if e.maxedLevel(selection) {
+func (self *ControlledWalk) ListIterator(sel *Selection, first bool) (next *Selection, err error) {
+	if self.maxedLevel(sel) {
 		return nil, nil
 	}
-	listMeta := selection.path.meta.(*schema.List)
+	r := ListRequest{
+		First: first,
+		Meta: sel.path.meta.(*schema.List),
+	}
 	var listNode Node
-	listNode, err = selection.node.Next(selection, listMeta, false, NO_KEYS, first)
+	listNode, sel.path.key, err = sel.node.Next(sel, r)
 	if listNode == nil || err != nil {
 		return nil, err
 	}
-	next = selection.SelectListItem(listNode, selection.path.key)
+	next = sel.SelectListItem(listNode, sel.path.key)
 	return
 }
 
-func (e *ControlledWalk) ContainerIterator(selection *Selection) (schema.MetaIterator, error) {
-	if e.maxedLevel(selection) {
+func (self *ControlledWalk) ContainerIterator(selection *Selection) (schema.MetaIterator, error) {
+	if self.maxedLevel(selection) {
 		return schema.EmptyInterator(0), nil
 	}
 	return schema.NewMetaListIterator(selection.path.meta, true), nil

@@ -109,40 +109,41 @@ func asStringArray(data []interface{}) []string {
 func JsonListReader(list []interface{}) Node {
 	s := &MyNode{Label: "JSON Read List"}
 	var i int
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
-		if new {
+	s.OnNext = func(sel *Selection, r ListRequest) (next Node, key []*Value, err error) {
+		key = r.Key
+		if r.New {
 			panic("Cannot write to JSON reader")
 		}
-		if len(key) > 0 {
-			if first {
-				keyFields := meta.Key
+		if len(r.Key) > 0 {
+			if r.First {
+				keyFields := r.Meta.Key
 				for ; i < len(list); i++ {
 					candidate := list[i].(map[string]interface{})
 					if jsonKeyMatches(keyFields, candidate, key) {
 						sel.path.key = key
-						return JsonContainerReader(candidate), nil
+						return JsonContainerReader(candidate), r.Key, nil
 					}
 				}
 			}
 		} else {
-			if first {
+			if r.First {
 				i = 0
 			} else {
 				i++
 			}
 			if i < len(list) {
 				container := list[i].(map[string]interface{})
-				if len(meta.Key) > 0 {
+				if len(r.Meta.Key) > 0 {
 					// TODO: compound keys
-					if keyData, hasKey := container[meta.Key[0]]; hasKey {
+					if keyData, hasKey := container[r.Meta.Key[0]]; hasKey {
 						// Key may legitimately not exist when inserting new data
-						sel.path.key = SetValues(meta.KeyMeta(), keyData)
+						key = SetValues(r.Meta.KeyMeta(), keyData)
 					}
 				}
-				return JsonContainerReader(container), nil
+				return JsonContainerReader(container), key, nil
 			}
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 	return s
 }
@@ -177,12 +178,12 @@ func JsonContainerReader(container map[string]interface{}) Node {
 		msg := fmt.Sprintf("No discriminating data for choice schema %s ", state.String())
 		return nil, &browseError{Msg: msg}
 	}
-	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (child Node, e error) {
-		if new {
+	s.OnSelect = func(state *Selection, r ContainerRequest) (child Node, e error) {
+		if r.New {
 			panic("Cannot write to JSON reader")
 		}
-		if value, found := container[meta.GetIdent()]; found {
-			if schema.IsList(meta) {
+		if value, found := container[r.Meta.GetIdent()]; found {
+			if schema.IsList(r.Meta) {
 				return JsonListReader(value.([]interface{})), nil
 			} else {
 				return JsonContainerReader(value.(map[string]interface{})), nil
@@ -196,19 +197,19 @@ func JsonContainerReader(container map[string]interface{}) Node {
 		}
 		return
 	}
-	s.OnNext = func(sel *Selection, meta *schema.List, create bool, key []*Value, first bool) (Node, error) {
+	s.OnNext = func(sel *Selection, r ListRequest) (Node, []*Value, error) {
 		if divertedList != nil {
-			return nil, nil
+			return nil, nil, nil
 		}
 		// divert to list handler
-		foundValues, found := container[meta.GetIdent()]
+		foundValues, found := container[r.Meta.GetIdent()]
 		list, ok := foundValues.([]interface{})
 		if len(container) != 1 || !found || !ok {
-			msg := fmt.Sprintf("Expected { %s: [] }", meta.GetIdent())
-			return nil, errors.New(msg)
+			msg := fmt.Sprintf("Expected { %s: [] }", r.Meta.GetIdent())
+			return nil, nil, errors.New(msg)
 		}
 		divertedList = JsonListReader(list)
-		return divertedList.Next(sel, meta, create, key, first)
+		return divertedList.Next(sel, r)
 	}
 	return s
 }

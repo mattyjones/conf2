@@ -11,11 +11,11 @@ func MarshalContainer(Obj interface{}) Node {
 		Label:"Marshal " + reflect.TypeOf(Obj).Name(),
 		Peekables: map[string]interface{}{"internal": Obj},
 	}
-	s.OnSelect = func(sel *Selection, meta schema.MetaList, new bool) (Node, error) {
+	s.OnSelect = func(sel *Selection, r ContainerRequest) (Node, error) {
 		objType := reflect.ValueOf(Obj).Elem()
-		fieldName := schema.MetaNameToFieldName(meta.GetIdent())
+		fieldName := schema.MetaNameToFieldName(r.Meta.GetIdent())
 		value := objType.FieldByName(fieldName)
-		if schema.IsList(meta) {
+		if schema.IsList(r.Meta) {
 			if value.Kind() == reflect.Map {
 				marshal := &MarshalMap{
 					Map:value.Interface(),
@@ -58,9 +58,9 @@ func (self *MarshalArray) Node() Node {
 		Label: "Marshal " + self.ArrayValue.Type().Name(),
 		Peekables: map[string]interface{}{"internal": self.ArrayValue.Interface()},
 	}
-	n.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+	n.OnNext = func(sel *Selection, r ListRequest) (next Node, key []*Value, err error) {
 		var item interface{}
-		if new {
+		if r.New {
 			var itemValue reflect.Value
 			if self.OnNewItem != nil {
 				item = self.OnNewItem()
@@ -70,10 +70,11 @@ func (self *MarshalArray) Node() Node {
 				item = itemValue.Interface()
 			}
 			self.ArrayValue.Set(reflect.Append(*self.ArrayValue, itemValue))
-		} else if len(key) > 0 {
+		} else if len(r.Key) > 0 {
+			// Not implemented, but could be...
 			panic("Keys only implemented on MarshalMap, not MarshalArray")
 		} else {
-			if first {
+			if r.First {
 				i = 0
 			} else {
 				i++
@@ -84,11 +85,11 @@ func (self *MarshalArray) Node() Node {
 		}
 		if item != nil {
 			if self.OnSelectItem != nil {
-				return self.OnSelectItem(item), nil
+				return self.OnSelectItem(item), nil, nil
 			}
-			return MarshalContainer(item), nil
+			return MarshalContainer(item), nil, nil
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 	return n
 }
@@ -106,33 +107,34 @@ func (self *MarshalMap) Node() Node {
 		Peekables: map[string]interface{}{"internal": self.Map},
 	}
 	index := NewIndex(self.Map)
-	n.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (next Node, err error) {
+	n.OnNext = func(sel *Selection, r ListRequest) (next Node, key []*Value, err error) {
 		var item interface{}
-		if new {
+		key = r.Key
+		if r.New {
 			item = self.OnNewItem()
-			mapKey := reflect.ValueOf(key[0].Value())
+			mapKey := reflect.ValueOf(r.Key[0].Value())
 			mapReflect.SetMapIndex(mapKey, reflect.ValueOf(item))
-		} else if len(key) > 0 {
-			mapKey := reflect.ValueOf(key[0].Value())
+		} else if len(r.Key) > 0 {
+			mapKey := reflect.ValueOf(r.Key[0].Value())
 			itemVal := mapReflect.MapIndex(mapKey)
 			if itemVal.IsValid() {
 				item = itemVal.Interface()
 			}
 		} else {
-			nextKey := index.NextKey(first)
+			nextKey := index.NextKey(r.First)
 			if nextKey != NO_VALUE {
-				sel.path.key = SetValues(meta.KeyMeta(), nextKey.Interface())
+				key = SetValues(r.Meta.KeyMeta(), nextKey.Interface())
 				itemVal := mapReflect.MapIndex(nextKey)
 				item = itemVal.Interface()
 			}
 		}
 		if item != nil {
 			if self.OnSelectItem != nil {
-				return self.OnSelectItem(item), nil
+				return self.OnSelectItem(item), key, nil
 			}
-			return MarshalContainer(item), nil
+			return MarshalContainer(item), key, nil
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 	return n
 }

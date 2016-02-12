@@ -4,6 +4,23 @@ import (
 	"schema"
 )
 
+type ContainerRequest struct {
+	New bool
+	Target *Path
+	Depth int
+	First bool
+	Meta schema.MetaList
+}
+
+type ListRequest struct {
+	New bool
+	Target *Path
+	Depth int
+	First bool
+	Meta *schema.List
+	Key []*Value
+}
+
 type WalkController interface {
 	ListIterator(selection *Selection, first bool) (next *Selection, err error)
 	ContainerIterator(selection *Selection) (schema.MetaIterator, error)

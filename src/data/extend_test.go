@@ -11,7 +11,7 @@ func TestExtend(t *testing.T) {
 		OnRead: func(*Selection, schema.HasDataType) (*Value, error) {
 			return &Value{Str:"Hello"}, nil
 		},
-		OnSelect: func(s *Selection, meta schema.MetaList, new bool) (Node, error) {
+		OnSelect: func(s *Selection, r ContainerRequest) (Node, error) {
 			return child, nil
 		},
 	}
@@ -30,7 +30,7 @@ func TestExtend(t *testing.T) {
 	if x.String() != "(Blop) <- Bleep" {
 		t.Error(x.String())
 	}
-	actualChild, _ := x.Select(nil, nil, false)
+	actualChild, _ := x.Select(nil, ContainerRequest{})
 	if actualChild.String() != "Bloop" {
 		t.Error(actualChild.String())
 	}

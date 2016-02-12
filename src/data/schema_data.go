@@ -52,10 +52,10 @@ type MetaListSelector func(m schema.Meta) (Node, error)
 
 func (self *SchemaData) Node() Node {
 	s := &MyNode{}
-	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (Node, error) {
-		switch meta.GetIdent() {
+	s.OnSelect = func(state *Selection, r ContainerRequest) (Node, error) {
+		switch r.Meta.GetIdent() {
 		case "module":
-			if new {
+			if r.New {
 				self.data = &schema.Module{}
 			}
 			if self.data != nil {
@@ -71,10 +71,10 @@ func (self *SchemaData) SelectModule(module *schema.Module) (Node) {
 	return &Extend{
 		Label:"Module",
 		Node:self.selectMetaList(module),
-		OnSelect : func(parent Node, state *Selection, meta schema.MetaList, new bool) (child Node, err error) {
-			switch meta.GetIdent() {
+		OnSelect : func(parent Node, sel *Selection, r ContainerRequest) (child Node, err error) {
+			switch r.Meta.GetIdent() {
 			case "revision":
-				if new {
+				if r.New {
 					module.Revision = &schema.Revision{}
 				}
 				if module.Revision != nil {
@@ -83,7 +83,7 @@ func (self *SchemaData) SelectModule(module *schema.Module) (Node) {
 			case "notifications":
 				return self.selectNotifications(module.GetNotifications()), nil
 			default:
-				return parent.Select(state, meta, new)
+				return parent.Select(sel, r)
 			}
 			return nil, nil
 		},
@@ -159,20 +159,24 @@ func (self *SchemaData) selectType(typeData *schema.DataType) (Node) {
 func (self *SchemaData) selectGroupings(groupings schema.MetaList) (Node) {
 	s := &MyNode{}
 	i := listIterator{dataList: groupings, resolve: self.resolve}
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (Node, error) {
+	s.OnNext = func(sel *Selection, r ListRequest) (Node, []*Value, error) {
+		var key = r.Key
 		var group *schema.Grouping
-		if new {
-			group = &schema.Grouping{Ident:key[0].Str}
+		if r.New {
+			group = &schema.Grouping{Ident:r.Key[0].Str}
 			groupings.AddMeta(group)
 		} else {
-			if i.iterate(sel, meta, key, first) {
+			if i.iterate(sel, r.Meta, r.Key, r.First) {
 				group = i.data.(*schema.Grouping)
+				if len(key) == 0 {
+					key = SetValues(r.Meta.KeyMeta(), group.Ident)
+				}
 			}
 		}
 		if group != nil {
-			return self.selectMetaList(group), nil
+			return self.selectMetaList(group), key, nil
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 	return s
 }
@@ -219,17 +223,17 @@ func (self *SchemaData) selectRpc(rpc *schema.Rpc) (Node) {
 	return &Extend{
 		Label:"rpc",
 		Node: MarshalContainer(rpc),
-		OnSelect: func(parent Node, sel *Selection, meta schema.MetaList, new bool) (Node, error) {
-			switch meta.GetIdent() {
+		OnSelect: func(parent Node, sel *Selection, r ContainerRequest) (Node, error) {
+			switch r.Meta.GetIdent() {
 			case "input":
-				if new {
+				if r.New {
 					rpc.AddMeta(&schema.RpcInput{})
 				}
 				if rpc.Input != nil {
 					return self.selectRpcIO(rpc.Input, nil), nil
 				}
 			case "output":
-				if new {
+				if r.New {
 					rpc.AddMeta(&schema.RpcOutput{})
 				}
 				if rpc.Output != nil {
@@ -244,20 +248,24 @@ func (self *SchemaData) selectRpc(rpc *schema.Rpc) (Node) {
 func (self *SchemaData) selectTypedefs(typedefs schema.MetaList) (Node) {
 	s := &MyNode{}
 	i := listIterator{dataList: typedefs, resolve: self.resolve}
-	s.OnNext = func(sel *Selection, meta *schema.List, new bool, key []*Value, first bool) (Node, error) {
+	s.OnNext = func(sel *Selection, r ListRequest) (Node, []*Value, error) {
+		var key = r.Key
 		var typedef *schema.Typedef
-		if new {
-			typedef = &schema.Typedef{Ident:key[0].Str}
+		if r.New {
+			typedef = &schema.Typedef{Ident:r.Key[0].Str}
 			typedefs.AddMeta(typedef)
 		} else {
-			if i.iterate(sel, meta, key, first) {
+			if i.iterate(sel, r.Meta, r.Key, r.First) {
 				typedef = i.data.(*schema.Typedef)
+			}
+			if len(key) == 0 {
+				key = SetValues(r.Meta.KeyMeta(), typedef.Ident)
 			}
 		}
 		if typedef != nil {
-			return self.selectTypedef(typedef), nil
+			return self.selectTypedef(typedef), key, nil
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 	return s
 }
@@ -266,10 +274,10 @@ func (self *SchemaData) selectTypedef(typedef *schema.Typedef) Node {
 	return &Extend{
 		Label:"Typedef",
 		Node: MarshalContainer(typedef),
-		OnSelect :func(parent Node, state *Selection, meta schema.MetaList, new bool) (Node, error) {
-			switch meta.GetIdent() {
+		OnSelect :func(parent Node, sel *Selection, r ContainerRequest) (Node, error) {
+			switch r.Meta.GetIdent() {
 			case "type":
-				if new {
+				if r.New {
 					typedef.SetDataType(&schema.DataType{})
 				}
 				if typedef.DataType != nil {
@@ -285,27 +293,27 @@ func (self *SchemaData) selectMetaList(data schema.MetaList) (Node) {
 	return &Extend{
 		Label: "MetaList",
 		Node: MarshalContainer(data),
-		OnSelect : func(parent Node, state *Selection, meta schema.MetaList, new bool) (Node, error) {
+		OnSelect : func(parent Node, sel *Selection, r ContainerRequest) (Node, error) {
 			hasGroupings, implementsHasGroupings := data.(schema.HasGroupings)
 			hasTypedefs, implementsHasTypedefs := data.(schema.HasTypedefs)
-			switch meta.GetIdent() {
+			switch r.Meta.GetIdent() {
 			case "groupings":
 				if ! self.resolve && implementsHasGroupings {
 					groupings := hasGroupings.GetGroupings()
-					if new || ! schema.ListEmpty(groupings) {
+					if r.New || ! schema.ListEmpty(groupings) {
 						return self.selectGroupings(groupings), nil
 					}
 				}
 			case "typedefs":
 				if ! self.resolve && implementsHasTypedefs {
 					typedefs := hasTypedefs.GetTypedefs()
-					if new || ! schema.ListEmpty(typedefs) {
+					if r.New || ! schema.ListEmpty(typedefs) {
 						return self.selectTypedefs(typedefs), nil
 					}
 				}
 			case "definitions":
 				defs := data.(schema.MetaList)
-				if new || ! schema.ListEmpty(defs) {
+				if r.New || ! schema.ListEmpty(defs) {
 					return self.SelectDefinitionsList(defs), nil
 				}
 			}
@@ -319,20 +327,24 @@ func (self *SchemaData) selectNotifications(notifications schema.MetaList) (Node
 		Peekables: map[string]interface{} {"internal" : notifications},
 	}
 	i := listIterator{dataList: notifications, resolve: self.resolve}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (Node, error) {
+	s.OnNext = func(state *Selection, r ListRequest) (Node, []*Value, error) {
+		key := r.Key
 		var notif *schema.Notification
-		if new {
+		if r.New {
 			notif = &schema.Notification{}
 			notifications.AddMeta(notif)
 		} else {
-			if i.iterate(state, meta, key, first) {
+			if i.iterate(state, r.Meta, r.Key, r.First) {
 				notif = i.data.(*schema.Notification)
+				if len(key) == 0 {
+					key = SetValues(r.Meta.KeyMeta(), notif.Ident)
+				}
 			}
 		}
 		if notif != nil {
-			return self.selectMetaList(notif), nil
+			return self.selectMetaList(notif), key, nil
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 	return s
 }
@@ -350,10 +362,10 @@ func (self *SchemaData) selectMetaLeafy(leaf *schema.Leaf, leafList *schema.Leaf
 		Peekables: map[string]interface{} {"internal" : leafy},
 	}
 	details := leafy.(schema.HasDetails).Details()
-	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (Node, error) {
-		switch meta.GetIdent() {
+	s.OnSelect = func(state *Selection, r ContainerRequest) (Node, error) {
+		switch r.Meta.GetIdent() {
 		case "type":
-			if new {
+			if r.New {
 				leafy.SetDataType(&schema.DataType{})
 			}
 			if leafy.GetDataType() != nil {
@@ -401,20 +413,24 @@ func (self *SchemaData) selectMetaCases(choice *schema.Choice) (Node) {
 		Peekables: map[string]interface{} {"internal" : choice},
 	}
 	i := listIterator{dataList: choice, resolve: self.resolve}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (Node, error) {
+	s.OnNext = func(sel *Selection, r ListRequest) (Node, []*Value, error) {
+		key := r.Key
 		var choiceCase *schema.ChoiceCase
-		if new {
+		if r.New {
 			choiceCase = &schema.ChoiceCase{}
 			choice.AddMeta(choiceCase)
 		} else {
-			if i.iterate(state, meta, key, first) {
+			if i.iterate(sel, r.Meta, r.Key, r.First) {
 				choiceCase = i.data.(*schema.ChoiceCase)
+				if len(key) == 0 {
+					key = SetValues(r.Meta.KeyMeta(), choiceCase.Ident)
+				}
 			}
 		}
 		if choiceCase != nil {
-			return self.selectMetaList(choiceCase), nil
+			return self.selectMetaList(choiceCase), key, nil
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 	return s
 }
@@ -423,8 +439,8 @@ func (self *SchemaData) selectMetaChoice(data *schema.Choice) (Node) {
 	return &Extend{
 		Label:"Choice",
 		Node: MarshalContainer(data),
-		OnSelect: func(parent Node, state *Selection, meta schema.MetaList, new bool) (Node, error) {
-			switch meta.GetIdent() {
+		OnSelect: func(parent Node, sel *Selection, r ContainerRequest) (Node, error) {
+			switch r.Meta.GetIdent() {
 			case "cases":
 				// TODO: Not sure how to do create w/o what type to create
 				return self.selectMetaCases(data), nil
@@ -475,14 +491,14 @@ func (self *SchemaData) SelectDefinition(parent schema.MetaList, data schema.Met
 	s.OnChoose = func(state *Selection, choice *schema.Choice) (m schema.Meta, err error) {
 		return self.resolveDefinitionCase(choice, data)
 	}
-	s.OnSelect = func(state *Selection, meta schema.MetaList, new bool) (Node, error) {
-		if new {
-			data = self.createGroupingsTypedefsDefinitions(parent, meta)
+	s.OnSelect = func(state *Selection, r ContainerRequest) (Node, error) {
+		if r.New {
+			data = self.createGroupingsTypedefsDefinitions(parent, r.Meta)
 		}
 		if data == nil {
 			return nil, nil
 		}
-		switch meta.GetIdent() {
+		switch r.Meta.GetIdent() {
 		case "anyxml":
 			return self.selectMetaLeafy(nil, nil, data.(*schema.Any)), nil
 		case "leaf":
@@ -525,15 +541,19 @@ func (self *SchemaData) SelectDefinitionsList(dataList schema.MetaList) (Node) {
 		Peekables: map[string]interface{} {"internal" : dataList},
 	}
 	i := listIterator{dataList: dataList, resolve: self.resolve}
-	s.OnNext = func(state *Selection, meta *schema.List, new bool, key []*Value, first bool) (Node, error) {
-		if new {
-			return self.SelectDefinition(dataList, nil), nil
+	s.OnNext = func(sel *Selection, r ListRequest) (Node, []*Value, error) {
+		key := r.Key
+		if r.New {
+			return self.SelectDefinition(dataList, nil), key, nil
 		} else {
-			if i.iterate(state, meta, key, first) {
-				return self.SelectDefinition(dataList, i.data), nil
+			if i.iterate(sel, r.Meta, r.Key, r.First) {
+				if len(key) == 0 {
+					key = SetValues(r.Meta.KeyMeta(), i.data.GetIdent())
+				}
+				return self.SelectDefinition(dataList, i.data), key, nil
 			}
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 	return s
 }
