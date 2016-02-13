@@ -21,7 +21,7 @@ type SchemaData struct {
 }
 
 func (self *SchemaData) Select() *Selection {
-	return NewSelection(self.meta, self.Node())
+	return Select(self.meta, self.Node())
 }
 
 func (self *SchemaData) Schema() schema.MetaList {
@@ -257,9 +257,9 @@ func (self *SchemaData) selectTypedefs(typedefs schema.MetaList) (Node) {
 		} else {
 			if i.iterate(sel, r.Meta, r.Key, r.First) {
 				typedef = i.data.(*schema.Typedef)
-			}
-			if len(key) == 0 {
-				key = SetValues(r.Meta.KeyMeta(), typedef.Ident)
+				if len(key) == 0 {
+					key = SetValues(r.Meta.KeyMeta(), typedef.Ident)
+				}
 			}
 		}
 		if typedef != nil {

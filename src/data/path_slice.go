@@ -126,12 +126,19 @@ func (slice *PathSlice) NextAfter(path *Path) (p *Path) {
 	}
 	candidate := slice.Tail
 	for candidate != nil {
-		if candidate.parent == path {
+		if candidate.parent.Equal(path) {
 			return candidate
 		}
 		candidate = candidate.parent
 	}
 	return nil
+}
+
+func (self *PathSlice) SplitAfter(point *Path) *PathSlice {
+	return &PathSlice{
+		Head: point,
+		Tail: self.Tail,
+	}
 }
 
 func (path *PathSlice) AppendPath(child *Path) {
@@ -146,7 +153,7 @@ func (path *PathSlice) AppendPath(child *Path) {
 
 func (path *PathSlice) Len() (len int) {
 	p := path.Tail
-	for p != nil {
+	for p != nil && ! p.Equal(path.Head) {
 		len++
 		p = p.parent
 	}

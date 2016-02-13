@@ -53,10 +53,10 @@ func TestPathIntoListItemContainer(t *testing.T) {
 		"fruits=apple/boat",
 	}
 	for _, test := range tests {
-		target, err := b.Select().Find(test)
-		if err != nil {
-			t.Fatal(err)
-		} else if target == nil {
+		target := b.Select().Find(test)
+		if target.LastErr != nil {
+			t.Fatal(target.LastErr)
+		} else if target.Selection == nil {
 			t.Fatal("Could not find target " + test)
 		}
 	}

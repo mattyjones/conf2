@@ -38,8 +38,9 @@ func (self *FindTarget) ListIterator(selection *Selection, first bool) (next *Se
 	}
 	var nextNode Node
 	r := ListRequest{
-		First: true,
+		Target: self.path,
 		Meta: selection.path.meta.(*schema.List),
+		First: true,
 		Key: self.position.Key(),
 	}
 	nextNode, selection.path.key, err = selection.node.Next(selection, r)
@@ -89,6 +90,7 @@ func (self *FindTarget) VisitAction(selection *Selection, rpc *schema.Rpc) (*Sel
 
 func (self *FindTarget) VisitContainer(sel *Selection, meta schema.MetaList) (*Selection, error) {
 	r := ContainerRequest{
+		Target: self.path,
 		Meta: meta,
 	}
 	childNode, err := sel.node.Select(sel, r)

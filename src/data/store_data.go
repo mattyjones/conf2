@@ -20,7 +20,7 @@ func NewStoreData(schema schema.MetaList, store Store) *StoreData {
 }
 
 func (kv *StoreData) Select() *Selection {
-	return NewSelection(kv.Meta, kv.Node())
+	return Select(kv.Meta, kv.Node())
 }
 
 func (kv *StoreData) Node() (Node) {

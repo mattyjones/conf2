@@ -30,7 +30,7 @@ func ModuleSetup(mstr string, t Testing) (setup *ModuleTestSetup) {
 
 func (setup *ModuleTestSetup) ToString(t Testing) string {
 	var actualBuff bytes.Buffer
-	err := setup.Data.Select().Push(NewJsonWriter(&actualBuff).Node()).Insert()
+	err := setup.Data.Select().Selector().Push(NewJsonWriter(&actualBuff).Node()).Insert().LastErr
 	if err != nil {
 		t.Fatal(err)
 	}

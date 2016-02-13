@@ -43,13 +43,13 @@ module json-test {
 	}
 	for _, test := range tests {
 		rdr := NewJsonReader(strings.NewReader(json)).Node()
-		found, selErr := NewSelection(module, rdr).Find(test)
-		if selErr != nil {
+		found := Select(module, rdr).Find(test)
+		if found.LastErr != nil {
 			t.Error("failed to transmit json", err)
-		} else if found == nil {
+		} else if found.Selection == nil {
 			t.Error(test, "- Target not found, state nil")
 		} else {
-			actual := found.Path().String()
+			actual := found.Selection.Path().String()
 			if actual != "json-test/" + test {
 				t.Error("json-test/" + test, "!=", actual)
 			}

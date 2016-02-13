@@ -43,7 +43,7 @@ func TestSelectionEvents(t *testing.T) {
 		return nil
 	})
 	json := NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
-	if err = sel.Pull(json).Upsert(); err != nil {
+	if err = sel.Selector().Pull(json).Upsert().LastErr; err != nil {
 		t.Fatal(err)
 	}
 	if !relPathFired {
@@ -63,7 +63,7 @@ func TestSelectionPeek(t *testing.T) {
 	n := &MyNode{
 		Peekables:map[string]interface{} {"a":expected},
 	}
-	sel := NewSelection(m, n)
+	sel := Select(m, n)
 	actual :=  sel.Peek("a")
 	if actual != expected {
 		t.Errorf("\nExpected:%s\n  Actual:%s", expected, actual)

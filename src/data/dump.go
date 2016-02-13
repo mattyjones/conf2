@@ -21,7 +21,7 @@ func NewDumper(out io.Writer) *Dumper {
 }
 
 func (self *Dumper) Select(meta schema.MetaList) *Selection {
-	return NewSelection(meta, self.enter(0))
+	return Select(meta, self.enter(0))
 }
 
 func (d *Dumper) enter(level int) Node {

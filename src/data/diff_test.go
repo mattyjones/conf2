@@ -62,7 +62,7 @@ module m {
 	bData := NewStoreData(m, b).Node()
 
 	c := NewBufferStore()
-	if err = NewStoreData(m, c).Select().Pull(Diff(bData, aData)).Insert(); err != nil {
+	if err = NewStoreData(m, c).Select().Selector().Pull(Diff(bData, aData)).Insert().LastErr; err != nil {
 		t.Error(err)
 	}
 	if len(c.Values) != 2 {

@@ -18,6 +18,22 @@ func TestPathEmpty(t *testing.T) {
 	}
 }
 
+func TestPathSliceSplit(t *testing.T) {
+	m, err := yang.LoadModuleFromByteArray([]byte(pathTestModule), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, e := ParsePath("a/b=y/e", m)
+	if e != nil {
+		t.Fatal(e)
+	}
+	frag := p.SplitAfter(p.Tail.Parent().Parent())
+	actual := frag.String()
+	if actual != "b=y/e" {
+		t.Error(actual)
+	}
+}
+
 func TestPathStringAndEqual(t *testing.T) {
 	m, err := yang.LoadModuleFromByteArray([]byte(pathTestModule), nil)
 	if err != nil {

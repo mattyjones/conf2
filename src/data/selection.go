@@ -4,7 +4,6 @@ import (
 	"regexp"
 	"schema"
 	"fmt"
-	"net/url"
 	"conf2"
 	"strings"
 )
@@ -48,7 +47,7 @@ func (sel *Selection) String() string {
 	return fmt.Sprint(sel.node.String(), ":", sel.path.String())
 }
 
-func NewSelection(meta schema.MetaList, node Node) *Selection {
+func Select(meta schema.MetaList, node Node) *Selection {
 	return &Selection{
 		events: &EventsImpl{},
 		path: &Path{meta: meta},
@@ -142,56 +141,19 @@ func (self *Selection) FindLeaf(path string) (*Selection, schema.HasDataType, er
 	}
 
 	slash := strings.LastIndexFunc(path, isFwdSlash)
-	sel := self
+	sel := self.Selector()
 	ident := path
 	if slash > 0 {
 		var err error
-		if sel, err = sel.Find(path[:slash]); err != nil {
+		if sel = sel.Find(path[:slash]); sel.LastErr != nil {
 			return nil, nil, err
 		}
 		ident = path[slash + 1:]
 	}
-	meta := schema.FindByIdent2(sel.path.meta, ident)
-	return sel, meta.(schema.HasDataType), nil
+	meta := schema.FindByIdent2(sel.Selection.Meta(), ident)
+	return sel.Selection, meta.(schema.HasDataType), nil
 }
 
-// Like Find but panics if path not found or error parsing path
-func (self *Selection) Require(path string) (*Selection) {
-	sel, err := self.Find(path)
-	if err != nil {
-		panic(err)
-	}
-	return sel
-}
-
-func (self *Selection) Find(path string) (*Selection, error) {
-	if strings.HasPrefix(path, "../") {
-		if self.parent != nil {
-			return self.parent.Find(path[3:])
-		} else {
-			return nil, conf2.NewErrC("No parent path to resolve " + path, conf2.NotFound)
-		}
-	}
-	u, err := url.Parse(path)
-	if err != nil {
-		return nil, err
-	}
-	return self.FindUrl(u)
-}
-
-func (self *Selection) FindUrl(url *url.URL) (*Selection, error) {
-	if len(url.Path) == 0 {
-		return self, nil
-	}
-	pslice, err := ParsePath(url.Path, self.path.meta)
-	if err != nil {
-		return nil, err
-	}
-	pslice.SetParams(url.Query())
-	finder := NewFindTarget(pslice)
-	err = self.Walk(finder)
-	return finder.Target, err
-}
 
 func (sel *Selection) Set(ident string, value interface{}) error {
 	n := sel.node
@@ -245,6 +207,19 @@ func (self *Selection) IsConfig(meta schema.Meta) bool {
 
 func (sel *Selection) ClearAll() error {
 	return sel.node.Event(sel, DELETE.New())
+}
+
+func (self *Selection) Selector() Selector {
+	return Selector{
+		Selection: self,
+	}
+}
+
+func (self *Selection) Find(path string) Selector {
+	s  := Selector{
+		Selection: self,
+	}
+	return s.Find(path)
 }
 
 func (sel *Selection) FindOrCreate(ident string, autoCreate bool) (*Selection, error) {

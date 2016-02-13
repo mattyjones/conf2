@@ -18,51 +18,6 @@ type Editor struct{
 	to *Selection
 }
 
-func (s *Selection) To(to *Selection) *Editor {
-	return &Editor{
-		from : s,
-		to: to,
-	}
-}
-
-func (s *Selection) Push(toNode Node) *Editor {
-	return &Editor{
-		from : s,
-		to: s.Fork(toNode),
-	}
-}
-
-func (s *Selection) Pull(fromNode Node) *Editor {
-	return &Editor{
-		from : s.Fork(fromNode),
-		to: s,
-	}
-}
-
-func (e *Editor) Insert() (err error) {
-	return e.Edit(INSERT, FullWalk())
-}
-
-func (e *Editor) ControlledInsert(cntrl WalkController) (err error) {
-	return e.Edit(INSERT, cntrl)
-}
-
-func (e *Editor) Upsert() (err error) {
-	return e.Edit(UPSERT, FullWalk())
-}
-
-func (e *Editor) ControlledUpsert(cntrl WalkController) (err error) {
-	return e.Edit(UPSERT, cntrl)
-}
-
-func (e *Editor) Update() (err error) {
-	return e.Edit(UPDATE, FullWalk())
-}
-
-func (e *Editor) ControlledUpdate(cntrl WalkController) (err error) {
-	return e.Edit(UPDATE, cntrl)
-}
-
 func (self *Selection) Delete() (err error) {
 	if err = self.Fire(START_TREE_EDIT.New()); err == nil {
 		if err = self.Fire(DELETE.New()); err == nil {
@@ -188,7 +143,7 @@ func (e *Editor) container(from *Selection, to *Selection, new bool, strategy St
 		switch strategy {
 		case INSERT:
 			if toChildNode != nil {
-				msg := fmt.Sprintf("'%s' not found in '%s' container node ", r.Meta.GetIdent(), sel.String())
+				msg := fmt.Sprintf("Duplicate item '%s' found in '%s' ", r.Meta.GetIdent(), sel.String())
 				return nil, conf2.NewErrC(msg, conf2.Conflict)
 			}
 			if toChildNode, err = to.node.Select(to, toRequest); err != nil {
@@ -204,7 +159,8 @@ func (e *Editor) container(from *Selection, to *Selection, new bool, strategy St
 			}
 		case UPDATE:
 			if toChildNode == nil {
-				msg := fmt.Sprintf("'%s' not found in '%s' container node ", r.Meta.GetIdent(), sel.String())
+				msg := fmt.Sprintf("cannot update '%s' not found in '%s' container destination node ",
+					r.Meta.GetIdent(), sel.String())
 				return nil, conf2.NewErrC(msg, conf2.NotFound)
 			}
 		default:

@@ -33,7 +33,7 @@ module m {
 	var obj TestMessage
 	c := MarshalContainer(&obj)
 	r := NewJsonReader(strings.NewReader(`{"message":{"hello":"bob"}}`)).Node()
-	if err = NewSelection(m, c).Pull(r).Upsert(); err != nil {
+	if err = Select(m, c).Selector().Pull(r).Upsert().LastErr; err != nil {
 		t.Fatal(err)
 	}
 	if obj.Message.Hello != "bob" {
@@ -74,8 +74,8 @@ module m {
 		},
 	}
 	d := NewJsonReader(strings.NewReader(`{"messages":[{"id":"bob"},{"id":"barb"}]}`)).Node()
-	sel := NewSelection(m, d).Require("messages")
-	if err = sel.Push(marshaller.Node()).Upsert(); err != nil {
+	sel := Select(m, d).Find("messages")
+	if err = sel.Push(marshaller.Node()).Upsert().LastErr; err != nil {
 		t.Fatal(err)
 	}
 	if objs["bob"].Id != "bob" {
@@ -87,7 +87,7 @@ module m {
 		First: true,
 	}
 	r.Key = SetValues(r.Meta.KeyMeta(), "bob")
-	foundByKeyNode, _, nextByKeyErr := n.Next(sel, r)
+	foundByKeyNode, _, nextByKeyErr := n.Next(sel.Selection, r)
 	if nextByKeyErr != nil {
 		t.Fatal(nextByKeyErr)
 	}
@@ -95,7 +95,7 @@ module m {
 		t.Error("lookup by key failed")
 	}
 	r.Key = []*Value{}
-	foundFirstNode, _, nextFirstErr := n.Next(sel, r)
+	foundFirstNode, _, nextFirstErr := n.Next(sel.Selection, r)
 	if nextFirstErr != nil {
 		t.Fatal(nextFirstErr)
 	}

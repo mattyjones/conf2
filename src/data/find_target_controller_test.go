@@ -6,7 +6,6 @@ import (
 	"schema/yang"
 	"strings"
 	"testing"
-	"net/url"
 )
 
 func TestFindTargetIterator(t *testing.T) {
@@ -53,12 +52,6 @@ module m {
 	node.OnSelect = func(*Selection, ContainerRequest) (Node, error) {
 		return node, nil
 	}
-	node.OnEvent = func(sel *Selection, e Event) error {
-		if e.Type == FETCH_TREE {
-			e.StopPropagation()
-		}
-		return nil
-	}
 	tests := [][]string {
 		{"", "m"},
 		{"a","m/a"},
@@ -68,13 +61,13 @@ module m {
 	}
 	for _, test := range tests {
 		t.Log(test[0])
-		found, foundErr := NewSelection(module, node).Find(test[0])
-		if foundErr != nil {
-			t.Error(foundErr)
-		} else if found == nil {
+		found := Select(module, node).Find(test[0])
+		if found.LastErr != nil {
+			t.Error(found.LastErr)
+		} else if found.Selection == nil {
 			t.Errorf("Target for %s not found", test[0])
 		} else {
-			actual := found.path.String()
+			actual := found.Selection.path.String()
 			if test[1] != actual {
 				t.Errorf("Wrong state path\nExpected:%s\n  Actual:%s", test[1], actual)
 			}
@@ -130,16 +123,15 @@ module json-test {
 		var rdr Node
 		for i, test := range tests {
 			rdr = NewJsonReader(strings.NewReader(json)).Node()
-			found, foundErr := NewSelection(module, rdr).Find(test.path)
-			if foundErr != nil {
+			found := Select(module, rdr).Find(test.path)
+			if found.LastErr != nil {
 				t.Error(err)
-			} else if found == nil {
+			} else if found.Selection == nil {
 				t.Error("path not found " + test.path)
 			}
 			var actualBuff bytes.Buffer
 			out := NewJsonWriter(&actualBuff).Node()
-			pathParsed, _ := url.Parse(test.path)
-			err = found.Push(out).ControlledUpsert(LimitedWalk(pathParsed.Query()))
+			err = found.Push(out).Upsert().LastErr
 			if err != nil {
 				t.Error(err)
 			} else {

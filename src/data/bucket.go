@@ -22,7 +22,7 @@ func (bb *BucketData) Node() (Node) {
 }
 
 func (bb *BucketData) Select() *Selection {
-	return NewSelection(bb.Meta, bb.Node())
+	return Select(bb.Meta, bb.Node())
 }
 
 type Bucket struct {

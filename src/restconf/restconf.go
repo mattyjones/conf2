@@ -107,9 +107,9 @@ func (service *Service) handleError(err error, w http.ResponseWriter) {
 func (service *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var payload data.Node
-	var sel *data.Selection
-	if sel, err = service.Root.Select().FindUrl(r.URL); err == nil {
-		if sel == nil {
+	var sel data.Selector
+	if sel = service.Root.Select().Selector().FindUrl(r.URL); sel.LastErr == nil {
+		if sel.Selection == nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
@@ -119,29 +119,31 @@ func (service *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		switch r.Method {
 		case "DELETE":
-			err = sel.Delete()
+			err = sel.Selection.Delete()
 		case "GET":
 			w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
 			output := data.NewJsonWriter(w).Node()
-			err = sel.Push(output).ControlledInsert(data.LimitedWalk(r.URL.Query()))
+			err = sel.Push(output).Insert().LastErr
 		case "PUT":
-			err = sel.Pull(data.NewJsonReader(r.Body).Node()).Upsert()
+			err = sel.Pull(data.NewJsonReader(r.Body).Node()).Upsert().LastErr
 		case "POST":
-			if schema.IsAction(sel.Meta()) {
+			if schema.IsAction(sel.Selection.Meta()) {
 				input := data.NewJsonReader(r.Body).Node()
 				var outputSel *data.Selection
-				outputSel, err = sel.Action(input)
+				outputSel, err = sel.Selection.Action(input)
 				if outputSel != nil {
 					w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
-					err = outputSel.Push(data.NewJsonWriter(w).Node()).Insert()
+					err = outputSel.Selector().Push(data.NewJsonWriter(w).Node()).Insert().LastErr
 				}
 			} else {
 				payload = data.NewJsonReader(r.Body).Node()
-				err = sel.Pull(payload).Insert()
+				err = sel.Pull(payload).Insert().LastErr
 			}
 		default:
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		}
+	} else {
+		err = sel.LastErr
 	}
 
 	if err != nil {
@@ -213,18 +215,17 @@ func (service *Service) schema(w http.ResponseWriter, r *http.Request) {
 	}
 	m := service.Root.Select().Meta().(*schema.Module)
 	sch := data.NewSchemaData(m, false)
-	if sel, err := sch.Select().FindUrl(r.URL); err != nil {
-		service.handleError(err, w)
+	if sel := sch.Select().Selector().FindUrl(r.URL); sel.LastErr != nil {
+		service.handleError(sel.LastErr, w)
 		return
-	} else if sel == nil {
+	} else if sel.Selection == nil {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	} else {
 		w.Header().Set("Content-Type", mime.TypeByExtension(".json"))
 		output := data.NewJsonWriter(w).Node()
-		err = sel.Push(output).ControlledInsert(data.LimitedWalk(r.URL.Query()))
-		if err != nil {
-			service.handleError(err, w)
+		if sel = sel.Push(output).Insert(); sel.LastErr != nil {
+			service.handleError(sel.LastErr, w)
 			return
 		}
 	}

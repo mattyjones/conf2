@@ -6,7 +6,7 @@ import (
 
 type ContainerRequest struct {
 	New bool
-	Target *Path
+	Target *PathSlice
 	Depth int
 	First bool
 	Meta schema.MetaList
@@ -14,7 +14,7 @@ type ContainerRequest struct {
 
 type ListRequest struct {
 	New bool
-	Target *Path
+	Target *PathSlice
 	Depth int
 	First bool
 	Meta *schema.List

@@ -64,7 +64,7 @@ func (any *AnySelection) Node() Node {
 
 func (any *AnySelection) String() (string, error) {
 	var out bytes.Buffer
-	if err := any.Selection.Push(NewJsonWriter(&out).Node()).Insert(); err != nil {
+	if err := any.Selection.Selector().Push(NewJsonWriter(&out).Node()).Insert().LastErr; err != nil {
 		return "", err
 	}
 	return out.String(), nil

@@ -39,7 +39,7 @@ module m {
 	b := NewStoreData(m, store)
 	var yourName *Value
 	store.Actions["sayHello"] = func(state *Selection, meta *schema.Rpc, input *Selection) (output Node, err error) {
-		if err = input.Push(b.Node()).Insert(); err != nil {
+		if err = input.Selector().Push(b.Node()).Insert().LastErr; err != nil {
 			return nil, err
 		}
 		yourName = store.Values["name"]
@@ -48,15 +48,17 @@ module m {
 	}
 	in := NewJsonReader(strings.NewReader(`{"name":"joe"}`)).Node()
 	var actual bytes.Buffer
-	sel, err := b.Select().Find("sayHello")
-	if err != nil {
-		t.Fatal(err)
+	sel := b.Select().Find("sayHello")
+	if sel.LastErr != nil {
+		t.Fatal(sel.LastErr)
 	}
-	actionOut, actionErr := sel.Action(in)
+	actionOut, actionErr := sel.Selection.Action(in)
 	if actionErr != nil {
 		t.Fatal(actionErr)
 	}
-	actionOut.Push(NewJsonWriter(&actual).Node()).Insert()
+	if err = actionOut.Selector().Push(NewJsonWriter(&actual).Node()).Insert().LastErr; err != nil {
+		t.Fatal(err)
+	}
 	AssertStrEqual(t, "joe", yourName.Str)
 	AssertStrEqual(t, `{"salutation":"Hello joe"}`, actual.String())
 }

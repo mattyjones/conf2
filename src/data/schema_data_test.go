@@ -47,7 +47,7 @@ module json-test {
 	}
 	b := NewSchemaData(m, false).Select()
 	var actual bytes.Buffer
-	if err = b.Push(NewJsonWriter(&actual).Node()).Insert(); err != nil {
+	if err = b.Selector().Push(NewJsonWriter(&actual).Node()).Insert().LastErr; err != nil {
 		t.Error(err)
 	} else {
 		t.Log("Round Trip:", string(actual.Bytes()))
@@ -62,7 +62,7 @@ func TestYangWrite(t *testing.T) {
 	}
 	from := NewSchemaData(simple, false)
 	to := NewSchemaData(nil, false)
-	err = from.Select().Push(to.Node()).Upsert()
+	err = from.Select().Selector().Push(to.Node()).Upsert().LastErr
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,17 +70,17 @@ func TestYangWrite(t *testing.T) {
 	os.Stdout.WriteString("\n*********** O R I G I N A L **********\n")
 	orig, _ := os.Create("original.json")
 	defer orig.Close()
-	from.Select().Push(NewJsonWriter(orig).Node()).Insert()
+	from.Select().Selector().Push(NewJsonWriter(orig).Node()).Insert()
 
 	os.Stdout.WriteString("\n*********** C O P Y **********\n")
 	new, _ := os.Create("new.json")
 	defer new.Close()
-	to.Select().Push(NewJsonWriter(new).Node()).Insert()
+	to.Select().Selector().Push(NewJsonWriter(new).Node()).Insert()
 
 	// dump original and clone to see if anything is missing
 	diff := Diff(from.Node(), to.Node())
 	diffSel := from.Select().Fork(diff)
 	var out bytes.Buffer
-	diffSel.Push(NewJsonWriter(&out).Node()).Insert()
+	diffSel.Selector().Push(NewJsonWriter(&out).Node()).Insert()
 	t.Log(out.String())
 }

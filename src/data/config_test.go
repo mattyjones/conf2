@@ -64,7 +64,7 @@ module m {
 	edit := `{"a":{"aa":{"aaa":"hello"}}}`
 
 	sel := oper.Select().Fork(Config(persist.Node(), oper.Node()))
-	if err = sel.Pull(NewJsonReader(strings.NewReader(edit)).Node()).Insert(); err != nil {
+	if err = sel.Selector().Pull(NewJsonReader(strings.NewReader(edit)).Node()).Insert().LastErr; err != nil {
 		t.Error(err)
 	}
 	if len(operStore.Values) != 1 {
