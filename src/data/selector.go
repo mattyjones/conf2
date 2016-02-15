@@ -15,46 +15,45 @@ type Selector struct {
 }
 
 func (self Selector) Find(path string) Selector {
-	return (&self).find(path, nil)
+	p := path
+	selection := self.Selection
+	if strings.HasPrefix(path, "../") {
+		for strings.HasPrefix(p, "../") {
+			if selection.parent != nil {
+				selection = selection.parent
+				p = p[3:]
+			} else {
+				self.LastErr = conf2.NewErrC("No parent path to resolve " + p, conf2.NotFound)
+				return self
+			}
+		}
+	}
+	var u *url.URL
+	u, self.LastErr = url.Parse(p)
+	if self.LastErr != nil {
+		return self
+	}
+	return self.FindUrl(u)
 }
 
 func (self Selector) FindUrl(url *url.URL) Selector {
-	return (&self).find("", url)
-}
-
-func (self *Selector) find(path string, url *url.URL) Selector {
 	if self.LastErr != nil {
-		return *self
-	}
-	sel := self.Selection
-	p := path
-	if url != nil {
-		p = url.Path
-	}
-	s := Selector{}
-	for strings.HasPrefix(p, "../") {
-		if sel.parent != nil {
-			sel = sel.parent
-			p = p[3:]
-		} else {
-			s.LastErr = conf2.NewErrC("No parent path to resolve " + p, conf2.NotFound)
-			return s
-		}
+		return self
 	}
 
-	s.Target, s.LastErr = ParsePath(p, sel.Meta())
-	if s.LastErr != nil {
-		return s
+	self.Target, self.LastErr = ParseUrlPath(url, self.Selection.Meta())
+	if self.LastErr != nil {
+		return self
 	}
 	if url != nil {
-		s.Target.SetParams(url.Query())
+		self.Target.SetParams(url.Query())
 	}
-	s.EditControl = LimitedWalk(s.Target.Params())
-	findController := NewFindTarget(s.Target)
-	if s.LastErr = sel.Walk(findController); s.LastErr == nil {
-		s.Selection = findController.Target
+	self.EditControl = LimitedWalk(self.Target.Params())
+	findController := NewFindTarget(self.Target)
+	if self.LastErr = self.Selection.Walk(findController); self.LastErr == nil {
+		self.Selection = findController.Target
 	}
-	return s
+	return self
 }
 
 func (self Selector) Push(toNode Node) Selector {

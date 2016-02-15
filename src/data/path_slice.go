@@ -44,6 +44,11 @@ func ParsePath(path string, meta schema.MetaList) (*PathSlice, error) {
 	if err != nil {
 		return nil, err
 	}
+	return ParseUrlPath(u, meta)
+}
+
+func ParseUrlPath(u *url.URL, meta schema.MetaList) (*PathSlice, error) {
+	var err error
 	p := NewRootPath(meta, map[string][]string(u.Query()))
 	slice := &PathSlice{
 		Head: p,
